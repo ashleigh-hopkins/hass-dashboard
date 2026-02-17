@@ -2,15 +2,45 @@ name: Build Legacy (iPad 2)
 
 on:
   push:
+    branches: [main]
     tags: ['v*']
 
 env:
   TEAM_ID: ${{ vars.TEAM_ID }}
 
 jobs:
+  # Cache Xcode .xip on main so tag runs can access it
+  seed-cache:
+    runs-on: macos-15
+    timeout-minutes: 60
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Cache Xcode 13.2.1 .xip
+        id: xcode-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.xcodes/Downloads
+          key: xcode-13.2.1-xip
+
+      - name: Download Xcode 13.2.1 .xip
+        if: steps.xcode-cache.outputs.cache-hit != 'true'
+        env:
+          FASTLANE_SESSION: ${{ secrets.FASTLANE_SESSION }}
+          XCODES_USERNAME: ${{ secrets.XCODES_USERNAME }}
+        run: |
+          echo "Downloading Xcode 13.2.1 to seed cache on main branch..."
+          mkdir -p ~/.xcodes/Downloads
+          xcodes install 13.2.1 --use-fastlane-auth --experimental-unxip --no-superuser
+          echo "Cache seeded."
+
+      - name: Cache already exists
+        if: steps.xcode-cache.outputs.cache-hit == 'true'
+        run: echo "Cache already seeded on main. Nothing to do."
+
   build-legacy:
     runs-on: macos-15
     timeout-minutes: 90
+    if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: write
     steps:
