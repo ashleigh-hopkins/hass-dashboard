@@ -1,0 +1,134 @@
+#import "HAClimateEntityCell.h"
+#import "HAEntity.h"
+#import "HAConnectionManager.h"
+#import "HADashboardConfig.h"
+#import "HATheme.h"
+#import "HAEntityDisplayHelper.h"
+
+@interface HAClimateEntityCell ()
+@property (nonatomic, strong) UILabel *currentTempLabel;
+@property (nonatomic, strong) UILabel *targetTempLabel;
+@property (nonatomic, strong) UIStepper *tempStepper;
+@property (nonatomic, strong) UILabel *modeLabel;
+@end
+
+@implementation HAClimateEntityCell
+
+- (void)setupSubviews {
+    [super setupSubviews];
+    self.stateLabel.hidden = YES;
+
+    // Current temperature: large display
+    self.currentTempLabel = [[UILabel alloc] init];
+    self.currentTempLabel.font = [UIFont monospacedDigitSystemFontOfSize:26 weight:UIFontWeightMedium];
+    self.currentTempLabel.textColor = [HATheme primaryTextColor];
+    self.currentTempLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.contentView addSubview:self.currentTempLabel];
+
+    // HVAC mode label
+    self.modeLabel = [[UILabel alloc] init];
+    self.modeLabel.font = [UIFont systemFontOfSize:11];
+    self.modeLabel.textColor = [HATheme secondaryTextColor];
+    self.modeLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.contentView addSubview:self.modeLabel];
+
+    // Target temperature label
+    self.targetTempLabel = [[UILabel alloc] init];
+    self.targetTempLabel.font = [UIFont monospacedDigitSystemFontOfSize:14 weight:UIFontWeightRegular];
+    self.targetTempLabel.textColor = [HATheme primaryTextColor];
+    self.targetTempLabel.textAlignment = NSTextAlignmentRight;
+    self.targetTempLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.contentView addSubview:self.targetTempLabel];
+
+    // Stepper for target temperature
+    self.tempStepper = [[UIStepper alloc] init];
+    self.tempStepper.minimumValue = 10;
+    self.tempStepper.maximumValue = 35;
+    self.tempStepper.stepValue = 0.5;
+    self.tempStepper.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.tempStepper addTarget:self action:@selector(stepperChanged:) forControlEvents:UIControlEventValueChanged];
+    [self.contentView addSubview:self.tempStepper];
+
+    CGFloat padding = 10.0;
+
+    // Current temp: left side, vertically centered
+    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.currentTempLabel attribute:NSLayoutAttributeLeading
+        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeLeading multiplier:1 constant:padding]];
+    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.currentTempLabel attribute:NSLayoutAttributeTop
+        relatedBy:NSLayoutRelationEqual toItem:self.nameLabel attribute:NSLayoutAttributeBottom multiplier:1 constant:2]];
+
+    // Mode label: below current temp
+    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.modeLabel attribute:NSLayoutAttributeLeading
+        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeLeading multiplier:1 constant:padding]];
+    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.modeLabel attribute:NSLayoutAttributeTop
+        relatedBy:NSLayoutRelationEqual toItem:self.currentTempLabel attribute:NSLayoutAttributeBottom multiplier:1 constant:2]];
+
+    // Stepper: bottom-right
+    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.tempStepper attribute:NSLayoutAttributeTrailing
+        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTrailing multiplier:1 constant:-padding]];
+    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.tempStepper attribute:NSLayoutAttributeBottom
+        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeBottom multiplier:1 constant:-padding]];
+
+    // Target label: above stepper
+    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.targetTempLabel attribute:NSLayoutAttributeTrailing
+        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTrailing multiplier:1 constant:-padding]];
+    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.targetTempLabel attribute:NSLayoutAttributeBottom
+        relatedBy:NSLayoutRelationEqual toItem:self.tempStepper attribute:NSLayoutAttributeTop multiplier:1 constant:-4]];
+}
+
+- (void)configureWithEntity:(HAEntity *)entity configItem:(HADashboardConfigItem *)configItem {
+    [super configureWithEntity:entity configItem:configItem];
+
+    NSNumber *currentTemp = [entity currentTemperature];
+    NSNumber *targetTemp  = [entity targetTemperature];
+
+    if (currentTemp) {
+        self.currentTempLabel.text = [NSString stringWithFormat:@"%.1f\u00B0", currentTemp.doubleValue];
+    } else {
+        self.currentTempLabel.text = @"—";
+    }
+
+    NSString *mode = [entity hvacMode];
+    self.modeLabel.text = [HAEntityDisplayHelper humanReadableState:mode];
+
+    BOOL hasTarget = targetTemp != nil && ![mode isEqualToString:@"off"];
+    self.tempStepper.hidden = !hasTarget;
+    self.targetTempLabel.hidden = !hasTarget;
+
+    if (hasTarget) {
+        self.tempStepper.value = targetTemp.doubleValue;
+        self.targetTempLabel.text = [NSString stringWithFormat:@"Target: %.1f\u00B0", targetTemp.doubleValue];
+    }
+
+    // Background color based on mode
+    if ([mode isEqualToString:@"heat"]) {
+        self.contentView.backgroundColor = [HATheme heatTintColor];
+    } else if ([mode isEqualToString:@"cool"]) {
+        self.contentView.backgroundColor = [HATheme coolTintColor];
+    } else {
+        self.contentView.backgroundColor = [HATheme cellBackgroundColor];
+    }
+}
+
+- (void)stepperChanged:(UIStepper *)sender {
+    double target = sender.value;
+    self.targetTempLabel.text = [NSString stringWithFormat:@"Target: %.1f\u00B0", target];
+
+    if (!self.entity) return;
+    NSDictionary *data = @{@"temperature": @(target)};
+    [[HAConnectionManager sharedManager] callService:@"set_temperature"
+                                            inDomain:@"climate"
+                                            withData:data
+                                            entityId:self.entity.entityId];
+}
+
+- (void)prepareForReuse {
+    [super prepareForReuse];
+    self.currentTempLabel.text = nil;
+    self.targetTempLabel.text = nil;
+    self.modeLabel.text = nil;
+    self.tempStepper.value = 20;
+    self.contentView.backgroundColor = [HATheme cellBackgroundColor];
+}
+
+@end

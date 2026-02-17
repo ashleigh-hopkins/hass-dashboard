@@ -1,0 +1,358 @@
+#import "HABaseSnapshotTestCase.h"
+#import "HASnapshotTestHelpers.h"
+#import "HAEntityDetailSection.h"
+#import "HAEntityDetailViewController.h"
+#import "HAAttributeRowView.h"
+#import "HAEntity.h"
+#import "HATheme.h"
+
+/// Standard width for detail section snapshots (matches bottom sheet content area).
+static const CGFloat kDetailSectionWidth = 320.0;
+
+@interface HAEntityDetailSnapshotTests : HABaseSnapshotTestCase
+@end
+
+@implementation HAEntityDetailSnapshotTests
+
+#pragma mark - Helpers
+
+/// Create a domain section view for a given entity, sized and laid out for snapshotting.
+- (UIView *)sectionViewForEntity:(HAEntity *)entity {
+    HADetailServiceBlock noopBlock = ^(NSString *s, NSString *d, NSDictionary *data, NSString *eid) {};
+    id<HAEntityDetailSection> section = [HAEntityDetailSectionFactory sectionForEntity:entity serviceBlock:noopBlock];
+    if (!section) return nil;
+
+    UIView *view = [section viewForEntity:entity];
+    CGFloat height = [section preferredHeight];
+    view.frame = CGRectMake(0, 0, kDetailSectionWidth, height);
+    view.backgroundColor = [HATheme cellBackgroundColor];
+    [view setNeedsLayout];
+    [view layoutIfNeeded];
+    return view;
+}
+
+/// Create a full entity detail view controller view, sized and laid out for snapshotting.
+- (UIView *)detailViewForEntity:(HAEntity *)entity {
+    HAEntityDetailViewController *vc = [[HAEntityDetailViewController alloc] init];
+    vc.entity = entity;
+
+    // Load the view hierarchy
+    CGRect frame = CGRectMake(0, 0, 375, 500);
+    vc.view.frame = frame;
+    [vc viewDidLoad];
+    [vc.view setNeedsLayout];
+    [vc.view layoutIfNeeded];
+    return vc.view;
+}
+
+/// Create an attribute row view for snapshotting.
+- (UIView *)attributeRowWithKey:(NSString *)key value:(NSString *)value {
+    HAAttributeRowView *row = [[HAAttributeRowView alloc] initWithFrame:CGRectMake(0, 0, kDetailSectionWidth, 28)];
+    [row configureWithKey:key value:value];
+    [row setNeedsLayout];
+    [row layoutIfNeeded];
+    return row;
+}
+
+#pragma mark - Light Section
+
+- (void)testLightSectionOn {
+    HAEntity *entity = [HASnapshotTestHelpers lightEntityOnBrightness];
+    UIView *view = [self sectionViewForEntity:entity];
+    [self verifyView:view identifier:@"lightSectionOn"];
+}
+
+- (void)testLightSectionDimmed {
+    HAEntity *entity = [HASnapshotTestHelpers lightEntityOnDimmed];
+    UIView *view = [self sectionViewForEntity:entity];
+    [self verifyView:view identifier:@"lightSectionDimmed"];
+}
+
+- (void)testLightSectionOff {
+    HAEntity *entity = [HASnapshotTestHelpers lightEntityOff];
+    UIView *view = [self sectionViewForEntity:entity];
+    [self verifyView:view identifier:@"lightSectionOff"];
+}
+
+#pragma mark - Climate Section
+
+- (void)testClimateSectionHeat {
+    HAEntity *entity = [HASnapshotTestHelpers climateEntityHeat];
+    UIView *view = [self sectionViewForEntity:entity];
+    [self verifyView:view identifier:@"climateSectionHeat"];
+}
+
+- (void)testClimateSectionCool {
+    HAEntity *entity = [HASnapshotTestHelpers climateEntityCool];
+    UIView *view = [self sectionViewForEntity:entity];
+    [self verifyView:view identifier:@"climateSectionCool"];
+}
+
+- (void)testClimateSectionOff {
+    HAEntity *entity = [HASnapshotTestHelpers climateEntityOff];
+    UIView *view = [self sectionViewForEntity:entity];
+    [self verifyView:view identifier:@"climateSectionOff"];
+}
+
+#pragma mark - Cover Section
+
+- (void)testCoverSectionOpen {
+    HAEntity *entity = [HASnapshotTestHelpers coverEntityOpenShutter];
+    UIView *view = [self sectionViewForEntity:entity];
+    [self verifyView:view identifier:@"coverSectionOpen"];
+}
+
+- (void)testCoverSectionClosed {
+    HAEntity *entity = [HASnapshotTestHelpers coverEntityClosedGarage];
+    UIView *view = [self sectionViewForEntity:entity];
+    [self verifyView:view identifier:@"coverSectionClosed"];
+}
+
+- (void)testCoverSectionPartial {
+    HAEntity *entity = [HASnapshotTestHelpers coverEntityPartial];
+    UIView *view = [self sectionViewForEntity:entity];
+    [self verifyView:view identifier:@"coverSectionPartial"];
+}
+
+#pragma mark - Toggle Section (Switch)
+
+- (void)testToggleSectionOn {
+    HAEntity *entity = [HASnapshotTestHelpers switchEntityOn];
+    UIView *view = [self sectionViewForEntity:entity];
+    [self verifyView:view identifier:@"toggleSectionOn"];
+}
+
+- (void)testToggleSectionOff {
+    HAEntity *entity = [HASnapshotTestHelpers switchEntityOff];
+    UIView *view = [self sectionViewForEntity:entity];
+    [self verifyView:view identifier:@"toggleSectionOff"];
+}
+
+#pragma mark - Sensor Section
+
+- (void)testSensorSectionTemperature {
+    HAEntity *entity = [HASnapshotTestHelpers sensorTemperature];
+    UIView *view = [self sectionViewForEntity:entity];
+    [self verifyView:view identifier:@"sensorSectionTemp"];
+}
+
+- (void)testSensorSectionHumidity {
+    HAEntity *entity = [HASnapshotTestHelpers sensorHumidity];
+    UIView *view = [self sectionViewForEntity:entity];
+    [self verifyView:view identifier:@"sensorSectionHumidity"];
+}
+
+- (void)testSensorSectionBinary {
+    HAEntity *entity = [HASnapshotTestHelpers binarySensorMotionOn];
+    UIView *view = [self sectionViewForEntity:entity];
+    [self verifyView:view identifier:@"sensorSectionBinary"];
+}
+
+#pragma mark - Media Player Section
+
+- (void)testMediaPlayerSectionPlaying {
+    HAEntity *entity = [HASnapshotTestHelpers mediaPlayerPlaying];
+    UIView *view = [self sectionViewForEntity:entity];
+    [self verifyView:view identifier:@"mediaPlayerSectionPlaying"];
+}
+
+- (void)testMediaPlayerSectionPaused {
+    HAEntity *entity = [HASnapshotTestHelpers mediaPlayerPaused];
+    UIView *view = [self sectionViewForEntity:entity];
+    [self verifyView:view identifier:@"mediaPlayerSectionPaused"];
+}
+
+- (void)testMediaPlayerSectionOff {
+    HAEntity *entity = [HASnapshotTestHelpers mediaPlayerOff];
+    UIView *view = [self sectionViewForEntity:entity];
+    [self verifyView:view identifier:@"mediaPlayerSectionOff"];
+}
+
+#pragma mark - Fan Section
+
+- (void)testFanSectionOnHalf {
+    HAEntity *entity = [HASnapshotTestHelpers fanEntityOnHalf];
+    UIView *view = [self sectionViewForEntity:entity];
+    [self verifyView:view identifier:@"fanSectionOnHalf"];
+}
+
+- (void)testFanSectionOnFull {
+    HAEntity *entity = [HASnapshotTestHelpers fanEntityOnFull];
+    UIView *view = [self sectionViewForEntity:entity];
+    [self verifyView:view identifier:@"fanSectionOnFull"];
+}
+
+- (void)testFanSectionOff {
+    HAEntity *entity = [HASnapshotTestHelpers fanEntityOff];
+    UIView *view = [self sectionViewForEntity:entity];
+    [self verifyView:view identifier:@"fanSectionOff"];
+}
+
+#pragma mark - Lock Section
+
+- (void)testLockSectionLocked {
+    HAEntity *entity = [HASnapshotTestHelpers lockLocked];
+    UIView *view = [self sectionViewForEntity:entity];
+    [self verifyView:view identifier:@"lockSectionLocked"];
+}
+
+- (void)testLockSectionUnlocked {
+    HAEntity *entity = [HASnapshotTestHelpers lockUnlocked];
+    UIView *view = [self sectionViewForEntity:entity];
+    [self verifyView:view identifier:@"lockSectionUnlocked"];
+}
+
+#pragma mark - Vacuum Section
+
+- (void)testVacuumSectionDocked {
+    HAEntity *entity = [HASnapshotTestHelpers vacuumDocked];
+    UIView *view = [self sectionViewForEntity:entity];
+    [self verifyView:view identifier:@"vacuumSectionDocked"];
+}
+
+- (void)testVacuumSectionCleaning {
+    HAEntity *entity = [HASnapshotTestHelpers vacuumCleaning];
+    UIView *view = [self sectionViewForEntity:entity];
+    [self verifyView:view identifier:@"vacuumSectionCleaning"];
+}
+
+- (void)testVacuumSectionReturning {
+    HAEntity *entity = [HASnapshotTestHelpers vacuumReturning];
+    UIView *view = [self sectionViewForEntity:entity];
+    [self verifyView:view identifier:@"vacuumSectionReturning"];
+}
+
+#pragma mark - Timer Section
+
+- (void)testTimerSectionPaused {
+    HAEntity *entity = [HASnapshotTestHelpers timerPaused];
+    UIView *view = [self sectionViewForEntity:entity];
+    [self verifyView:view identifier:@"timerSectionPaused"];
+}
+
+- (void)testTimerSectionIdle {
+    HAEntity *entity = [HASnapshotTestHelpers timerIdle];
+    UIView *view = [self sectionViewForEntity:entity];
+    [self verifyView:view identifier:@"timerSectionIdle"];
+}
+
+#pragma mark - Scene Section
+
+- (void)testSceneSectionDefault {
+    HAEntity *entity = [HASnapshotTestHelpers sceneDefault];
+    UIView *view = [self sectionViewForEntity:entity];
+    [self verifyView:view identifier:@"sceneSectionDefault"];
+}
+
+- (void)testSceneSectionActivated {
+    HAEntity *entity = [HASnapshotTestHelpers sceneActivated];
+    UIView *view = [self sectionViewForEntity:entity];
+    [self verifyView:view identifier:@"sceneSectionActivated"];
+}
+
+#pragma mark - Default Section (Unknown Domain)
+
+- (void)testDefaultSectionUnknownDomain {
+    HAEntity *entity = [HASnapshotTestHelpers entityWithId:@"unknown.test"
+                                                     state:@"some_state"
+                                                attributes:@{@"friendly_name": @"Unknown Entity"}];
+    UIView *view = [self sectionViewForEntity:entity];
+    [self verifyView:view identifier:@"defaultSection"];
+}
+
+#pragma mark - Attribute Row
+
+- (void)testAttributeRowShortValue {
+    UIView *row = [self attributeRowWithKey:@"Device class" value:@"temperature"];
+    row.backgroundColor = [HATheme cellBackgroundColor];
+    [self verifyView:row identifier:@"attributeRowShort"];
+}
+
+- (void)testAttributeRowLongValue {
+    UIView *row = [self attributeRowWithKey:@"Supported features" value:@"This is a very long attribute value that might need to be truncated"];
+    row.backgroundColor = [HATheme cellBackgroundColor];
+    [self verifyView:row identifier:@"attributeRowLong"];
+}
+
+#pragma mark - Full Detail View
+
+- (void)testDetailViewLight {
+    HAEntity *entity = [HASnapshotTestHelpers lightEntityOnBrightness];
+    UIView *view = [self detailViewForEntity:entity];
+    [self verifyView:view identifier:@"detailViewLight"];
+}
+
+- (void)testDetailViewClimate {
+    HAEntity *entity = [HASnapshotTestHelpers climateEntityHeat];
+    UIView *view = [self detailViewForEntity:entity];
+    [self verifyView:view identifier:@"detailViewClimate"];
+}
+
+- (void)testDetailViewSensor {
+    HAEntity *entity = [HASnapshotTestHelpers sensorTemperature];
+    UIView *view = [self detailViewForEntity:entity];
+    [self verifyView:view identifier:@"detailViewSensor"];
+}
+
+- (void)testDetailViewSwitch {
+    HAEntity *entity = [HASnapshotTestHelpers switchEntityOn];
+    UIView *view = [self detailViewForEntity:entity];
+    [self verifyView:view identifier:@"detailViewSwitch"];
+}
+
+- (void)testDetailViewMediaPlayer {
+    HAEntity *entity = [HASnapshotTestHelpers mediaPlayerPlaying];
+    UIView *view = [self detailViewForEntity:entity];
+    [self verifyView:view identifier:@"detailViewMediaPlayer"];
+}
+
+- (void)testDetailViewFan {
+    HAEntity *entity = [HASnapshotTestHelpers fanEntityOnHalf];
+    UIView *view = [self detailViewForEntity:entity];
+    [self verifyView:view identifier:@"detailViewFan"];
+}
+
+- (void)testDetailViewLock {
+    HAEntity *entity = [HASnapshotTestHelpers lockLocked];
+    UIView *view = [self detailViewForEntity:entity];
+    [self verifyView:view identifier:@"detailViewLock"];
+}
+
+- (void)testDetailViewVacuum {
+    HAEntity *entity = [HASnapshotTestHelpers vacuumCleaning];
+    UIView *view = [self detailViewForEntity:entity];
+    [self verifyView:view identifier:@"detailViewVacuum"];
+}
+
+- (void)testDetailViewTimer {
+    HAEntity *entity = [HASnapshotTestHelpers timerPaused];
+    UIView *view = [self detailViewForEntity:entity];
+    [self verifyView:view identifier:@"detailViewTimer"];
+}
+
+- (void)testDetailViewScene {
+    HAEntity *entity = [HASnapshotTestHelpers sceneDefault];
+    UIView *view = [self detailViewForEntity:entity];
+    [self verifyView:view identifier:@"detailViewScene"];
+}
+
+- (void)testDetailViewCover {
+    HAEntity *entity = [HASnapshotTestHelpers coverEntityPartial];
+    UIView *view = [self detailViewForEntity:entity];
+    [self verifyView:view identifier:@"detailViewCover"];
+}
+
+- (void)testDetailViewDefault {
+    HAEntity *entity = [HASnapshotTestHelpers entityWithId:@"automation.morning_routine"
+                                                     state:@"on"
+                                                attributes:@{
+        @"friendly_name": @"Morning Routine",
+        @"last_triggered": @"2026-01-15T07:00:00Z",
+        @"current": @0,
+        @"icon": @"mdi:robot"
+    }];
+    UIView *view = [self detailViewForEntity:entity];
+    [self verifyView:view identifier:@"detailViewDefault"];
+}
+
+@end

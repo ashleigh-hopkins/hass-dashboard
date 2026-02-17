@@ -1,0 +1,138 @@
+name: HADashboard
+options:
+  bundleIdPrefix: com.example.hadashboard
+  deploymentTarget:
+    iOS: "15.0"
+  xcodeVersion: "26.0"
+  generateEmptyDirectories: true
+  groupSortPosition: top
+
+settings:
+  base:
+    TARGETED_DEVICE_FAMILY: "1,2"  # iPhone and iPad
+    IPHONEOS_DEPLOYMENT_TARGET: "9.0"
+    CLANG_ENABLE_OBJC_ARC: YES
+    CLANG_ENABLE_MODULES: YES
+    ARCHS: "arm64"
+    VALID_ARCHS: "arm64"
+    ONLY_ACTIVE_ARCH: NO
+
+targets:
+  HADashboard:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: HADashboard
+        type: group
+        excludes:
+          - "**/*.md"
+      - path: Vendor
+        type: group
+        buildPhase: sources
+        excludes:
+          - "**/*.md"
+          - "**/LICENSE*"
+          - "**/*-LICENSE"
+          - "MDI/**"
+          - "iOSSnapshotTestCase/**"
+      - path: Vendor/MDI/materialdesignicons-webfont.ttf
+        buildPhase: resources
+      - path: Vendor/MDI/mdi-codepoints.tsv
+        buildPhase: resources
+    info:
+      path: HADashboard/Info.plist
+      properties:
+        CFBundleDisplayName: "HA Dashboard"
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+        NSLocalNetworkUsageDescription: "Discover Home Assistant servers on your network"
+        NSBonjourServices:
+          - _home-assistant._tcp
+        UILaunchScreen:
+          UIColorName: ""
+        UIRequiredDeviceCapabilities: [arm64]
+        ITSAppUsesNonExemptEncryption: false
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UIAppFonts:
+          - materialdesignicons-webfont.ttf
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UIDeviceFamily: [1, 2]
+    settings:
+      base:
+        INFOPLIST_FILE: HADashboard/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.hadashboard
+        PRODUCT_NAME: "HA Dashboard"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        IPHONEOS_DEPLOYMENT_TARGET: "15.0"
+        CODE_SIGN_IDENTITY: "Apple Development"
+        CODE_SIGN_STYLE: "Automatic"
+        DEVELOPMENT_TEAM: ""
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF: NO
+        GCC_WARN_INHIBIT_ALL_WARNINGS: NO
+      configs:
+        Debug:
+          SWIFT_OPTIMIZATION_LEVEL: "-Onone"
+          GCC_OPTIMIZATION_LEVEL: "0"
+          DEBUG_INFORMATION_FORMAT: "dwarf-with-dsym"
+          GCC_PREPROCESSOR_DEFINITIONS:
+            - "DEBUG=1"
+            - "$(inherited)"
+        Release:
+          GCC_OPTIMIZATION_LEVEL: "s"
+          DEBUG_INFORMATION_FORMAT: "dwarf-with-dsym"
+          VALIDATE_PRODUCT: YES
+    dependencies: []
+    preBuildScripts: []
+    postBuildScripts: []
+    scheme:
+      testTargets:
+        - name: HADashboardTests
+          environment:
+            FB_REFERENCE_IMAGE_DIR: "$(SOURCE_ROOT)/HADashboardTests/ReferenceImages"
+            IMAGE_DIFF_DIR: "$(SOURCE_ROOT)/HADashboardTests/FailureDiffs"
+      gatherCoverageData: false
+
+  HADashboardTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: HADashboardTests
+        type: group
+        excludes:
+          - "**/*.md"
+          - "ReferenceImages/**"
+          - "FailureDiffs/**"
+      - path: Vendor/iOSSnapshotTestCase
+        type: group
+        buildPhase: sources
+        excludes:
+          - "**/LICENSE*"
+    dependencies:
+      - target: HADashboard
+    info:
+      path: HADashboardTests/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.hadashboard.tests
+        PRODUCT_NAME: HADashboardTests
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/HA Dashboard.app/HA Dashboard"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        CODE_SIGN_IDENTITY: ""
+        CODE_SIGNING_REQUIRED: NO
+        HEADER_SEARCH_PATHS:
+          - "$(SRCROOT)/Vendor/iOSSnapshotTestCase/Public"
+          - "$(SRCROOT)/Vendor/iOSSnapshotTestCase/Categories"
+        GCC_PREPROCESSOR_DEFINITIONS:
+          - "SWIFT_PACKAGE=1"

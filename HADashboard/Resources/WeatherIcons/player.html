@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<style>
+* { margin: 0; padding: 0; }
+body { background: transparent; overflow: hidden; }
+#anim { width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<div id="anim"></div>
+<script src="lottie.min.js"></script>
+<script>
+function play(name) {
+    var container = document.getElementById('anim');
+    container.innerHTML = '';
+    lottie.loadAnimation({
+        container: container,
+        renderer: 'svg',
+        loop: true,
+        autoplay: true,
+        path: name + '.json'
+    });
+}
+// Auto-play if hash contains the icon name
+if (window.location.hash) {
+    play(window.location.hash.substring(1));
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,201 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+env:
+  SCHEME: HADashboard
+  BUNDLE_ID: ${{ vars.BUNDLE_ID }}
+  TEAM_ID: ${{ vars.TEAM_ID }}
+
+jobs:
+  build-and-test:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.2.app
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Set version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          else
+            VERSION="0.0.0-dev"
+          fi
+          BUILD_NUMBER=$(git rev-list --count HEAD)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "build_number=$BUILD_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "Version: $VERSION (build $BUILD_NUMBER)"
+
+      - name: Generate Xcode project
+        run: xcodegen generate --spec project.yml
+
+      - name: Build
+        run: |
+          xcodebuild build \
+            -scheme $SCHEME \
+            -destination "generic/platform=iOS Simulator" \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            MARKETING_VERSION=${{ steps.version.outputs.version }} \
+            CURRENT_PROJECT_VERSION=${{ steps.version.outputs.build_number }}
+          # Snapshot tests are skipped in CI — reference images are recorded
+          # on iOS 17.4 and differ across iOS versions. Run locally with:
+          #   scripts/test-snapshots.sh
+
+  archive-release:
+    needs: build-and-test
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: macos-15
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.2.app
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Set version from tag
+        id: version
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          BUILD_NUMBER=$(git rev-list --count HEAD)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "build_number=$BUILD_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "Version: $VERSION (build $BUILD_NUMBER)"
+
+      - name: Decode ASC API key
+        env:
+          ASC_KEY_BASE64: ${{ secrets.ASC_KEY_BASE64 }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/private_keys"
+          echo -n "$ASC_KEY_BASE64" | base64 --decode > "$RUNNER_TEMP/private_keys/AuthKey.p8"
+
+      - name: Generate Xcode project
+        run: |
+          # Inject Team ID and Bundle ID into project.yml before generation
+          sed -i '' "s/com.example.hadashboard/$BUNDLE_ID/g" project.yml
+          sed -i '' "s/DEVELOPMENT_TEAM: \"\"/DEVELOPMENT_TEAM: \"$TEAM_ID\"/" project.yml
+          xcodegen generate --spec project.yml
+
+      - name: Configure export plists
+        run: |
+          # Inject Team ID into ExportOptions plists
+          plutil -replace teamID -string "$TEAM_ID" ExportOptions-AppStore.plist
+          plutil -replace teamID -string "$TEAM_ID" ExportOptions-AdHoc.plist
+
+      # --- App Store Archive ---
+      - name: Archive for App Store
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          xcodebuild archive \
+            -scheme $SCHEME \
+            -sdk iphoneos \
+            -configuration Release \
+            -archivePath build/HADashboard-AppStore.xcarchive \
+            MARKETING_VERSION=${{ steps.version.outputs.version }} \
+            CURRENT_PROJECT_VERSION=${{ steps.version.outputs.build_number }} \
+            DEVELOPMENT_TEAM=$TEAM_ID \
+            -authenticationKeyPath "$RUNNER_TEMP/private_keys/AuthKey.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            -allowProvisioningUpdates
+
+      - name: Export App Store IPA
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath build/HADashboard-AppStore.xcarchive \
+            -exportPath build/appstore \
+            -exportOptionsPlist ExportOptions-AppStore.plist \
+            -authenticationKeyPath "$RUNNER_TEMP/private_keys/AuthKey.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            -allowProvisioningUpdates
+
+      # --- Ad Hoc Archive ---
+      - name: Archive for Ad Hoc
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          xcodebuild archive \
+            -scheme $SCHEME \
+            -sdk iphoneos \
+            -configuration Release \
+            -archivePath build/HADashboard-AdHoc.xcarchive \
+            MARKETING_VERSION=${{ steps.version.outputs.version }} \
+            CURRENT_PROJECT_VERSION=${{ steps.version.outputs.build_number }} \
+            DEVELOPMENT_TEAM=$TEAM_ID \
+            -authenticationKeyPath "$RUNNER_TEMP/private_keys/AuthKey.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            -allowProvisioningUpdates
+
+      - name: Export Ad Hoc IPA
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath build/HADashboard-AdHoc.xcarchive \
+            -exportPath build/adhoc \
+            -exportOptionsPlist ExportOptions-AdHoc.plist \
+            -authenticationKeyPath "$RUNNER_TEMP/private_keys/AuthKey.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            -allowProvisioningUpdates
+
+      # App Store IPA was already uploaded to TestFlight by the export step
+      # (ExportOptions-AppStore.plist uses method: app-store-connect)
+
+      - name: Rename Ad Hoc IPA
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          ADHOC_IPA=$(find build/adhoc -name "*.ipa" | head -1)
+          echo "Ad Hoc IPA: $ADHOC_IPA"
+          mv "$ADHOC_IPA" "build/HADashboard-${VERSION}-adhoc-arm64.ipa"
+
+      - name: Upload Ad Hoc IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: adhoc-ipa
+          path: build/HADashboard-*-adhoc-arm64.ipa
+
+      # --- GitHub Release ---
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/HADashboard-*-adhoc-arm64.ipa
+          generate_release_notes: true
+          draft: false
+
+      # --- Cleanup ---
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -rf "$RUNNER_TEMP/private_keys"

@@ -1,0 +1,77 @@
+# Xcode
+build/
+DerivedData/
+*.xcuserdata
+*.xcworkspace
+xcuserdata/
+*.xccheckout
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Xcode project internals
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+
+# CocoaPods (not used, but just in case)
+Pods/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Secrets and environment
+.env
+private_keys/
+*.p12
+*.mobileprovision
+
+# Temporary files
+*.swp
+*.swo
+*~
+
+# Device diagnostics (pulled by idevicecrashreport)
+*.ips
+*.ips.ca
+*.metriclog
+*.metriclog.anon
+Retired/
+com.apple.appstored/
+
+# Playwright MCP
+.playwright-mcp/
+
+# Claude Code project management (local working files)
+.claude/
+
+# Test failure diffs (generated, not committed)
+HADashboardTests/FailureDiffs/
+
+# Documentation (local working files, not committed)
+docs/
+
+# Test harness runtime data and generated screenshots
+test-harness/ha-config/.ha_run.lock
+test-harness/ha-config/.storage/
+test-harness/ha-config/home-assistant.log*
+test-harness/ha-config/.homeassistant_deps/
+test-harness/ha-config/tts/
+test-harness/ha-config/.cloud/
+test-harness/node_modules/
+test-harness/screenshots/
+
+# Misc
+*.panic.log
+*.memorydump
+ota_patch.txt
