@@ -55,9 +55,8 @@ SIM_IPHONE_NAME="${SIM_IPHONE_NAME:-iPhone 15 Pro}"
 SIM_IPAD_UDID="${SIM_IPAD_UDID:-}"
 SIM_IPHONE_UDID="${SIM_IPHONE_UDID:-}"
 
-# ── Xcode paths ───────────────────────────────────────────────────────
+# ── Xcode path (for devicectl/simctl commands) ────────────────────────
 XCODE26="/Applications/Xcode.app"
-XCODE13="/Applications/Xcode-13.2.1.app"
 
 # ── Parse arguments ─────────────────────────────────────────────────────
 TARGET=""
@@ -120,8 +119,9 @@ if [[ "$TARGET" == "all" ]]; then
     echo ""
 
     # Deploy to each target; continue on failure so one target doesn't block the rest
+    # Build order: sim first, then universal once for all physical devices
     FAILURES=()
-    for DEPLOY_TARGET in "sim" "sim iphone --no-build" "iphone" "mini5 --no-build" "mini4 --no-build" "ipad2"; do
+    for DEPLOY_TARGET in "sim" "sim iphone --no-build" "iphone" "mini5 --no-build" "mini4 --no-build" "ipad2 --no-build"; do
         # shellcheck disable=SC2086
         "$0" $DEPLOY_TARGET ${OPTS[@]+"${OPTS[@]}"} 2>&1 || FAILURES+=("${DEPLOY_TARGET%% *}")
         echo ""
@@ -136,119 +136,21 @@ if [[ "$TARGET" == "all" ]]; then
     exit 0
 fi
 
-# ── Build logic ───────────────────────────────────────────────────────
-# ipad2 uses Xcode 13.2.1 for armv7+arm64; everything else uses Xcode 26
-build_xcode13() {
-    echo "🔨 Building with Xcode 13.2.1 (armv7 + arm64, iOS 9.0)..."
-    if [ ! -d "$XCODE13" ]; then
-        echo "❌ Xcode 13.2.1 not found at $XCODE13"
-        exit 1
-    fi
-
-    local AUTH_FLAGS=()
-    if [[ -n "$ASC_KEY_PATH" && -n "$ASC_KEY_ID" && -n "$ASC_ISSUER_ID" ]]; then
-        # Expand ~ in ASC_KEY_PATH
-        local expanded_key="${ASC_KEY_PATH/#\~/$HOME}"
-        AUTH_FLAGS=(
-            -authenticationKeyPath "$expanded_key"
-            -authenticationKeyID "$ASC_KEY_ID"
-            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
-            -allowProvisioningUpdates
-        )
-    fi
-
-    DEVELOPER_DIR="$XCODE13/Contents/Developer" xcodebuild \
-        -project "$PROJECT_DIR/HADashboard.xcodeproj" \
-        -target HADashboard \
-        -sdk iphoneos \
-        -configuration Debug \
-        IPHONEOS_DEPLOYMENT_TARGET=9.0 \
-        "ARCHS=armv7 arm64" \
-        "VALID_ARCHS=armv7 arm64" \
-        ONLY_ACTIVE_ARCH=NO \
-        "PRODUCT_BUNDLE_IDENTIFIER=$BUNDLE_ID" \
-        CODE_SIGN_STYLE=Automatic \
-        "DEVELOPMENT_TEAM=$APPLE_TEAM_ID" \
-        CODE_SIGN_IDENTITY="Apple Development" \
-        "HEADER_SEARCH_PATHS=\$(inherited) \$(SRCROOT)/Vendor/Lottie/PublicHeaders \$(SRCROOT)/Vendor/Lottie/Private \$(SRCROOT)/Vendor/Lottie/Models \$(SRCROOT)/Vendor/Lottie/AnimatableLayers \$(SRCROOT)/Vendor/Lottie/AnimatableProperties \$(SRCROOT)/Vendor/Lottie/Extensions \$(SRCROOT)/Vendor/Lottie/RenderSystem \$(SRCROOT)/Vendor/Lottie/RenderSystem/AnimatorNodes \$(SRCROOT)/Vendor/Lottie/RenderSystem/InterpolatorNodes \$(SRCROOT)/Vendor/Lottie/RenderSystem/ManipulatorNodes \$(SRCROOT)/Vendor/Lottie/RenderSystem/RenderNodes" \
-        ASSETCATALOG_COMPILER_APPICON_NAME="" \
-        "${AUTH_FLAGS[@]}" \
-        build 2>&1 | \
-        grep -E '(error:|BUILD)' | tail -5
-
-    APP="$PROJECT_DIR/build/Debug-iphoneos/HA Dashboard.app"
-}
-
-build_xcode26() {
-    local sdk="$1"
-    echo "🔨 Building with Xcode 26 ($sdk)..."
-    if [ ! -d "$XCODE26" ]; then
-        echo "❌ Xcode not found at $XCODE26"
-        exit 1
-    fi
-    export DEVELOPER_DIR="$XCODE26/Contents/Developer"
-
-    local SIGNING_FLAGS=()
-    if [[ "$sdk" == "iphoneos" ]]; then
-        local AUTH_FLAGS=()
-        if [[ -n "$ASC_KEY_PATH" && -n "$ASC_KEY_ID" && -n "$ASC_ISSUER_ID" ]]; then
-            local expanded_key="${ASC_KEY_PATH/#\~/$HOME}"
-            AUTH_FLAGS=(
-                -authenticationKeyPath "$expanded_key"
-                -authenticationKeyID "$ASC_KEY_ID"
-                -authenticationKeyIssuerID "$ASC_ISSUER_ID"
-                -allowProvisioningUpdates
-            )
-        fi
-        SIGNING_FLAGS=(
-            CODE_SIGN_IDENTITY="Apple Development"
-            CODE_SIGN_STYLE=Manual
-            "DEVELOPMENT_TEAM=$APPLE_TEAM_ID"
-            PROVISIONING_PROFILE_SPECIFIER="HADashboard Development"
-        )
-    else
-        SIGNING_FLAGS=(
-            CODE_SIGNING_ALLOWED=NO
-            CODE_SIGN_IDENTITY=""
-        )
-    fi
-
-    xcodebuild \
-        -project "$PROJECT_DIR/HADashboard.xcodeproj" \
-        -scheme HADashboard \
-        -sdk "$sdk" \
-        -configuration Debug \
-        -derivedDataPath "$BUILD_DIR" \
-        ARCHS=arm64 \
-        VALID_ARCHS=arm64 \
-        ONLY_ACTIVE_ARCH=NO \
-        IPHONEOS_DEPLOYMENT_TARGET=15.0 \
-        "PRODUCT_BUNDLE_IDENTIFIER=$BUNDLE_ID" \
-        "${SIGNING_FLAGS[@]}" \
-        build 2>&1 | \
-        grep -E '(error:|BUILD)' | tail -5
-}
-
-# ── Determine SDK, build paths, and build ─────────────────────────────
+# ── Build ─────────────────────────────────────────────────────────────
+# Calls scripts/build.sh which outputs the path to the built .app
 case "$TARGET" in
     sim|sim-iphone)
-        BUILD_DIR="$PROJECT_DIR/build/sim"
-        APP="$BUILD_DIR/Build/Products/Debug-iphonesimulator/HA Dashboard.app"
         if [[ "$NO_BUILD" == false ]]; then
-            build_xcode26 iphonesimulator
+            APP="$("$PROJECT_DIR/scripts/build.sh" sim)"
+        else
+            APP="$PROJECT_DIR/build/sim/Build/Products/Debug-iphonesimulator/HA Dashboard.app"
         fi
         ;;
-    iphone|mini5|mini4)
-        BUILD_DIR="$PROJECT_DIR/build/device"
-        APP="$BUILD_DIR/Build/Products/Debug-iphoneos/HA Dashboard.app"
+    iphone|mini5|mini4|ipad2|ipad2-usb)
         if [[ "$NO_BUILD" == false ]]; then
-            build_xcode26 iphoneos
-        fi
-        ;;
-    ipad2|ipad2-usb)
-        APP="$PROJECT_DIR/build/Debug-iphoneos/HA Dashboard.app"
-        if [[ "$NO_BUILD" == false ]]; then
-            build_xcode13
+            APP="$("$PROJECT_DIR/scripts/build.sh" device)"
+        else
+            APP="$PROJECT_DIR/build/universal/HA Dashboard.app"
         fi
         ;;
 esac
@@ -257,7 +159,9 @@ if [ ! -d "$APP" ]; then
     echo "❌ Build failed — app not found at $APP"
     exit 1
 fi
-echo "✅ Build succeeded: $(du -sh "$APP" | cut -f1) — $(file "$APP/HA Dashboard" | grep -o 'arm[a-z0-9_ ]*' | tr '\n' ' ')"
+if [[ "$NO_BUILD" == false ]]; then
+    echo "✅ Build succeeded: $(du -sh "$APP" | cut -f1) — $(lipo -archs "$APP/HA Dashboard" 2>/dev/null || echo "unknown")"
+fi
 
 # ── Per-target dashboard defaults (override with --dashboard) ──────────
 # Only apply defaults if user didn't explicitly set --dashboard
