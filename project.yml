@@ -49,8 +49,7 @@ targets:
         NSLocalNetworkUsageDescription: "Discover Home Assistant servers on your network"
         NSBonjourServices:
           - _home-assistant._tcp
-        UILaunchScreen:
-          UIColorName: ""
+        UILaunchStoryboardName: LaunchScreen
         UIRequiredDeviceCapabilities: [arm64]
         ITSAppUsesNonExemptEncryption: false
         UISupportedInterfaceOrientations~ipad:

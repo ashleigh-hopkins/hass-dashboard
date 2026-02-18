@@ -103,6 +103,7 @@
 		27C30974D78ABE09124AD563 /* testVacuumError_vacuumError_gradient@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 6CB82822F365459FD6226BA4 /* testVacuumError_vacuumError_gradient@2x.png */; };
 		27E93A1A613DC81D28F5E5DB /* fog-night.json in Resources */ = {isa = PBXBuildFile; fileRef = 5497B6B63E5B7A7A73A666BD /* fog-night.json */; };
 		28592F6D4228F29D7E15A0DC /* LOTComposition.m in Sources */ = {isa = PBXBuildFile; fileRef = D8856372B928BA92BE39910D /* LOTComposition.m */; };
+		2881B660189B8CE69CB29C2E /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 40B14EFB95D338A8FAABC4B7 /* LaunchScreen.storyboard */; };
 		28E4640370F79C85871D68CE /* testSensorHumidity__gradient@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 3D7F0AF40C088B8C8FDFDB65 /* testSensorHumidity__gradient@2x.png */; };
 		29BDE8D05D11999CB1DD5CC6 /* testHeadingNoIcon__gradient@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 9D10A1A9A3CDCE0F4EB3037F /* testHeadingNoIcon__gradient@2x.png */; };
 		2A52AA386663BCE122D13DA7 /* testSensorSectionTemperature_sensorSectionTemp_gradient@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = B39C346D6532737B1AA88E6F /* testSensorSectionTemperature_sensorSectionTemp_gradient@2x.png */; };
@@ -727,6 +728,7 @@
 		3FB54FB227CA05B479F939A5 /* testVacuumReturning_vacuumReturning_gradient@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "testVacuumReturning_vacuumReturning_gradient@2x.png"; sourceTree = "<group>"; };
 		401AC9726CB3E035BC0CE46B /* LOTPathAnimator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LOTPathAnimator.m; sourceTree = "<group>"; };
 		407A8F062B0D329670BA8079 /* HADiscoveredServer.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HADiscoveredServer.m; sourceTree = "<group>"; };
+		40B14EFB95D338A8FAABC4B7 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		40C3D2EE54FFF32214119DF2 /* testLightOnDimmed__gradient@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "testLightOnDimmed__gradient@2x.png"; sourceTree = "<group>"; };
 		40F5DC27662F55949B32D989 /* testSideBySide_6plus6_TwoLights_6plus6_two_lights_light@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "testSideBySide_6plus6_TwoLights_6plus6_two_lights_light@2x.png"; sourceTree = "<group>"; };
 		414B9609A32AEB6692E087CD /* testEntitiesCard3Rows__gradient@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "testEntitiesCard3Rows__gradient@2x.png"; sourceTree = "<group>"; };
@@ -1482,6 +1484,7 @@
 				33A3AE6EE74FF884AA4B075D /* HAAppDelegate.h */,
 				A813193370856C9C1CCEAD9E /* HAAppDelegate.m */,
 				F51D788749A749C34A4EF8FE /* Info.plist */,
+				40B14EFB95D338A8FAABC4B7 /* LaunchScreen.storyboard */,
 				8B7330389B39D40E70CDC883 /* main.m */,
 			);
 			path = HADashboard;
@@ -2295,6 +2298,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				03ADFFB7B8D96DD4D8F97BD6 /* Assets.xcassets in Resources */,
+				2881B660189B8CE69CB29C2E /* LaunchScreen.storyboard in Resources */,
 				9D654F59705D8BA87D556140 /* clear-day.json in Resources */,
 				459C9635019F7A6AA2BBBAB7 /* clear-night.json in Resources */,
 				D6A561D7E2EE7EA799AE8208 /* cloudy.json in Resources */,
@@ -2907,7 +2911,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.hadashboard.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ashhopkins.hadashboard.tests;
 				PRODUCT_NAME = HADashboardTests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -2995,7 +2999,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.hadashboard.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ashhopkins.hadashboard.tests;
 				PRODUCT_NAME = HADashboardTests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -3022,7 +3026,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.hadashboard;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ashhopkins.hadashboard;
 				PRODUCT_NAME = "HA Dashboard";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -3119,7 +3123,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.hadashboard;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ashhopkins.hadashboard;
 				PRODUCT_NAME = "HA Dashboard";
 				SDKROOT = iphoneos;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
