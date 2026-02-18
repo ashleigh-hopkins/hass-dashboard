@@ -67,52 +67,66 @@ jobs:
 
   # ── Seed Xcode 13 SDK stubs cache on main pushes ─────────────────────
   # The armv7 link step needs TBD stubs from Xcode 13's iOS SDK (21MB).
-  # We cache these so tag-triggered release builds don't need to download
-  # the full 12GB Xcode 13.2.1.
+  # We extract these from the Xcode 13.2.1 .xip already cached by the old
+  # build-legacy workflow (key: xcode-13.2.1-xip). No Apple auth needed.
   seed-sdk-cache:
     runs-on: macos-latest
     timeout-minutes: 60
     if: github.ref == 'refs/heads/main'
     steps:
-      - name: Check cache
-        id: cache
+      - name: Check SDK stubs cache
+        id: stubs-cache
         uses: actions/cache@v4
         with:
           path: ~/.xcode13-sdk-stubs
           key: ${{ env.XCODE13_SDK_CACHE_KEY }}
 
-      - name: Install xcodes
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: brew install xcodes
+      - name: Restore Xcode 13 .xip from legacy cache
+        if: steps.stubs-cache.outputs.cache-hit != 'true'
+        id: xip-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.xcodes/Downloads
+          key: xcode-13.2.1-xip
 
-      - name: Extract SDK stubs from Xcode 13.2.1
-        if: steps.cache.outputs.cache-hit != 'true'
-        env:
-          FASTLANE_SESSION: ${{ secrets.FASTLANE_SESSION }}
-          XCODES_USERNAME: ${{ secrets.XCODES_USERNAME }}
+      - name: Extract SDK stubs from cached .xip
+        if: steps.stubs-cache.outputs.cache-hit != 'true'
         run: |
-          echo "Installing Xcode 13.2.1 to extract SDK stubs..."
-          # Free disk space
+          XIP=$(find ~/.xcodes/Downloads -name "*Xcode*13*" -o -name "*13*.xip" 2>/dev/null | head -1)
+
+          if [ -z "$XIP" ]; then
+            echo "❌ No Xcode 13.2.1 .xip found in legacy cache"
+            echo "   Cache key 'xcode-13.2.1-xip' may need to be seeded manually."
+            echo "   Or upload the SDK stubs tarball as a workflow artifact."
+            exit 1
+          fi
+
+          echo "Found cached .xip: $XIP ($(du -h "$XIP" | cut -f1))"
+
+          # Free disk space for extraction
           sudo rm -rf /Applications/Xcode_16.0.app \
                       /Applications/Xcode_16.1.app \
                       /Applications/Xcode_16.3.app \
                       /Applications/Xcode_16.4.app 2>/dev/null || true
 
-          xcodes install 13.2.1 --use-fastlane-auth --experimental-unxip --no-superuser
+          # Install from local .xip (no download, no auth needed)
+          brew install xcodes
+          xcodes install 13.2.1 --experimental-unxip --no-superuser
 
-          XCODE13=$(ls -d /Applications/Xcode*13.2.1* 2>/dev/null | head -1)
+          XCODE13=$(ls -d /Applications/Xcode*13.2.1* /Applications/Xcode-13.2.1.app 2>/dev/null | head -1)
           if [ -z "$XCODE13" ]; then
-            echo "❌ Xcode 13.2.1 not found after install"
+            echo "❌ Xcode 13.2.1 not found after install from .xip"
+            ls /Applications/Xcode* 2>/dev/null
             exit 1
           fi
 
-          # Extract just the iOS SDK (TBD stubs + SDKSettings)
+          # Extract just the iOS SDK (TBD stubs + SDKSettings) — 21MB
           SDK="$XCODE13/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk"
           mkdir -p ~/.xcode13-sdk-stubs
           tar czf ~/.xcode13-sdk-stubs/iPhoneOS-armv7-stubs.tar.gz \
               -C "$(dirname "$SDK")" "$(basename "$SDK")"
           ls -lh ~/.xcode13-sdk-stubs/iPhoneOS-armv7-stubs.tar.gz
-          echo "SDK stubs cached ($(du -sh ~/.xcode13-sdk-stubs | cut -f1))"
+          echo "✓ SDK stubs cached ($(du -sh ~/.xcode13-sdk-stubs | cut -f1))"
 
   # ── Universal armv7+arm64 release ────────────────────────────────────
   archive-release:
@@ -163,9 +177,6 @@ jobs:
           key: ${{ env.XCODE13_SDK_CACHE_KEY }}
 
       - name: Install Xcode 13 SDK stubs
-        env:
-          FASTLANE_SESSION: ${{ secrets.FASTLANE_SESSION }}
-          XCODES_USERNAME: ${{ secrets.XCODES_USERNAME }}
         run: |
           STUBS_DIR="$RUNNER_TEMP/xcode13-sdk"
           mkdir -p "$STUBS_DIR"
@@ -174,21 +185,9 @@ jobs:
             echo "Extracting cached SDK stubs..."
             tar xzf ~/.xcode13-sdk-stubs/iPhoneOS-armv7-stubs.tar.gz -C "$STUBS_DIR"
           else
-            echo "Cache miss — installing Xcode 13.2.1 for SDK stubs..."
-            command -v xcodes >/dev/null 2>&1 || brew install xcodes
-            sudo rm -rf /Applications/Xcode_16.0.app \
-                        /Applications/Xcode_16.1.app \
-                        /Applications/Xcode_16.3.app \
-                        /Applications/Xcode_16.4.app 2>/dev/null || true
-            xcodes install 13.2.1 --use-fastlane-auth --experimental-unxip --no-superuser
-            XCODE13=$(ls -d /Applications/Xcode*13.2.1* 2>/dev/null | head -1)
-            SDK="$XCODE13/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk"
-            cp -R "$SDK" "$STUBS_DIR/iPhoneOS.sdk"
-
-            # Cache for next time
-            mkdir -p ~/.xcode13-sdk-stubs
-            tar czf ~/.xcode13-sdk-stubs/iPhoneOS-armv7-stubs.tar.gz \
-                -C "$STUBS_DIR" "iPhoneOS.sdk"
+            echo "❌ SDK stubs cache miss — push to main first to seed cache"
+            echo "   The seed-sdk-cache job extracts stubs from the legacy Xcode .xip cache"
+            exit 1
           fi
 
           echo "SDK stubs at: $STUBS_DIR/iPhoneOS.sdk"
