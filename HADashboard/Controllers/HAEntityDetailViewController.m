@@ -100,6 +100,11 @@ static const CGFloat kGraphHeight = 160.0;
 #pragma mark - Setup
 
 - (void)setupGrabber {
+    // iOS 15+ uses UISheetPresentationController with its own grabber, so skip custom grabber
+    if (@available(iOS 15.0, *)) {
+        return;
+    }
+
     self.grabberView = [[UIView alloc] init];
     self.grabberView.backgroundColor = [UIColor colorWithWhite:0.5 alpha:0.4];
     self.grabberView.layer.cornerRadius = kGrabberHeight / 2.0;

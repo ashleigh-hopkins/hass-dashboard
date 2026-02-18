@@ -1374,13 +1374,12 @@
 
     _simulating = YES;
 
-    // Update entities every 15 seconds
-    __weak typeof(self) weakSelf = self;
+    // Update entities every 15 seconds (use target/selector API for iOS 9 compatibility)
     _simulationTimer = [NSTimer scheduledTimerWithTimeInterval:15.0
-                                                       repeats:YES
-                                                         block:^(NSTimer *timer) {
-        [weakSelf simulateStateChanges];
-    }];
+                                                        target:self
+                                                      selector:@selector(simulationTimerFired:)
+                                                      userInfo:nil
+                                                       repeats:YES];
 
     NSLog(@"[HADemo] Started state simulation");
 }
@@ -1393,6 +1392,10 @@
     _simulating = NO;
 
     NSLog(@"[HADemo] Stopped state simulation");
+}
+
+- (void)simulationTimerFired:(NSTimer *)timer {
+    [self simulateStateChanges];
 }
 
 - (void)simulateStateChanges {
