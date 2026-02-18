@@ -97,36 +97,54 @@ jobs:
           if [ -z "$XIP" ]; then
             echo "❌ No Xcode 13.2.1 .xip found in legacy cache"
             echo "   Cache key 'xcode-13.2.1-xip' may need to be seeded manually."
-            echo "   Or upload the SDK stubs tarball as a workflow artifact."
             exit 1
           fi
 
           echo "Found cached .xip: $XIP ($(du -h "$XIP" | cut -f1))"
 
-          # Free disk space for extraction
+          # Free disk space for extraction (~12GB needed)
           sudo rm -rf /Applications/Xcode_16.0.app \
                       /Applications/Xcode_16.1.app \
                       /Applications/Xcode_16.3.app \
                       /Applications/Xcode_16.4.app 2>/dev/null || true
 
-          # Install from local .xip (no download, no auth needed)
-          brew install xcodes
-          xcodes install 13.2.1 --experimental-unxip --no-superuser
+          # Extract .xip directly — no xcodes auth needed.
+          # xip --expand is the built-in macOS tool for Apple-signed archives.
+          echo "Expanding .xip (this takes a few minutes)..."
+          cd /tmp
+          xip --expand "$XIP"
 
-          XCODE13=$(ls -d /Applications/Xcode*13.2.1* /Applications/Xcode-13.2.1.app 2>/dev/null | head -1)
+          # Find the extracted Xcode.app
+          XCODE13=$(ls -d /tmp/Xcode*.app 2>/dev/null | head -1)
           if [ -z "$XCODE13" ]; then
-            echo "❌ Xcode 13.2.1 not found after install from .xip"
-            ls /Applications/Xcode* 2>/dev/null
+            echo "❌ Xcode not found after xip --expand"
+            ls /tmp/*.app 2>/dev/null
             exit 1
           fi
+          echo "Extracted: $XCODE13"
 
           # Extract just the iOS SDK (TBD stubs + SDKSettings) — 21MB
           SDK="$XCODE13/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk"
+          if [ ! -d "$SDK" ]; then
+            # Try versioned path
+            SDK=$(find "$XCODE13/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs" \
+                -maxdepth 1 -name "iPhoneOS*.sdk" 2>/dev/null | head -1)
+          fi
+
+          if [ ! -d "$SDK" ]; then
+            echo "❌ iOS SDK not found in extracted Xcode"
+            find "$XCODE13/Contents/Developer/Platforms" -name "*.sdk" -maxdepth 4 2>/dev/null
+            exit 1
+          fi
+
           mkdir -p ~/.xcode13-sdk-stubs
           tar czf ~/.xcode13-sdk-stubs/iPhoneOS-armv7-stubs.tar.gz \
               -C "$(dirname "$SDK")" "$(basename "$SDK")"
           ls -lh ~/.xcode13-sdk-stubs/iPhoneOS-armv7-stubs.tar.gz
           echo "✓ SDK stubs cached ($(du -sh ~/.xcode13-sdk-stubs | cut -f1))"
+
+          # Clean up the full Xcode extraction
+          rm -rf "$XCODE13"
 
   # ── Universal armv7+arm64 release ────────────────────────────────────
   archive-release:
