@@ -174,6 +174,16 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
 #pragma mark - Data
 
 - (void)fetchAllStates {
+    // Demo mode: entities are already in-memory, just re-deliver them
+    if ([[HAAuthManager sharedManager] isDemoMode]) {
+        NSDictionary *entities = [self allEntities];
+        [self.delegate connectionManager:self didReceiveAllStates:entities];
+        [[NSNotificationCenter defaultCenter]
+            postNotificationName:HAConnectionManagerDidReceiveAllStatesNotification
+                          object:self
+                        userInfo:@{@"entities": entities}];
+        return;
+    }
     if (!self.apiClient) return;
 
     [self.apiClient getStatesWithCompletion:^(id response, NSError *error) {
@@ -235,6 +245,14 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
 }
 
 - (void)fetchDashboardList {
+    // Demo mode: re-deliver the demo dashboard list
+    if ([[HAAuthManager sharedManager] isDemoMode]) {
+        [[NSNotificationCenter defaultCenter]
+            postNotificationName:HAConnectionManagerDidReceiveDashboardListNotification
+                          object:self
+                        userInfo:@{@"dashboards": self.availableDashboards}];
+        return;
+    }
     if (self.wsClient.isAuthenticated) {
         self.dashboardListMessageId = [self.wsClient fetchDashboardList];
     } else {

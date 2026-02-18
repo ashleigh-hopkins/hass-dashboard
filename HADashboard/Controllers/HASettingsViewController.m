@@ -56,8 +56,8 @@
 @property (nonatomic, strong) UIView *demoSection;
 @property (nonatomic, strong) UISwitch *demoSwitch;
 
-// Help text
-@property (nonatomic, strong) UILabel *helpLabel;
+// Logout
+@property (nonatomic, strong) UIButton *logoutButton;
 @end
 
 @implementation HASettingsViewController
@@ -193,6 +193,14 @@
     self.tokenField.translatesAutoresizingMaskIntoConstraints = NO;
     [self.tokenContainer addSubview:self.tokenField];
 
+    UILabel *tokenHint = [[UILabel alloc] init];
+    tokenHint.text = @"Generate a Long-Lived Access Token in your HA profile:\nSettings \u2192 People \u2192 [Your User] \u2192 Long-Lived Access Tokens";
+    tokenHint.font = [UIFont systemFontOfSize:11];
+    tokenHint.textColor = [HATheme secondaryTextColor];
+    tokenHint.numberOfLines = 0;
+    tokenHint.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.tokenContainer addSubview:tokenHint];
+
     [NSLayoutConstraint activateConstraints:@[
         [tokenLabel.topAnchor constraintEqualToAnchor:self.tokenContainer.topAnchor],
         [tokenLabel.leadingAnchor constraintEqualToAnchor:self.tokenContainer.leadingAnchor],
@@ -201,7 +209,10 @@
         [self.tokenField.leadingAnchor constraintEqualToAnchor:self.tokenContainer.leadingAnchor],
         [self.tokenField.trailingAnchor constraintEqualToAnchor:self.tokenContainer.trailingAnchor],
         [self.tokenField.heightAnchor constraintEqualToConstant:fieldHeight],
-        [self.tokenField.bottomAnchor constraintEqualToAnchor:self.tokenContainer.bottomAnchor],
+        [tokenHint.topAnchor constraintEqualToAnchor:self.tokenField.bottomAnchor constant:4],
+        [tokenHint.leadingAnchor constraintEqualToAnchor:self.tokenContainer.leadingAnchor],
+        [tokenHint.trailingAnchor constraintEqualToAnchor:self.tokenContainer.trailingAnchor],
+        [tokenHint.bottomAnchor constraintEqualToAnchor:self.tokenContainer.bottomAnchor],
     ]];
 
     // ── Login mode container ───────────────────────────────────────────
@@ -245,6 +256,14 @@
     self.passwordField.translatesAutoresizingMaskIntoConstraints = NO;
     [self.loginContainer addSubview:self.passwordField];
 
+    UILabel *loginHint = [[UILabel alloc] init];
+    loginHint.text = @"Enter your Home Assistant username and password.\nThe app will securely obtain and refresh access tokens.";
+    loginHint.font = [UIFont systemFontOfSize:11];
+    loginHint.textColor = [HATheme secondaryTextColor];
+    loginHint.numberOfLines = 0;
+    loginHint.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.loginContainer addSubview:loginHint];
+
     [NSLayoutConstraint activateConstraints:@[
         [userLabel.topAnchor constraintEqualToAnchor:self.loginContainer.topAnchor],
         [userLabel.leadingAnchor constraintEqualToAnchor:self.loginContainer.leadingAnchor],
@@ -258,7 +277,10 @@
         [self.passwordField.leadingAnchor constraintEqualToAnchor:self.loginContainer.leadingAnchor],
         [self.passwordField.trailingAnchor constraintEqualToAnchor:self.loginContainer.trailingAnchor],
         [self.passwordField.heightAnchor constraintEqualToConstant:fieldHeight],
-        [self.passwordField.bottomAnchor constraintEqualToAnchor:self.loginContainer.bottomAnchor],
+        [loginHint.topAnchor constraintEqualToAnchor:self.passwordField.bottomAnchor constant:4],
+        [loginHint.leadingAnchor constraintEqualToAnchor:self.loginContainer.leadingAnchor],
+        [loginHint.trailingAnchor constraintEqualToAnchor:self.loginContainer.trailingAnchor],
+        [loginHint.bottomAnchor constraintEqualToAnchor:self.loginContainer.bottomAnchor],
     ]];
 
     // ── Connect button ─────────────────────────────────────────────────
@@ -483,15 +505,14 @@
     [self.demoSection addConstraint:[NSLayoutConstraint constraintWithItem:self.demoSwitch attribute:NSLayoutAttributeCenterY
         relatedBy:NSLayoutRelationEqual toItem:demoLabel attribute:NSLayoutAttributeCenterY multiplier:1 constant:0]];
 
-    // ── Help text ──────────────────────────────────────────────────────
-    self.helpLabel = [[UILabel alloc] init];
-    self.helpLabel.text = @"Generate a Long-Lived Access Token in your Home Assistant profile:\nSettings > People > [Your User] > Long-Lived Access Tokens";
-    self.helpLabel.font = [UIFont systemFontOfSize:12];
-    self.helpLabel.textColor = [HATheme secondaryTextColor];
-    self.helpLabel.numberOfLines = 0;
-    self.helpLabel.textAlignment = NSTextAlignmentCenter;
-    self.helpLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    [container addSubview:self.helpLabel];
+    // ── Logout / Reset button ─────────────────────────────────────────
+    self.logoutButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    [self.logoutButton setTitle:@"Log Out & Reset" forState:UIControlStateNormal];
+    self.logoutButton.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightMedium];
+    [self.logoutButton setTitleColor:[UIColor redColor] forState:UIControlStateNormal];
+    self.logoutButton.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.logoutButton addTarget:self action:@selector(logoutTapped) forControlEvents:UIControlEventTouchUpInside];
+    [container addSubview:self.logoutButton];
 
     // ── Main vertical layout ───────────────────────────────────────────
     NSDictionary *views = @{
@@ -509,15 +530,15 @@
         @"dispHdr": self.displaySectionHeader,
         @"kioskSection": self.kioskSection,
         @"demoSection": self.demoSection,
-        @"help": self.helpLabel,
+        @"logout": self.logoutButton,
     };
     NSDictionary *metrics = @{@"p": @8, @"fh": @(fieldHeight), @"sh": @12};
 
     [container addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:
-        @"V:|[connHdr]-4-[disc]-p-[urlLabel]-4-[urlField(fh)]-p-[authSeg]-p-[authStack]-p-[button(fh)]-8-[status]-4-[spinner]-sh-[appHdr]-4-[themeStack]-sh-[dispHdr]-4-[kioskSection]-p-[demoSection]-p-[help]|"
+        @"V:|[connHdr]-4-[disc]-p-[urlLabel]-4-[urlField(fh)]-p-[authSeg]-p-[authStack]-p-[button(fh)]-8-[status]-4-[spinner]-sh-[appHdr]-4-[themeStack]-sh-[dispHdr]-4-[kioskSection]-p-[demoSection]-sh-[logout(fh)]|"
         options:0 metrics:metrics views:views]];
 
-    for (NSString *name in @[@"connHdr", @"disc", @"urlLabel", @"urlField", @"authSeg", @"authStack", @"button", @"status", @"appHdr", @"themeStack", @"dispHdr", @"kioskSection", @"demoSection", @"help"]) {
+    for (NSString *name in @[@"connHdr", @"disc", @"urlLabel", @"urlField", @"authSeg", @"authStack", @"button", @"status", @"appHdr", @"themeStack", @"dispHdr", @"kioskSection", @"demoSection", @"logout"]) {
         UIView *v = views[name];
         [container addConstraint:[NSLayoutConstraint constraintWithItem:v attribute:NSLayoutAttributeLeading
             relatedBy:NSLayoutRelationEqual toItem:container attribute:NSLayoutAttributeLeading multiplier:1 constant:0]];
@@ -577,12 +598,6 @@
     BOOL isTokenMode = (sender.selectedSegmentIndex == 0);
     self.tokenContainer.hidden = !isTokenMode;
     self.loginContainer.hidden = isTokenMode;
-
-    if (isTokenMode) {
-        self.helpLabel.text = @"Generate a Long-Lived Access Token in your Home Assistant profile:\nSettings > People > [Your User] > Long-Lived Access Tokens";
-    } else {
-        self.helpLabel.text = @"Enter your Home Assistant username and password.\nThe app will securely obtain and refresh access tokens.";
-    }
 }
 
 #pragma mark - Discovery
@@ -748,9 +763,32 @@
 - (void)demoSwitchToggled:(UISwitch *)sender {
     [[HAAuthManager sharedManager] setDemoMode:sender.isOn];
     if (sender.isOn) {
-        // Navigate back to dashboard to show demo mode
-        [self.navigationController popViewControllerAnimated:YES];
+        // Disconnect first so dashboard VC will call connect (which loads demo data)
+        [[HAConnectionManager sharedManager] disconnect];
+        [self navigateToDashboard];
     }
+}
+
+- (void)logoutTapped {
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Log Out & Reset"
+        message:@"This will remove all saved credentials, settings, and return the app to its initial state."
+        preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"Log Out" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
+        // Disconnect and clear everything
+        [[HAConnectionManager sharedManager] disconnect];
+        [[HAAuthManager sharedManager] clearCredentials];
+
+        // Reset UI fields
+        self.serverURLField.text = @"";
+        self.tokenField.text = @"";
+        self.usernameField.text = @"";
+        self.passwordField.text = @"";
+        self.kioskSwitch.on = NO;
+        self.demoSwitch.on = NO;
+        [self showStatus:@"Logged out. All data cleared." isError:NO];
+    }]];
+    [self presentViewController:alert animated:YES completion:nil];
 }
 
 #pragma mark - Theme

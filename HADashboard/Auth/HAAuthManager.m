@@ -248,6 +248,9 @@ static NSString *const kDemoModeKey      = @"ha_demo_mode";
     [HAKeychainHelper removeItemForKey:kRefreshTokenKey];
     [HAKeychainHelper removeItemForKey:kTokenExpiryKey];
     [[NSUserDefaults standardUserDefaults] removeObjectForKey:kSelectedDashboardKey];
+    [[NSUserDefaults standardUserDefaults] removeObjectForKey:kKioskModeKey];
+    [[NSUserDefaults standardUserDefaults] removeObjectForKey:kDemoModeKey];
+    [[NSUserDefaults standardUserDefaults] synchronize];
 
     self.serverURL = nil;
     self.accessToken = nil;
@@ -255,6 +258,8 @@ static NSString *const kDemoModeKey      = @"ha_demo_mode";
     self.refreshToken = nil;
     self.tokenExpiresAt = nil;
     self.selectedDashboardPath = nil;
+    self.kioskMode = NO;
+    self.demoMode = NO;
 
     [self.refreshTimer invalidate];
     self.refreshTimer = nil;
