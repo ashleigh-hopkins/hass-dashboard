@@ -687,6 +687,11 @@ static const CGFloat kBottomPadding = 12.0;
     self.dateLabel.text = nil;
     for (UIView *v in self.forecastBarView.subviews) [v removeFromSuperview];
     self.cardConfig = nil;
+    self.weatherIconLabel.textColor = [HATheme primaryTextColor];
+    self.conditionLabel.textColor = [HATheme primaryTextColor];
+    self.humidityLabel.textColor = [HATheme secondaryTextColor];
+    self.clockLabel.textColor = [HATheme primaryTextColor];
+    self.dateLabel.textColor = [HATheme secondaryTextColor];
 }
 
 - (void)dealloc {

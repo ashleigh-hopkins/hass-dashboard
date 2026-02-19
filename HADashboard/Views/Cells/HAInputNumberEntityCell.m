@@ -136,6 +136,7 @@
     self.valueLabel.text = nil;
     self.valueSlider.value = 0;
     self.sliderDragging = NO;
+    self.valueLabel.textColor = [HATheme primaryTextColor];
 }
 
 @end

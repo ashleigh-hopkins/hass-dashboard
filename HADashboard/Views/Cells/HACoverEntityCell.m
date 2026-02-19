@@ -151,6 +151,10 @@
     self.positionLabel.text = nil;
     self.positionLabel.hidden = YES;
     self.contentView.backgroundColor = [HATheme cellBackgroundColor];
+    self.positionLabel.textColor = [HATheme secondaryTextColor];
+    self.openButton.backgroundColor = [HATheme buttonBackgroundColor];
+    self.stopButton.backgroundColor = [HATheme buttonBackgroundColor];
+    self.closeButton.backgroundColor = [HATheme buttonBackgroundColor];
 }
 
 @end

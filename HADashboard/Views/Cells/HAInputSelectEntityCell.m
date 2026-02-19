@@ -108,6 +108,8 @@
 - (void)prepareForReuse {
     [super prepareForReuse];
     [self.optionButton setTitle:nil forState:UIControlStateNormal];
+    self.optionButton.backgroundColor = [HATheme controlBackgroundColor];
+    self.optionButton.layer.borderColor = [HATheme controlBorderColor].CGColor;
 }
 
 @end

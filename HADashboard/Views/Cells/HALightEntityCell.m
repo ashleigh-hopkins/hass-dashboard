@@ -136,6 +136,7 @@
     self.brightnessLabel.hidden = YES;
     self.sliderDragging = NO;
     self.contentView.backgroundColor = [HATheme cellBackgroundColor];
+    self.brightnessLabel.textColor = [HATheme secondaryTextColor];
 }
 
 @end

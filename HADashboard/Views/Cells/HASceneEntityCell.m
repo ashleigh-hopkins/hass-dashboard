@@ -124,6 +124,8 @@ static const NSTimeInterval kActivationFeedbackDuration = 1.5;
     self.activateButton.alpha = 1.0;
     self.feedbackLabel.alpha = 0.0;
     self.contentView.backgroundColor = [HATheme cellBackgroundColor];
+    self.activateButton.backgroundColor = [HATheme accentColor];
+    self.feedbackLabel.textColor = [HATheme successColor];
 }
 
 @end

@@ -85,6 +85,8 @@
     self.titleLabel.text = nil;
     self.iconLabel.text = nil;
     self.iconLabel.hidden = YES;
+    self.titleLabel.textColor = [HATheme sectionHeaderColor];
+    self.iconLabel.textColor = [HATheme secondaryTextColor];
 }
 
 @end

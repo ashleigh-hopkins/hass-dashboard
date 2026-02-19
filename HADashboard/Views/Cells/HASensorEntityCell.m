@@ -65,6 +65,8 @@
     self.valueLabel.text = nil;
     self.unitLabel.text = nil;
     self.contentView.backgroundColor = [HATheme cellBackgroundColor];
+    self.valueLabel.textColor = [HATheme primaryTextColor];
+    self.unitLabel.textColor = [HATheme secondaryTextColor];
 }
 
 @end

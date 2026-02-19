@@ -208,6 +208,15 @@ static NSArray<UIColor *> *sColorPalette;
     // Reset graph bottom
     self.graphBottomToStats.active = NO;
     self.graphBottomToContent.active = YES;
+
+    // Refresh theme colors (static on iOS 9-12)
+    self.contentView.backgroundColor = [HATheme cellBackgroundColor];
+    self.nameLabel.textColor = [HATheme secondaryTextColor];
+    self.valueLabel.textColor = [HATheme primaryTextColor];
+    self.unitLabel.textColor = [HATheme secondaryTextColor];
+    self.iconLabel.textColor = [HATheme secondaryTextColor];
+    self.secondaryLabel.textColor = [HATheme secondaryTextColor];
+    self.statsLabel.textColor = [HATheme secondaryTextColor];
 }
 
 - (void)configureWithEntity:(HAEntity *)entity item:(HADashboardConfigItem *)item {

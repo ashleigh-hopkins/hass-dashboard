@@ -277,6 +277,7 @@
     self.contentView.backgroundColor = [HATheme cellBackgroundColor];
     // Reset to normal mode so reused cells don't retain compact layout
     [self applyCompactMode:NO];
+    self.tileNameLabel.textColor = [HATheme primaryTextColor];
 }
 
 @end

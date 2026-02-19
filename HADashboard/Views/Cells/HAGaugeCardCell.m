@@ -395,6 +395,8 @@ static const CGFloat kGaugeEndAngle   = 2.0 * M_PI; // 3 o'clock (right)
         self.nameLabelTopConstraint = nil;
     }
     self.contentView.backgroundColor = [HATheme cellBackgroundColor];
+    self.valueLabel.textColor = [HATheme primaryTextColor];
+    self.nameLabel.textColor = [HATheme secondaryTextColor];
 }
 
 @end

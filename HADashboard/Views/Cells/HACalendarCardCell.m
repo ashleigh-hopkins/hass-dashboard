@@ -813,6 +813,8 @@ static UIColor *sDefaultEventColor;
     for (UIView *v in self.listScrollView.subviews) [v removeFromSuperview];
     self.dateRangeLabel.text = nil;
     self.contentView.backgroundColor = [HATheme cellBackgroundColor];
+    self.dateRangeLabel.textColor = [HATheme primaryTextColor];
+    self.todayButton.layer.borderColor = [HATheme tertiaryTextColor].CGColor;
 }
 
 @end

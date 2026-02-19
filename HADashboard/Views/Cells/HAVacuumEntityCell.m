@@ -325,6 +325,7 @@ static const CGFloat kButtonSpacing  = 12.0;
     self.playPauseButton.hidden = NO;
     self.returnHomeButton.hidden = NO;
     self.powerButton.hidden = NO;
+    self.statusLabel2.textColor = [HATheme secondaryTextColor];
 }
 
 @end

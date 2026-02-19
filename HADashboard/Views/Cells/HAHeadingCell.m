@@ -57,6 +57,8 @@
     [super prepareForReuse];
     self.titleLabel.text = nil;
     self.iconLabel.text = nil;
+    self.iconLabel.textColor = [HATheme secondaryTextColor];
+    self.titleLabel.textColor = [HATheme sectionHeaderColor];
 }
 
 @end

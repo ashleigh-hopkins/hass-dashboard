@@ -129,6 +129,9 @@
     self.modeLabel.text = nil;
     self.tempStepper.value = 20;
     self.contentView.backgroundColor = [HATheme cellBackgroundColor];
+    self.currentTempLabel.textColor = [HATheme primaryTextColor];
+    self.modeLabel.textColor = [HATheme secondaryTextColor];
+    self.targetTempLabel.textColor = [HATheme primaryTextColor];
 }
 
 @end

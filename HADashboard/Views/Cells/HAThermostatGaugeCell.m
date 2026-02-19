@@ -1164,6 +1164,11 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
     // Keep cachedGlowImage/cachedGlowColor/cachedGlowSize — bitmap is color-keyed, safe to reuse
     self.lastBuiltModes = nil;
     self.lastBuiltCurrentMode = nil;
+
+    // Refresh theme colors (static on iOS 9-12)
+    self.tempLabel.textColor = [HATheme primaryTextColor];
+    self.targetLabel.textColor = [HATheme secondaryTextColor];
+    self.modeLabel.textColor = [HATheme secondaryTextColor];
 }
 
 @end

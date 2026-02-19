@@ -132,6 +132,7 @@
     self.humidityLabel.text = nil;
     self.sliderDragging = NO;
     self.contentView.backgroundColor = [HATheme cellBackgroundColor];
+    self.humidityLabel.textColor = [HATheme primaryTextColor];
 }
 
 @end

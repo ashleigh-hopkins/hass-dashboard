@@ -161,6 +161,8 @@
     self.presetLabel.hidden = YES;
     self.sliderDragging = NO;
     self.contentView.backgroundColor = [HATheme cellBackgroundColor];
+    self.speedLabel.textColor = [HATheme secondaryTextColor];
+    self.presetLabel.textColor = [HATheme secondaryTextColor];
 }
 
 @end

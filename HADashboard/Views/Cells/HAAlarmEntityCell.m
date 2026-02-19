@@ -390,6 +390,7 @@ static const NSInteger kKeypadTagEnter = 11;
             [btn setTitleColor:[HATheme primaryTextColor] forState:UIControlStateNormal];
         }
     }
+    self.codeTextField.textColor = [HATheme primaryTextColor];
 }
 
 @end

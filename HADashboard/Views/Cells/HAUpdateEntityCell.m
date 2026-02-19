@@ -93,6 +93,7 @@
     self.updateButton.hidden = NO;
     self.updateButton.enabled = YES;
     self.contentView.backgroundColor = [HATheme cellBackgroundColor];
+    self.updateButton.backgroundColor = [HATheme accentColor];
 }
 
 @end

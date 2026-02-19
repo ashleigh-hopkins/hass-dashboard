@@ -285,6 +285,8 @@ static const NSInteger kDefaultForecastRows = 5;
     self.detailsLabel.text = nil;
     self.contentView.backgroundColor = [HATheme cellBackgroundColor];
     for (UIView *v in self.forecastContainer.subviews) [v removeFromSuperview];
+    self.tempLabel.textColor = [HATheme primaryTextColor];
+    self.detailsLabel.textColor = [HATheme secondaryTextColor];
 }
 
 @end
