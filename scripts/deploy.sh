@@ -11,12 +11,15 @@ set -euo pipefail
 #   scripts/deploy.sh ipad2        # Build + deploy to iPad 2 via WiFi SSH (jailbroken)
 #
 # Options:
-#   --no-build    Skip build, deploy existing .app
+#   --no-build    Skip build step
 #   --dashboard X Override dashboard (default: living-room)
 #   --default     Use default (overview) dashboard instead of living-room
 #   --server URL  Override HA server URL
+#   --token TOKEN Override access token (for this launch only)
 #   --kiosk       Start in kiosk mode
 #   --no-kiosk    Disable kiosk mode
+#   --reset       Clear credentials and start at login screen
+#   --demo        Start in demo mode (no server needed)
 
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 BUNDLE_ID="${BUNDLE_ID:-com.hadashboard.app}"
@@ -62,6 +65,9 @@ XCODE26="/Applications/Xcode.app"
 TARGET=""
 NO_BUILD=false
 KIOSK_MODE=""
+RESET_MODE=false
+DEMO_MODE=""
+TOKEN_OVERRIDE=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -76,10 +82,13 @@ while [[ $# -gt 0 ]]; do
             shift ;;
         --no-build)   NO_BUILD=true; shift ;;
         --server)     HA_SERVER="$2"; shift 2 ;;
+        --token)      TOKEN_OVERRIDE="$2"; shift 2 ;;
         --dashboard)  HA_DASHBOARD="$2"; shift 2 ;;
         --default)    HA_DASHBOARD=""; shift ;;
         --kiosk)      KIOSK_MODE="YES"; shift ;;
         --no-kiosk)   KIOSK_MODE="NO"; shift ;;
+        --reset)      RESET_MODE=true; shift ;;
+        --demo)       DEMO_MODE="YES"; shift ;;
         *)            echo "❌ Unknown argument: $1"; exit 1 ;;
     esac
 done
@@ -100,10 +109,13 @@ if [[ -z "$TARGET" ]]; then
     echo "Options:"
     echo "  --no-build     Skip build step"
     echo "  --server URL   Override HA server URL"
+    echo "  --token TOKEN  Override access token (this launch only)"
     echo "  --dashboard X  Set dashboard path (default: living-room)"
     echo "  --default      Use default overview dashboard"
     echo "  --kiosk        Start in kiosk mode (hides nav, disables sleep)"
     echo "  --no-kiosk     Disable kiosk mode"
+    echo "  --reset        Clear credentials, start at login screen"
+    echo "  --demo         Start in demo mode (no server needed)"
     echo ""
     echo "Secrets are loaded from .env in project root."
     exit 1
@@ -114,6 +126,9 @@ if [[ "$TARGET" == "all" ]]; then
     # Collect pass-through options (exclude target and --no-build)
     OPTS=()
     [[ -n "$KIOSK_MODE" ]] && OPTS+=($([ "$KIOSK_MODE" == "YES" ] && echo "--kiosk" || echo "--no-kiosk"))
+    [[ "$RESET_MODE" == true ]] && OPTS+=(--reset)
+    [[ -n "$DEMO_MODE" ]] && OPTS+=(--demo)
+    [[ -n "$TOKEN_OVERRIDE" ]] && OPTS+=(--token "$TOKEN_OVERRIDE")
 
     echo "🚀 Deploying to ALL targets..."
     echo ""
@@ -175,7 +190,14 @@ if [[ "$HA_DASHBOARD" == "living-room" ]]; then
 fi
 
 # ── Launch args ─────────────────────────────────────────────────────────
-LAUNCH_ARGS=(-HAServerURL "$HA_SERVER" -HAAccessToken "$HA_TOKEN")
+# --reset takes priority: clear credentials first, then don't inject server/token
+if [[ "$RESET_MODE" == true ]]; then
+    LAUNCH_ARGS=(-HAClearCredentials YES)
+else
+    # Use token override if provided, otherwise fall back to .env token
+    EFFECTIVE_TOKEN="${TOKEN_OVERRIDE:-$HA_TOKEN}"
+    LAUNCH_ARGS=(-HAServerURL "$HA_SERVER" -HAAccessToken "$EFFECTIVE_TOKEN")
+fi
 if [[ -n "$HA_DASHBOARD" ]]; then
     LAUNCH_ARGS+=(-HADashboard "$HA_DASHBOARD")
 else
@@ -183,6 +205,9 @@ else
 fi
 if [[ -n "$KIOSK_MODE" ]]; then
     LAUNCH_ARGS+=(-HAKioskMode "$KIOSK_MODE")
+fi
+if [[ -n "$DEMO_MODE" ]]; then
+    LAUNCH_ARGS+=(-HADemoMode "$DEMO_MODE")
 fi
 
 # ── Deploy + Launch ─────────────────────────────────────────────────────
@@ -314,9 +339,36 @@ case "$TARGET" in
         echo "   Packaging .app..."
         tar -czf "$APP_TAR" -C "$(dirname "$APP")" "$(basename "$APP")"
 
+        # Generate preferences plist locally (avoids nested quoting issues in SSH)
+        IPAD2_PLIST="$PROJECT_DIR/build/ipad2-prefs.plist"
+        IPAD2_KIOSK_BOOL=$([ "$KIOSK_MODE" = "YES" ] && echo "true" || echo "false")
+        cat > "$IPAD2_PLIST" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+$(if [ "$RESET_MODE" = "true" ]; then
+    echo "    <key>HAClearCredentials</key>"
+    echo "    <true/>"
+else
+    echo "    <key>HAServerURL</key>"
+    echo "    <string>${HA_SERVER}</string>"
+    echo "    <key>HAAccessToken</key>"
+    echo "    <string>${EFFECTIVE_TOKEN}</string>"
+fi)
+    <key>HADashboard</key>
+    <string>${HA_DASHBOARD}</string>
+    <key>HAKioskMode</key>
+    <${IPAD2_KIOSK_BOOL}/>
+$([ -n "$DEMO_MODE" ] && echo "    <key>HADemoMode</key>" && echo "    <true/>")
+</dict>
+</plist>
+EOF
+
         # Transfer to iPad
         echo "   Transferring to iPad ($IPAD2_IP)..."
         $IPAD_SCP "$APP_TAR" "root@${IPAD2_IP}:/tmp/HADashboard.app.tar.gz"
+        $IPAD_SCP "$IPAD2_PLIST" "root@${IPAD2_IP}:/tmp/ha-prefs.plist"
 
         # Install: extract to /Applications, refresh SpringBoard, write prefs, launch
         echo "   Installing..."
@@ -330,33 +382,23 @@ case "$TARGET" in
             # Re-sign with ldid (jailbreak code signing)
             which ldid >/dev/null 2>&1 && ldid -S 'HA Dashboard.app/HA Dashboard'
 
+            # Kill the app if running (ensures NSUserDefaults cache is flushed)
+            killall 'HA Dashboard' 2>/dev/null || true
+
             # Refresh SpringBoard app cache
             uicache
 
-            # Write preferences (NSUserDefaults reads from this plist)
+            # Move preferences plist into place (transferred via SCP)
+            # Delete old plist first to avoid stale keys (e.g. HAClearCredentials)
             PREFS_DIR=/var/mobile/Library/Preferences
-            PREFS=\$PREFS_DIR/$BUNDLE_ID.plist
             mkdir -p \$PREFS_DIR
+            rm -f \$PREFS_DIR/$BUNDLE_ID.plist
+            mv /tmp/ha-prefs.plist \$PREFS_DIR/$BUNDLE_ID.plist
+            chmod 644 \$PREFS_DIR/$BUNDLE_ID.plist
+            chown mobile:mobile \$PREFS_DIR/$BUNDLE_ID.plist
 
-            # Build plist manually (defaults command not available on minimal iOS 9)
-            cat > \$PREFS <<PLISTEOF
-<?xml version=\"1.0\" encoding=\"UTF-8\"?>
-<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">
-<plist version=\"1.0\">
-<dict>
-    <key>HAServerURL</key>
-    <string>$HA_SERVER</string>
-    <key>HAAccessToken</key>
-    <string>$HA_TOKEN</string>
-    <key>HADashboard</key>
-    <string>$HA_DASHBOARD</string>
-    <key>HAKioskMode</key>
-    <$([ \"$KIOSK_MODE\" = \"YES\" ] && echo true || echo false)/>
-</dict>
-</plist>
-PLISTEOF
-            chmod 644 \$PREFS
-            chown mobile:mobile \$PREFS
+            # Flush the preferences daemon cache so NSUserDefaults reads the new plist
+            killall cfprefsd 2>/dev/null || true
 
             # Clear any previous startup log
             rm -f /tmp/ha-launch.log
