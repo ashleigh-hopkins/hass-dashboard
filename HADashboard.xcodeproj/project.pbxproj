@@ -549,6 +549,7 @@
 		F2753EFECA04D7A9EC37684B /* LOTKeypath.h in Sources */ = {isa = PBXBuildFile; fileRef = 8A54B91ACAC8D635455F92CC /* LOTKeypath.h */; };
 		F2E9C43DBDBAB39065812AB9 /* testClimateOff__light@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = A46B231714C70442F1E1CCC4 /* testClimateOff__light@2x.png */; };
 		F3B054602045EE3583F1950B /* wind.json in Resources */ = {isa = PBXBuildFile; fileRef = 7CD5BB8143EAFFBF96EB3F1F /* wind.json */; };
+		F433EC8C4D59C72BA0A065F4 /* HAConstellationView.m in Sources */ = {isa = PBXBuildFile; fileRef = 919302863A4AE837310B7E4A /* HAConstellationView.m */; };
 		F52622B9EF160BC9898E8D23 /* testMinimalSensor__light@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 02CF88F592B5FCAADCC7F524 /* testMinimalSensor__light@2x.png */; };
 		F56F285B6236417E142F8670 /* HASectionHeaderView.m in Sources */ = {isa = PBXBuildFile; fileRef = 13F6CB7F661D7E1ABE0FC3D5 /* HASectionHeaderView.m */; };
 		F5CF77E89C021FA0EA9A2AE0 /* testDetailViewVacuum_detailViewVacuum_light@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = BD47DE61DE8A9E220AD98474 /* testDetailViewVacuum_detailViewVacuum_light@2x.png */; };
@@ -957,6 +958,7 @@
 		8E427E56E9DEA77C13B612EA /* LOTShapeTransform.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LOTShapeTransform.m; sourceTree = "<group>"; };
 		8FE47CA942E60E29103FFE08 /* LOTShapeFill.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LOTShapeFill.m; sourceTree = "<group>"; };
 		9164344120036AF95656D5D9 /* LOTArrayInterpolator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LOTArrayInterpolator.m; sourceTree = "<group>"; };
+		919302863A4AE837310B7E4A /* HAConstellationView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HAConstellationView.m; sourceTree = "<group>"; };
 		924B58735866E361FD82ECEA /* testCounterLow__gradient@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "testCounterLow__gradient@2x.png"; sourceTree = "<group>"; };
 		93594ADD69171F1178B4D2FF /* testGraphMulti__gradient@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "testGraphMulti__gradient@2x.png"; sourceTree = "<group>"; };
 		936DE61BF1CEBC0DD0422E9C /* testHumidifierOn__gradient@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "testHumidifierOn__gradient@2x.png"; sourceTree = "<group>"; };
@@ -1104,6 +1106,7 @@
 		CC1E56E9F5A336BB58D43680 /* testClimateSectionCool_climateSectionCool_gradient@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "testClimateSectionCool_climateSectionCool_gradient@2x.png"; sourceTree = "<group>"; };
 		CCD4EA84802932229A2C404C /* testTimerActive__gradient@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "testTimerActive__gradient@2x.png"; sourceTree = "<group>"; };
 		CCE97E2C76ABB84E19B50374 /* testDetailViewDefault_detailViewDefault_light@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "testDetailViewDefault_detailViewDefault_light@2x.png"; sourceTree = "<group>"; };
+		CE422EA2DEFBFC175743686F /* HAConstellationView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HAConstellationView.h; sourceTree = "<group>"; };
 		CEC86171196835A7E09C41AD /* testCoverSectionOpen_coverSectionOpen_gradient@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "testCoverSectionOpen_coverSectionOpen_gradient@2x.png"; sourceTree = "<group>"; };
 		CEE9C5F4B0FC40F48F815602 /* testCoverPartial_coverPartial_light@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "testCoverPartial_coverPartial_light@2x.png"; sourceTree = "<group>"; };
 		CFDBB04CB36465F1DC8AF55C /* testSceneSectionDefault_sceneSectionDefault_light@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "testSceneSectionDefault_sceneSectionDefault_light@2x.png"; sourceTree = "<group>"; };
@@ -1455,6 +1458,8 @@
 				FC3CB8070AF3E191A023BE08 /* HAColumnarLayout.m */,
 				68C90E0B160EBD5F522518C1 /* HAConnectionFormView.h */,
 				36C65EC6FF61C5FD8155D657 /* HAConnectionFormView.m */,
+				CE422EA2DEFBFC175743686F /* HAConstellationView.h */,
+				919302863A4AE837310B7E4A /* HAConstellationView.m */,
 				FEDA50C8B3267850D7D387F7 /* HAEntityCellFactory.h */,
 				D803A08E36BE929F394FEDA9 /* HAEntityCellFactory.m */,
 				EECF0602B33DB92B2D726B41 /* HAEntityDetailSection.h */,
@@ -2714,6 +2719,7 @@
 				0BE750FD2213FCDCE6552861 /* HAColumnarLayout.m in Sources */,
 				BDB88EBCB6894731E6FDB3CC /* HAConnectionFormView.m in Sources */,
 				D08E33405107540E344C5FE9 /* HAConnectionManager.m in Sources */,
+				F433EC8C4D59C72BA0A065F4 /* HAConstellationView.m in Sources */,
 				DBE80703E961AE93F94D292C /* HACounterEntityCell.m in Sources */,
 				13C55734761CA75E85224105 /* HACoverEntityCell.m in Sources */,
 				AC79EE2F196228ED2CE37001 /* HADashboardConfig.m in Sources */,
