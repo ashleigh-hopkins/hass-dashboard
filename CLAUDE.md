@@ -51,6 +51,21 @@ Key variables:
 | iPad Simulator | arm64 | latest | simctl (auto-discovered) |
 | iPhone Simulator | arm64 | latest | simctl (auto-discovered) |
 
+## Versioning
+
+Version is derived from **git tags** — no files to edit for a version bump.
+
+```bash
+git tag v1.0.2
+git push --tags
+```
+
+- `scripts/build.sh` reads the latest `v*` tag and passes `MARKETING_VERSION` + `CURRENT_PROJECT_VERSION` to xcodebuild
+- CI workflow does the same (tag → version, commit count → build number)
+- `Info.plist` uses `$(MARKETING_VERSION)` / `$(CURRENT_PROJECT_VERSION)` build setting variables
+- `project.yml` has `0.0.0` / `0` fallback defaults (only used if building directly from Xcode without the build script)
+- **Never hardcode version numbers** in Info.plist, project.yml, or pbxproj
+
 ## Build & Deploy
 
 ```bash
