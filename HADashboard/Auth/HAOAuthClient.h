@@ -20,4 +20,22 @@
 - (void)refreshWithToken:(NSString *)refreshToken
               completion:(void (^)(NSDictionary *tokenResponse, NSError *error))completion;
 
+/// Fetch available auth providers for this client IP.
+/// Returns an array of provider dicts, each with "type", "name", "id" keys.
+/// The trusted_networks provider only appears when the client IP is on a trusted network.
+- (void)fetchAuthProviders:(void (^)(NSArray *providers, NSError *error))completion;
+
+/// Login via trusted networks auth provider.
+/// Starts a login_flow with the trusted_networks handler.
+/// On success, calls completion with an auth code (exchange via exchangeAuthCode:).
+/// If multiple users are available, calls completion with usersOrNil containing
+/// a mapping of user IDs to display names, plus the flow_id to continue with.
+/// Call again with a specific userId and flowId to complete the login.
+- (void)loginWithTrustedNetworkUser:(NSString *)userId
+                             flowId:(NSString *)flowId
+                         completion:(void (^)(NSString *authCode,
+                                              NSDictionary *usersOrNil,
+                                              NSString *flowIdOrNil,
+                                              NSError *error))completion;
+
 @end

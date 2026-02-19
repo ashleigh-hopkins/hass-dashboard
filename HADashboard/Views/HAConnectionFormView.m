@@ -7,19 +7,34 @@
 #import "HADiscoveredServer.h"
 #import "HATheme.h"
 
+static NSString *const kModeTrusted = @"trusted";
+static NSString *const kModeLogin   = @"login";
+static NSString *const kModeToken   = @"token";
+
 @interface HAConnectionFormView () <UITextFieldDelegate, HADiscoveryServiceDelegate>
 @property (nonatomic, strong) UITextField *serverURLField;
 @property (nonatomic, strong) UISegmentedControl *authModeSegment;
 
-// Login mode (index 0 — shown first)
+// Segment index → mode mapping (rebuilt when providers change)
+@property (nonatomic, copy) NSArray<NSString *> *authModes;
+
+// Login mode container
 @property (nonatomic, strong) UIView *loginContainer;
 @property (nonatomic, strong) UIStackView *authFieldsStack;
 @property (nonatomic, strong) UITextField *usernameField;
 @property (nonatomic, strong) UITextField *passwordField;
 
-// Token mode (index 1)
+// Token mode container
 @property (nonatomic, strong) UIView *tokenContainer;
 @property (nonatomic, strong) UITextField *tokenField;
+
+// Trusted network container
+@property (nonatomic, strong) UIView *trustedContainer;
+
+// Auth provider probing
+@property (nonatomic, copy) NSString *lastProbedURL;
+@property (nonatomic, assign) BOOL hasHomeAssistantProvider;
+@property (nonatomic, assign) BOOL hasTrustedNetworkProvider;
 
 @property (nonatomic, strong) UIButton *connectButton;
 @property (nonatomic, strong) UILabel *statusLabel;
@@ -36,9 +51,22 @@
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (self) {
+        _hasHomeAssistantProvider = YES;
+        _hasTrustedNetworkProvider = NO;
+        _authModes = @[kModeLogin, kModeToken];
         [self setupUI];
     }
     return self;
+}
+
+#pragma mark - Current Mode
+
+- (NSString *)currentMode {
+    NSInteger idx = self.authModeSegment.selectedSegmentIndex;
+    if (idx >= 0 && idx < (NSInteger)self.authModes.count) {
+        return self.authModes[idx];
+    }
+    return kModeLogin;
 }
 
 #pragma mark - UI Setup
@@ -94,7 +122,7 @@
     self.serverURLField.translatesAutoresizingMaskIntoConstraints = NO;
     [self addSubview:self.serverURLField];
 
-    // ── Auth mode segmented control (Login first, Token second) ────────
+    // ── Auth mode segmented control ────────────────────────────────────
     self.authModeSegment = [[UISegmentedControl alloc] initWithItems:@[@"Username/Password", @"Access Token"]];
     self.authModeSegment.selectedSegmentIndex = 0;
     [self.authModeSegment addTarget:self action:@selector(authModeChanged:) forControlEvents:UIControlEventValueChanged];
@@ -108,7 +136,29 @@
     self.authFieldsStack.translatesAutoresizingMaskIntoConstraints = NO;
     [self addSubview:self.authFieldsStack];
 
-    // ── Login mode container (shown first) ─────────────────────────────
+    // ── Trusted network container (hidden, added to stack) ─────────────
+    self.trustedContainer = [[UIView alloc] init];
+    self.trustedContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    self.trustedContainer.hidden = YES;
+    [self.authFieldsStack addArrangedSubview:self.trustedContainer];
+
+    UILabel *trustedHint = [[UILabel alloc] init];
+    trustedHint.text = @"No password required.\nYour device is on a trusted network.";
+    trustedHint.font = [UIFont systemFontOfSize:13];
+    trustedHint.textColor = [HATheme secondaryTextColor];
+    trustedHint.textAlignment = NSTextAlignmentCenter;
+    trustedHint.numberOfLines = 0;
+    trustedHint.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.trustedContainer addSubview:trustedHint];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [trustedHint.topAnchor constraintEqualToAnchor:self.trustedContainer.topAnchor constant:8],
+        [trustedHint.leadingAnchor constraintEqualToAnchor:self.trustedContainer.leadingAnchor],
+        [trustedHint.trailingAnchor constraintEqualToAnchor:self.trustedContainer.trailingAnchor],
+        [trustedHint.bottomAnchor constraintEqualToAnchor:self.trustedContainer.bottomAnchor constant:-4],
+    ]];
+
+    // ── Login mode container ───────────────────────────────────────────
     self.loginContainer = [[UIView alloc] init];
     self.loginContainer.translatesAutoresizingMaskIntoConstraints = NO;
     [self.authFieldsStack addArrangedSubview:self.loginContainer];
@@ -245,32 +295,34 @@
     [self addSubview:self.spinner];
 
     // ── Main vertical layout ───────────────────────────────────────────
-    NSDictionary *views = @{
-        @"disc": self.discoverySection,
-        @"urlLabel": urlLabel,
-        @"urlField": self.serverURLField,
-        @"authSeg": self.authModeSegment,
-        @"authStack": self.authFieldsStack,
-        @"button": self.connectButton,
-        @"status": self.statusLabel,
-        @"spinner": self.spinner,
-    };
-    NSDictionary *metrics = @{@"p": @8, @"fh": @(fieldHeight)};
+    CGFloat p = 8.0;
 
-    [self addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:
-        @"V:|[disc]-p-[urlLabel]-4-[urlField(fh)]-p-[authSeg]-p-[authStack]-p-[button(fh)]-8-[status]-4-[spinner]|"
-        options:0 metrics:metrics views:views]];
-
-    for (NSString *name in @[@"disc", @"urlLabel", @"urlField", @"authSeg", @"authStack", @"button", @"status"]) {
-        UIView *v = views[name];
-        [self addConstraint:[NSLayoutConstraint constraintWithItem:v attribute:NSLayoutAttributeLeading
-            relatedBy:NSLayoutRelationEqual toItem:self attribute:NSLayoutAttributeLeading multiplier:1 constant:0]];
-        [self addConstraint:[NSLayoutConstraint constraintWithItem:v attribute:NSLayoutAttributeTrailing
-            relatedBy:NSLayoutRelationEqual toItem:self attribute:NSLayoutAttributeTrailing multiplier:1 constant:0]];
+    NSArray *fullWidthViews = @[
+        self.discoverySection, urlLabel, self.serverURLField,
+        self.authModeSegment, self.authFieldsStack,
+        self.connectButton, self.statusLabel,
+    ];
+    for (UIView *v in fullWidthViews) {
+        [NSLayoutConstraint activateConstraints:@[
+            [v.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
+            [v.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
+        ]];
     }
 
-    [self addConstraint:[NSLayoutConstraint constraintWithItem:self.spinner attribute:NSLayoutAttributeCenterX
-        relatedBy:NSLayoutRelationEqual toItem:self attribute:NSLayoutAttributeCenterX multiplier:1 constant:0]];
+    [NSLayoutConstraint activateConstraints:@[
+        [self.discoverySection.topAnchor constraintEqualToAnchor:self.topAnchor],
+        [urlLabel.topAnchor constraintEqualToAnchor:self.discoverySection.bottomAnchor constant:p],
+        [self.serverURLField.topAnchor constraintEqualToAnchor:urlLabel.bottomAnchor constant:4],
+        [self.serverURLField.heightAnchor constraintEqualToConstant:fieldHeight],
+        [self.authModeSegment.topAnchor constraintEqualToAnchor:self.serverURLField.bottomAnchor constant:p],
+        [self.authFieldsStack.topAnchor constraintEqualToAnchor:self.authModeSegment.bottomAnchor constant:p],
+        [self.connectButton.topAnchor constraintEqualToAnchor:self.authFieldsStack.bottomAnchor constant:p],
+        [self.connectButton.heightAnchor constraintEqualToConstant:fieldHeight],
+        [self.statusLabel.topAnchor constraintEqualToAnchor:self.connectButton.bottomAnchor constant:8],
+        [self.spinner.topAnchor constraintEqualToAnchor:self.statusLabel.bottomAnchor constant:4],
+        [self.spinner.centerXAnchor constraintEqualToAnchor:self.centerXAnchor],
+        [self.spinner.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
+    ]];
 }
 
 #pragma mark - Public
@@ -279,18 +331,16 @@
     HAAuthManager *auth = [HAAuthManager sharedManager];
     if (auth.serverURL) {
         self.serverURLField.text = auth.serverURL;
+        [self probeAuthProvidersForURL:auth.serverURL];
     }
 
-    // Segment 0 = Username/Password (OAuth), Segment 1 = Access Token
     if (auth.authMode == HAAuthModeOAuth) {
-        self.authModeSegment.selectedSegmentIndex = 0;
-        [self authModeChanged:self.authModeSegment];
+        [self selectMode:kModeLogin];
     } else {
         if (auth.accessToken) {
             self.tokenField.text = auth.accessToken;
         }
-        self.authModeSegment.selectedSegmentIndex = 1;
-        [self authModeChanged:self.authModeSegment];
+        [self selectMode:kModeToken];
     }
 }
 
@@ -311,15 +361,97 @@
     self.usernameField.text = @"";
     self.passwordField.text = @"";
     self.statusLabel.text = @"";
+    self.hasTrustedNetworkProvider = NO;
+    self.hasHomeAssistantProvider = YES;
+    self.lastProbedURL = nil;
+    [self rebuildSegments];
+}
+
+#pragma mark - Auth Provider Probing
+
+- (void)probeAuthProvidersForURL:(NSString *)urlString {
+    if (urlString.length == 0) return;
+
+    NSString *normalized = [HAAuthManager normalizedURL:urlString];
+    if ([self.lastProbedURL isEqualToString:normalized]) return;
+    self.lastProbedURL = normalized;
+
+    HAOAuthClient *oauth = [[HAOAuthClient alloc] initWithServerURL:normalized];
+    [oauth fetchAuthProviders:^(NSArray *providers, NSError *error) {
+        if (error || !providers) {
+            self.hasHomeAssistantProvider = YES;
+            self.hasTrustedNetworkProvider = NO;
+            [self rebuildSegments];
+            return;
+        }
+
+        BOOL foundHA = NO;
+        BOOL foundTrusted = NO;
+        for (NSDictionary *provider in providers) {
+            if (![provider isKindOfClass:[NSDictionary class]]) continue;
+            NSString *type = provider[@"type"];
+            if ([type isEqualToString:@"homeassistant"]) foundHA = YES;
+            if ([type isEqualToString:@"trusted_networks"]) foundTrusted = YES;
+        }
+
+        self.hasHomeAssistantProvider = foundHA;
+        self.hasTrustedNetworkProvider = foundTrusted;
+        [self rebuildSegments];
+
+        // Auto-select trusted network if it just appeared
+        if (foundTrusted) {
+            [self selectMode:kModeTrusted];
+        }
+    }];
+}
+
+#pragma mark - Segment Rebuilding
+
+- (void)rebuildSegments {
+    NSString *previousMode = [self currentMode];
+
+    // Build mode list based on available providers
+    NSMutableArray *modes = [NSMutableArray array];
+    NSMutableArray *titles = [NSMutableArray array];
+
+    if (self.hasTrustedNetworkProvider) {
+        [modes addObject:kModeTrusted];
+        [titles addObject:@"Trusted Network"];
+    }
+    if (self.hasHomeAssistantProvider) {
+        [modes addObject:kModeLogin];
+        [titles addObject:@"Username/Password"];
+    }
+    // Access Token is always available
+    [modes addObject:kModeToken];
+    [titles addObject:@"Access Token"];
+
+    self.authModes = [modes copy];
+
+    // Rebuild the segmented control
+    [self.authModeSegment removeAllSegments];
+    for (NSUInteger i = 0; i < titles.count; i++) {
+        [self.authModeSegment insertSegmentWithTitle:titles[i] atIndex:i animated:NO];
+    }
+
+    // Restore previous selection if still available, otherwise pick first
+    [self selectMode:([modes containsObject:previousMode] ? previousMode : modes.firstObject)];
+}
+
+- (void)selectMode:(NSString *)mode {
+    NSUInteger idx = [self.authModes indexOfObject:mode];
+    if (idx == NSNotFound) idx = 0;
+    self.authModeSegment.selectedSegmentIndex = idx;
+    [self authModeChanged:self.authModeSegment];
 }
 
 #pragma mark - Auth Mode Switching
 
 - (void)authModeChanged:(UISegmentedControl *)sender {
-    // Segment 0 = Username/Password, Segment 1 = Access Token
-    BOOL isLoginMode = (sender.selectedSegmentIndex == 0);
-    self.loginContainer.hidden = !isLoginMode;
-    self.tokenContainer.hidden = isLoginMode;
+    NSString *mode = [self currentMode];
+    self.trustedContainer.hidden = ![mode isEqualToString:kModeTrusted];
+    self.loginContainer.hidden   = ![mode isEqualToString:kModeLogin];
+    self.tokenContainer.hidden   = ![mode isEqualToString:kModeToken];
 }
 
 #pragma mark - Discovery
@@ -351,7 +483,6 @@
     row.tag = idx;
     [row addTarget:self action:@selector(discoveredServerTapped:) forControlEvents:UIControlEventTouchUpInside];
 
-    // Server icon
     UIImageView *icon = [[UIImageView alloc] init];
     icon.translatesAutoresizingMaskIntoConstraints = NO;
     icon.contentMode = UIViewContentModeScaleAspectFit;
@@ -363,7 +494,6 @@
     icon.userInteractionEnabled = NO;
     [row addSubview:icon];
 
-    // Name label
     UILabel *nameLabel = [[UILabel alloc] init];
     nameLabel.text = server.name ?: @"Home Assistant";
     nameLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightMedium];
@@ -372,7 +502,6 @@
     nameLabel.userInteractionEnabled = NO;
     [row addSubview:nameLabel];
 
-    // Version label
     UILabel *versionLabel = [[UILabel alloc] init];
     versionLabel.text = server.version ? [NSString stringWithFormat:@"v%@", server.version] : @"";
     versionLabel.font = [UIFont systemFontOfSize:12];
@@ -381,7 +510,6 @@
     versionLabel.userInteractionEnabled = NO;
     [row addSubview:versionLabel];
 
-    // Chevron
     UIImageView *chevron = [[UIImageView alloc] init];
     chevron.translatesAutoresizingMaskIntoConstraints = NO;
     chevron.contentMode = UIViewContentModeScaleAspectFit;
@@ -418,6 +546,7 @@
 
     HADiscoveredServer *server = servers[idx];
     self.serverURLField.text = server.baseURL;
+    [self probeAuthProvidersForURL:server.baseURL];
 }
 
 #pragma mark - Connect
@@ -434,14 +563,128 @@
         urlString = [urlString substringToIndex:urlString.length - 1];
     }
 
-    // Segment 0 = Username/Password, Segment 1 = Access Token
-    BOOL isTokenMode = (self.authModeSegment.selectedSegmentIndex == 1);
-
-    if (isTokenMode) {
+    NSString *mode = [self currentMode];
+    if ([mode isEqualToString:kModeTrusted]) {
+        [self connectWithTrustedNetwork:urlString];
+    } else if ([mode isEqualToString:kModeToken]) {
         [self connectWithToken:urlString];
     } else {
         [self connectWithLogin:urlString];
     }
+}
+
+- (void)connectWithTrustedNetwork:(NSString *)urlString {
+    self.connectButton.enabled = NO;
+    [self.spinner startAnimating];
+    [self showStatus:@"Logging in..." isError:NO];
+
+    HAOAuthClient *oauth = [[HAOAuthClient alloc] initWithServerURL:urlString];
+
+    [oauth loginWithTrustedNetworkUser:nil flowId:nil completion:^(NSString *authCode, NSDictionary *usersOrNil, NSString *flowIdOrNil, NSError *error) {
+        if (error) {
+            self.connectButton.enabled = YES;
+            [self.spinner stopAnimating];
+            [self showStatus:[NSString stringWithFormat:@"Login failed: %@", error.localizedDescription] isError:YES];
+            return;
+        }
+
+        if (authCode) {
+            [self exchangeAuthCode:authCode withOAuthClient:oauth serverURL:urlString];
+            return;
+        }
+
+        if (usersOrNil && flowIdOrNil) {
+            [self.spinner stopAnimating];
+            [self showStatus:@"" isError:NO];
+            [self presentUserPicker:usersOrNil flowId:flowIdOrNil oauthClient:oauth serverURL:urlString];
+            return;
+        }
+
+        self.connectButton.enabled = YES;
+        [self.spinner stopAnimating];
+        [self showStatus:@"Unexpected response from server" isError:YES];
+    }];
+}
+
+- (void)presentUserPicker:(NSDictionary *)users
+                   flowId:(NSString *)flowId
+              oauthClient:(HAOAuthClient *)oauth
+                serverURL:(NSString *)urlString {
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Select User"
+                                                                  message:@"Choose which user to log in as"
+                                                           preferredStyle:UIAlertControllerStyleActionSheet];
+
+    for (NSString *userId in users) {
+        NSString *displayName = users[userId];
+        [alert addAction:[UIAlertAction actionWithTitle:displayName style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+            [self.spinner startAnimating];
+            [self showStatus:@"Logging in..." isError:NO];
+
+            [oauth loginWithTrustedNetworkUser:userId flowId:flowId completion:^(NSString *authCode, NSDictionary *usersOrNil, NSString *flowIdOrNil, NSError *error) {
+                if (error || !authCode) {
+                    self.connectButton.enabled = YES;
+                    [self.spinner stopAnimating];
+                    [self showStatus:[NSString stringWithFormat:@"Login failed: %@",
+                        error.localizedDescription ?: @"no auth code"] isError:YES];
+                    return;
+                }
+                [self exchangeAuthCode:authCode withOAuthClient:oauth serverURL:urlString];
+            }];
+        }]];
+    }
+
+    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:^(UIAlertAction *action) {
+        self.connectButton.enabled = YES;
+    }]];
+
+    UIViewController *presenter = [self firstAvailableViewController];
+    if (presenter) {
+        if (alert.popoverPresentationController) {
+            alert.popoverPresentationController.sourceView = self.connectButton;
+            alert.popoverPresentationController.sourceRect = self.connectButton.bounds;
+        }
+        [presenter presentViewController:alert animated:YES completion:nil];
+    }
+}
+
+- (UIViewController *)firstAvailableViewController {
+    UIResponder *responder = self;
+    while (responder) {
+        if ([responder isKindOfClass:[UIViewController class]]) {
+            return (UIViewController *)responder;
+        }
+        responder = [responder nextResponder];
+    }
+    return nil;
+}
+
+- (void)exchangeAuthCode:(NSString *)authCode
+         withOAuthClient:(HAOAuthClient *)oauth
+               serverURL:(NSString *)urlString {
+    [self showStatus:@"Obtaining token..." isError:NO];
+
+    [oauth exchangeAuthCode:authCode completion:^(NSDictionary *tokenResponse, NSError *tokenError) {
+        self.connectButton.enabled = YES;
+        [self.spinner stopAnimating];
+
+        if (tokenError || !tokenResponse[@"access_token"]) {
+            [self showStatus:[NSString stringWithFormat:@"Token exchange failed: %@",
+                tokenError.localizedDescription ?: @"no access token"] isError:YES];
+            return;
+        }
+
+        NSString *accessToken = tokenResponse[@"access_token"];
+        NSString *refreshToken = tokenResponse[@"refresh_token"];
+        NSTimeInterval expiresIn = [tokenResponse[@"expires_in"] doubleValue];
+        if (expiresIn <= 0) expiresIn = 1800;
+
+        [[HAAuthManager sharedManager] saveOAuthCredentials:urlString
+                                               accessToken:accessToken
+                                              refreshToken:refreshToken
+                                                 expiresIn:expiresIn];
+        [self showStatus:@"Connected!" isError:NO];
+        [self.delegate connectionFormDidConnect:self];
+    }];
 }
 
 - (void)connectWithToken:(NSString *)urlString {
@@ -500,30 +743,7 @@
             return;
         }
 
-        [self showStatus:@"Obtaining token..." isError:NO];
-
-        [oauth exchangeAuthCode:authCode completion:^(NSDictionary *tokenResponse, NSError *tokenError) {
-            self.connectButton.enabled = YES;
-            [self.spinner stopAnimating];
-
-            if (tokenError || !tokenResponse[@"access_token"]) {
-                [self showStatus:[NSString stringWithFormat:@"Token exchange failed: %@",
-                    tokenError.localizedDescription ?: @"no access token"] isError:YES];
-                return;
-            }
-
-            NSString *accessToken = tokenResponse[@"access_token"];
-            NSString *refreshToken = tokenResponse[@"refresh_token"];
-            NSTimeInterval expiresIn = [tokenResponse[@"expires_in"] doubleValue];
-            if (expiresIn <= 0) expiresIn = 1800;
-
-            [[HAAuthManager sharedManager] saveOAuthCredentials:urlString
-                                                   accessToken:accessToken
-                                                  refreshToken:refreshToken
-                                                     expiresIn:expiresIn];
-            [self showStatus:@"Connected!" isError:NO];
-            [self.delegate connectionFormDidConnect:self];
-        }];
+        [self exchangeAuthCode:authCode withOAuthClient:oauth serverURL:urlString];
     }];
 }
 
@@ -536,11 +756,14 @@
 
 - (BOOL)textFieldShouldReturn:(UITextField *)textField {
     if (textField == self.serverURLField) {
-        // Segment 0 = Login, Segment 1 = Token
-        if (self.authModeSegment.selectedSegmentIndex == 0) {
+        NSString *mode = [self currentMode];
+        if ([mode isEqualToString:kModeLogin]) {
             [self.usernameField becomeFirstResponder];
-        } else {
+        } else if ([mode isEqualToString:kModeToken]) {
             [self.tokenField becomeFirstResponder];
+        } else {
+            [textField resignFirstResponder];
+            [self connectTapped];
         }
     } else if (textField == self.usernameField) {
         [self.passwordField becomeFirstResponder];
@@ -549,6 +772,12 @@
         [self connectTapped];
     }
     return YES;
+}
+
+- (void)textFieldDidEndEditing:(UITextField *)textField {
+    if (textField == self.serverURLField) {
+        [self probeAuthProvidersForURL:textField.text];
+    }
 }
 
 @end
