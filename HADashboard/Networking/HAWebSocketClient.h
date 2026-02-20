@@ -26,6 +26,9 @@
 /// Subscribe to state_changed events. Returns the subscription message ID.
 - (NSInteger)subscribeToStateChanges;
 
+/// Subscribe to lovelace_updated events. Returns the subscription message ID.
+- (NSInteger)subscribeToLovelaceUpdates;
+
 /// Call a service via WebSocket
 - (NSInteger)callService:(NSString *)service
                 inDomain:(NSString *)domain

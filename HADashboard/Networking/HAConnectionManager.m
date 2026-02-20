@@ -782,6 +782,9 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
     // Subscribe to state changes
     [client subscribeToStateChanges];
 
+    // Subscribe to dashboard config changes (for auto-reload)
+    [client subscribeToLovelaceUpdates];
+
     // Fetch available dashboards list
     [self fetchDashboardList];
 
@@ -979,6 +982,25 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
                 postNotificationName:HAConnectionManagerEntityDidUpdateNotification
                               object:self
                             userInfo:@{@"entity": entity}];
+        } else if ([eventType isEqualToString:@"lovelace_updated"]) {
+            if (![[HAAuthManager sharedManager] autoReloadDashboard]) return;
+
+            NSDictionary *eventData = event[@"data"];
+            NSString *updatedUrlPath = nil;
+            id urlPathValue = eventData[@"url_path"];
+            if ([urlPathValue isKindOfClass:[NSString class]]) {
+                updatedUrlPath = urlPathValue;
+            }
+
+            NSString *selectedDashboard = [[HAAuthManager sharedManager] selectedDashboardPath];
+            BOOL viewingDefault = (selectedDashboard == nil || selectedDashboard.length == 0);
+            BOOL updatedIsDefault = (updatedUrlPath == nil);
+            BOOL matchesSelected = (updatedUrlPath != nil && [updatedUrlPath isEqualToString:selectedDashboard]);
+
+            if (matchesSelected || (viewingDefault && updatedIsDefault)) {
+                NSLog(@"[HAConnection] Lovelace config updated for active dashboard, re-fetching");
+                [self fetchLovelaceConfig:selectedDashboard];
+            }
         }
     }
 }

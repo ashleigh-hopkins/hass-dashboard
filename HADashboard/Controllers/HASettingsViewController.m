@@ -37,6 +37,10 @@
 @property (nonatomic, strong) UIView *demoSection;
 @property (nonatomic, strong) UISwitch *demoSwitch;
 
+// Auto-reload dashboard
+@property (nonatomic, strong) UIView *autoReloadSection;
+@property (nonatomic, strong) UISwitch *autoReloadSwitch;
+
 // About
 @property (nonatomic, strong) UIView *aboutSection;
 
@@ -221,6 +225,16 @@
     self.demoSwitch = demoSw;
     [container addSubview:self.demoSection];
 
+    // Auto-reload dashboard
+    UISwitch *autoReloadSw = nil;
+    self.autoReloadSection = [self createToggleSection:@"Auto-Reload Dashboard"
+        helpText:@"Automatically reload the dashboard when its configuration is changed on the Home Assistant server."
+        isOn:[[HAAuthManager sharedManager] autoReloadDashboard]
+        target:self action:@selector(autoReloadSwitchToggled:)
+        switchOut:&autoReloadSw];
+    self.autoReloadSwitch = autoReloadSw;
+    [container addSubview:self.autoReloadSection];
+
     // ── ABOUT section ─────────────────────────────────────────────────
     self.aboutSectionHeader = [self createSectionHeaderWithText:@"ABOUT"];
     [container addSubview:self.aboutSectionHeader];
@@ -246,6 +260,7 @@
         @"dispHdr":   self.displaySectionHeader,
         @"kiosk":     self.kioskSection,
         @"demo":      self.demoSection,
+        @"autoReload":self.autoReloadSection,
         @"aboutHdr":  self.aboutSectionHeader,
         @"about":     self.aboutSection,
         @"logout":    self.logoutButton,
@@ -253,7 +268,7 @@
     NSDictionary *metrics = @{@"p": @16, @"sh": @32, @"hg": @10, @"fh": @44};
 
     [container addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:
-        @"V:|[connHdr]-hg-[connRow]-sh-[appHdr]-hg-[themeStack]-sh-[dispHdr]-hg-[kiosk]-p-[demo]-sh-[aboutHdr]-hg-[about]-sh-[logout(fh)]|"
+        @"V:|[connHdr]-hg-[connRow]-sh-[appHdr]-hg-[themeStack]-sh-[dispHdr]-hg-[kiosk]-p-[demo]-p-[autoReload]-sh-[aboutHdr]-hg-[about]-sh-[logout(fh)]|"
         options:0 metrics:metrics views:views]];
 
     for (NSString *name in views) {
@@ -530,6 +545,10 @@
 
 - (void)kioskSwitchToggled:(UISwitch *)sender {
     [[HAAuthManager sharedManager] setKioskMode:sender.isOn];
+}
+
+- (void)autoReloadSwitchToggled:(UISwitch *)sender {
+    [[HAAuthManager sharedManager] setAutoReloadDashboard:sender.isOn];
 }
 
 - (void)demoSwitchToggled:(UISwitch *)sender {

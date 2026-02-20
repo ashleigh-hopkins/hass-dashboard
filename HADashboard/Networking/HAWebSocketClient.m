@@ -61,6 +61,14 @@
     return [self sendCommand:command];
 }
 
+- (NSInteger)subscribeToLovelaceUpdates {
+    NSDictionary *command = @{
+        @"type": @"subscribe_events",
+        @"event_type": @"lovelace_updated",
+    };
+    return [self sendCommand:command];
+}
+
 - (NSInteger)callService:(NSString *)service
                 inDomain:(NSString *)domain
                 withData:(NSDictionary *)data {

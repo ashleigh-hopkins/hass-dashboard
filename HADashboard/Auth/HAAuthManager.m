@@ -13,6 +13,7 @@ static NSString *const kTokenExpiryKey   = @"ha_token_expiry";
 static NSString *const kSelectedDashboardKey = @"ha_selected_dashboard";
 static NSString *const kKioskModeKey     = @"ha_kiosk_mode";
 static NSString *const kDemoModeKey      = @"ha_demo_mode";
+static NSString *const kAutoReloadDashboardKey = @"ha_auto_reload_dashboard";
 
 @interface HAAuthManager ()
 @property (nonatomic, copy, readwrite) NSString *serverURL;
@@ -23,6 +24,7 @@ static NSString *const kDemoModeKey      = @"ha_demo_mode";
 @property (nonatomic, copy, readwrite) NSString *selectedDashboardPath;
 @property (nonatomic, assign, readwrite, getter=isKioskMode) BOOL kioskMode;
 @property (nonatomic, assign, readwrite, getter=isDemoMode) BOOL demoMode;
+@property (nonatomic, assign, readwrite) BOOL autoReloadDashboard;
 @property (nonatomic, strong) NSTimer *refreshTimer;
 @property (nonatomic, assign) BOOL isRefreshing;
 @end
@@ -51,6 +53,12 @@ static NSString *const kDemoModeKey      = @"ha_demo_mode";
         _selectedDashboardPath = [[NSUserDefaults standardUserDefaults] stringForKey:kSelectedDashboardKey];
         _kioskMode = [[NSUserDefaults standardUserDefaults] boolForKey:kKioskModeKey];
         _demoMode = [[NSUserDefaults standardUserDefaults] boolForKey:kDemoModeKey];
+        // Default to YES when key hasn't been explicitly set
+        if ([[NSUserDefaults standardUserDefaults] objectForKey:kAutoReloadDashboardKey] != nil) {
+            _autoReloadDashboard = [[NSUserDefaults standardUserDefaults] boolForKey:kAutoReloadDashboardKey];
+        } else {
+            _autoReloadDashboard = YES;
+        }
 
         // Restore auth mode
         NSString *modeStr = [HAKeychainHelper stringForKey:kAuthModeKey];
@@ -250,6 +258,12 @@ static NSString *const kDemoModeKey      = @"ha_demo_mode";
     [[NSNotificationCenter defaultCenter] postNotificationName:HAAuthManagerDidUpdateNotification object:self];
 }
 
+- (void)setAutoReloadDashboard:(BOOL)enabled {
+    _autoReloadDashboard = enabled;
+    [[NSUserDefaults standardUserDefaults] setBool:enabled forKey:kAutoReloadDashboardKey];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+}
+
 - (void)clearCredentials {
     [HAKeychainHelper removeItemForKey:kServerURLKey];
     [HAKeychainHelper removeItemForKey:kAccessTokenKey];
@@ -259,6 +273,7 @@ static NSString *const kDemoModeKey      = @"ha_demo_mode";
     [[NSUserDefaults standardUserDefaults] removeObjectForKey:kSelectedDashboardKey];
     [[NSUserDefaults standardUserDefaults] removeObjectForKey:kKioskModeKey];
     [[NSUserDefaults standardUserDefaults] removeObjectForKey:kDemoModeKey];
+    [[NSUserDefaults standardUserDefaults] removeObjectForKey:kAutoReloadDashboardKey];
     [[NSUserDefaults standardUserDefaults] synchronize];
 
     self.serverURL = nil;
@@ -269,6 +284,7 @@ static NSString *const kDemoModeKey      = @"ha_demo_mode";
     self.selectedDashboardPath = nil;
     self.kioskMode = NO;
     self.demoMode = NO;
+    self.autoReloadDashboard = YES;
 
     [self.refreshTimer invalidate];
     self.refreshTimer = nil;

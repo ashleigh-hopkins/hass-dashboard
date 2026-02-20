@@ -28,6 +28,9 @@ typedef NS_ENUM(NSInteger, HAAuthMode) {
 /// Demo mode: uses bundled demo data instead of connecting to a real server
 @property (nonatomic, readonly, getter=isDemoMode) BOOL demoMode;
 
+/// Auto-reload dashboard when its Lovelace config changes on the server (default: YES)
+@property (nonatomic, readonly) BOOL autoReloadDashboard;
+
 /// Save long-lived access token (existing flow)
 - (void)saveServerURL:(NSString *)url token:(NSString *)token;
 
@@ -50,6 +53,7 @@ typedef NS_ENUM(NSInteger, HAAuthMode) {
 - (void)saveSelectedDashboardPath:(NSString *)urlPath;
 - (void)setKioskMode:(BOOL)enabled;
 - (void)setDemoMode:(BOOL)enabled;
+- (void)setAutoReloadDashboard:(BOOL)enabled;
 - (void)clearCredentials;
 
 /// Returns full base URL for REST API, e.g. http://192.168.1.100:8123/api
