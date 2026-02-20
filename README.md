@@ -6,7 +6,7 @@ Built to run on everything from a jailbroken iPad 2 (iOS 9.3.5, armv7) wall-moun
 
 ## Features
 
-- **Native rendering** of HA Lovelace sections-layout dashboards (entities, lights, climate, sensors, cameras, graphs, gauges, badges, and more)
+- **Native rendering** of HA Lovelace dashboards — sections, masonry, panel, and sidebar layouts (entities, lights, climate, sensors, cameras, graphs, gauges, badges, and more)
 - **Real-time updates** via WebSocket — entity states update live
 - **33 cell types** — covers controls, inputs, composite cards, and entity detail views
 - **Themes** — Auto, Dark, Light, and Gradient modes with 5 gradient presets plus custom hex colors
