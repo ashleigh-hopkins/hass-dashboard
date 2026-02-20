@@ -205,10 +205,20 @@ static NSString * const kSectionHeaderReuseId = @"HASectionHeader";
     // Connect if not already
     HAConnectionManager *conn = [HAConnectionManager sharedManager];
     if (!conn.isConnected) {
+        // Preserve view index across reconnects — save before resetting flags
+        NSUInteger savedViewIndex = self.selectedViewIndex;
         self.statesLoaded = NO;
         self.lovelaceLoaded = NO;
+        self.selectedViewIndex = savedViewIndex;
         [self showLoading:YES message:@"Connecting..."];
         [conn connect];
+    } else if (self.statesLoaded) {
+        // Returning from a pushed VC (e.g. Settings) with connection still up.
+        // Entity store is current (websocket pushes state changes in real time),
+        // so just rebuild from cached data — no re-fetch needed.
+        [self showLoading:NO message:nil];
+        [conn fetchDashboardList];
+        [self rebuildDashboard];
     } else {
         [self showLoading:NO message:nil];
         [conn fetchAllStates];
@@ -926,15 +936,12 @@ static const CGFloat kRowUnitHeight = 56.0;
     HALovelaceView *view = [self.lovelaceDashboard viewAtIndex:self.selectedViewIndex];
     if (!view) return;
 
-    // Update title button: show dashboard name when multiple dashboards are available
-    // (view name is already shown in the segmented control), otherwise show view title
-    if (self.availableDashboards.count > 1) {
-        NSString *dashName = self.lovelaceDashboard.title ?: @"Dashboard";
-        [self updateTitleButtonText:dashName];
-    } else {
-        NSString *viewTitle = view.title ?: self.lovelaceDashboard.title ?: @"Dashboard";
-        [self updateTitleButtonText:viewTitle];
-    }
+    // Update title button: always show dashboard name (view name is in the segmented control)
+    NSString *currentPath = [[HAAuthManager sharedManager] selectedDashboardPath];
+    NSString *dashName = [self dashboardNameForPath:currentPath];
+    if (!dashName) dashName = self.lovelaceDashboard.title;
+    if (!dashName) dashName = @"Dashboard";
+    [self updateTitleButtonText:dashName];
 
     // Route layout based on viewType
     BOOL isSections = [view.viewType isEqualToString:@"sections"];
@@ -1944,6 +1951,12 @@ heightForHeaderInSection:(NSInteger)section {
 }
 
 - (void)connectionManager:(HAConnectionManager *)manager didReceiveLovelaceDashboard:(HALovelaceDashboard *)dashboard {
+    // Preserve the user's current view selection when the same dashboard is
+    // re-delivered (e.g. after a websocket reconnect while in Settings).
+    // Only reset to view 0 on the very first load or when the dashboard changes.
+    BOOL wasLoaded = self.lovelaceLoaded;
+    BOOL isRefresh = (wasLoaded && self.selectedViewIndex < dashboard.views.count);
+
     self.lovelaceDashboard = dashboard;
     self.lovelaceLoaded = YES;
 
@@ -1951,7 +1964,7 @@ heightForHeaderInSection:(NSInteger)section {
     NSInteger bootViewIndex = [[NSUserDefaults standardUserDefaults] integerForKey:@"HAViewIndex"];
     if (bootViewIndex > 0 && (NSUInteger)bootViewIndex < dashboard.views.count) {
         self.selectedViewIndex = (NSUInteger)bootViewIndex;
-    } else {
+    } else if (!isRefresh) {
         self.selectedViewIndex = 0;
     }
 

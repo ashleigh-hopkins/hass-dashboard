@@ -19,6 +19,7 @@ static NSDateFormatter *sCachedTimeFmt(void) {
 @property (nonatomic, strong) CAGradientLayer *gradientLayer;
 @property (nonatomic, strong) UIView *legendContainer;
 @property (nonatomic, strong) NSLayoutConstraint *legendHeightConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *legendBottomConstraint;
 @property (nonatomic, strong) UITapGestureRecognizer *legendTapGesture;
 @property (nonatomic, strong) NSMutableArray<NSValue *> *legendEntryFrames; // CGRect wrapped in NSValue for hit-testing
 @property (nonatomic, assign) BOOL lightweight; // Skip gradient on older devices
@@ -118,10 +119,12 @@ static NSDateFormatter *sCachedTimeFmt(void) {
     [self addSubview:self.legendContainer];
 
     self.legendHeightConstraint = [self.legendContainer.heightAnchor constraintEqualToConstant:0];
+    // Position legend above the time axis labels (18pt bottom padding when axis shown)
+    self.legendBottomConstraint = [self.legendContainer.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-2];
     [NSLayoutConstraint activateConstraints:@[
         [self.legendContainer.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:8],
         [self.legendContainer.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-8],
-        [self.legendContainer.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-2],
+        self.legendBottomConstraint,
         self.legendHeightConstraint,
     ]];
 
@@ -574,9 +577,8 @@ static NSDateFormatter *sCachedTimeFmt(void) {
         return;
     }
 
-    // Build horizontal legend: dot + label for each series
+    // Build wrapping legend: dot + label for each series, wraps to multiple lines
     self.legendContainer.hidden = NO;
-    self.legendHeightConstraint.constant = 16;
 
     // Add tap gesture if needed
     if (!self.legendTapGesture) {
@@ -585,7 +587,12 @@ static NSDateFormatter *sCachedTimeFmt(void) {
     }
     self.legendTapGesture.enabled = YES;
 
+    CGFloat containerWidth = self.bounds.size.width - 16; // 8pt padding each side
+    if (containerWidth < 40) containerWidth = 200; // Fallback before layout
+    CGFloat rowHeight = 16.0;
     CGFloat x = 0;
+    CGFloat y = 0;
+
     for (NSUInteger i = 0; i < self.dataSeries.count; i++) {
         NSDictionary *series = self.dataSeries[i];
         UIColor *color = series[@"color"] ?: [UIColor whiteColor];
@@ -593,10 +600,23 @@ static NSDateFormatter *sCachedTimeFmt(void) {
         BOOL isHidden = [self.hiddenSeriesIndices containsIndex:i];
         CGFloat alpha = isHidden ? 0.3 : 1.0;
 
+        // Measure label width
+        UILabel *measureLabel = [[UILabel alloc] init];
+        measureLabel.text = label;
+        measureLabel.font = [UIFont systemFontOfSize:10 weight:UIFontWeightMedium];
+        [measureLabel sizeToFit];
+        CGFloat entryWidth = 12 + measureLabel.frame.size.width + 10; // dot(8) + gap(4) + label + spacing
+
+        // Wrap to next line if this entry would overflow
+        if (x > 0 && x + entryWidth > containerWidth) {
+            x = 0;
+            y += rowHeight;
+        }
+
         CGFloat entryStartX = x;
 
         // Colored dot
-        UIView *dot = [[UIView alloc] initWithFrame:CGRectMake(x, 4, 8, 8)];
+        UIView *dot = [[UIView alloc] initWithFrame:CGRectMake(x, y + 4, 8, 8)];
         dot.backgroundColor = color;
         dot.layer.cornerRadius = 4;
         dot.alpha = alpha;
@@ -610,14 +630,25 @@ static NSDateFormatter *sCachedTimeFmt(void) {
         lbl.textColor = [UIColor colorWithWhite:0.7 alpha:1.0];
         lbl.alpha = alpha;
         [lbl sizeToFit];
-        lbl.frame = CGRectMake(x, 1, lbl.frame.size.width, 14);
+        lbl.frame = CGRectMake(x, y + 1, lbl.frame.size.width, 14);
         [self.legendContainer addSubview:lbl];
         x += lbl.frame.size.width + 10;
 
         // Store the frame for this entry for hit-testing
-        CGRect entryFrame = CGRectMake(entryStartX, 0, x - entryStartX, 16);
+        CGRect entryFrame = CGRectMake(entryStartX, y, x - entryStartX, rowHeight);
         [self.legendEntryFrames addObject:[NSValue valueWithCGRect:entryFrame]];
     }
+
+    CGFloat totalHeight = y + rowHeight;
+    self.legendHeightConstraint.constant = totalHeight;
+
+    // Legend sits at the very bottom; time axis labels are drawn above it
+    self.legendBottomConstraint.constant = -2;
+}
+
+- (CGFloat)currentLegendHeight {
+    if (self.dataSeries.count <= 1) return 0.0;
+    return self.legendHeightConstraint.constant;
 }
 
 - (void)handleLegendTap:(UITapGestureRecognizer *)gesture {
@@ -868,7 +899,7 @@ static NSDateFormatter *sCachedTimeFmt(void) {
     CGFloat bottomPad = [self graphAreaBottomPadding];
     CGFloat w = self.bounds.size.width - leftPad - rightPad;
     CGFloat h = self.bounds.size.height;
-    CGFloat legendH = (self.dataSeries.count > 1) ? 16.0 : 0.0;
+    CGFloat legendH = [self currentLegendHeight];
     CGFloat insetY = 2.0;
     CGFloat drawH = h - insetY * 2 - legendH - bottomPad;
     if (drawH < 10) drawH = 10;
@@ -990,7 +1021,7 @@ static NSDateFormatter *sCachedTimeFmt(void) {
         CGFloat bottomPad = [self graphAreaBottomPadding];
         CGFloat h = self.bounds.size.height;
         CGFloat insetY = 2.0;
-        CGFloat legendH = (self.dataSeries.count > 1) ? 16.0 : 0.0;
+        CGFloat legendH = [self currentLegendHeight];
         CGFloat drawH = h - insetY * 2 - bottomPad - legendH;
         if (drawH < 10) drawH = 10;
 
@@ -1084,11 +1115,12 @@ static NSDateFormatter *sCachedTimeFmt(void) {
         }
     }
 
-    // --- Time labels (bottom edge) ---
+    // --- Time labels (bottom edge, above legend if present) ---
     CGFloat leftPad = isTimeline ? 0.0 : [self graphAreaLeftPadding];
     CGFloat rightPad = isTimeline ? 0.0 : [self graphAreaRightPadding];
     CGFloat drawW = self.bounds.size.width - leftPad - rightPad;
-    CGFloat bottomY = self.bounds.size.height - [self graphAreaBottomPadding];
+    CGFloat legendH = [self currentLegendHeight];
+    CGFloat bottomY = self.bounds.size.height - [self graphAreaBottomPadding] - legendH;
 
     // For timeline bars, time labels start at the bar area X offset
     CGFloat timeAreaX = leftPad;

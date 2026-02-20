@@ -12,6 +12,7 @@
 @property (nonatomic, strong) HAConstellationView *constellationView;
 @property (nonatomic, strong) UISwitch *demoSwitch;
 @property (nonatomic, strong) UIView *cardView;
+@property (nonatomic, strong) UIScrollView *scrollView;
 @end
 
 @implementation HALoginViewController
@@ -42,6 +43,12 @@
     [HAStartupLog log:@"  constellation startAnimating BEGIN"];
     [self.constellationView startAnimating];
     [HAStartupLog log:@"  constellation startAnimating END"];
+
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardWillShow:)
+        name:UIKeyboardWillShowNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardWillHide:)
+        name:UIKeyboardWillHideNotification object:nil];
+
     [HAStartupLog log:@"HALoginVC viewWillAppear END"];
 }
 
@@ -49,6 +56,8 @@
     [super viewWillDisappear:animated];
     [self.connectionForm stopDiscovery];
     [self.constellationView stopAnimating];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:UIKeyboardWillShowNotification object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:UIKeyboardWillHideNotification object:nil];
 }
 
 - (UIStatusBarStyle)preferredStatusBarStyle {
@@ -69,9 +78,10 @@
     [self.view addSubview:self.constellationView];
 
     // ── Scroll view ────────────────────────────────────────────────────
-    UIScrollView *scrollView = [[UIScrollView alloc] init];
-    scrollView.translatesAutoresizingMaskIntoConstraints = NO;
-    scrollView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
+    self.scrollView = [[UIScrollView alloc] init];
+    self.scrollView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.scrollView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
+    UIScrollView *scrollView = self.scrollView;
     [self.view addSubview:scrollView];
     [NSLayoutConstraint activateConstraints:@[
         [scrollView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
@@ -254,6 +264,39 @@
 
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     [self.view endEditing:YES];
+}
+
+#pragma mark - Keyboard Avoidance
+
+- (void)keyboardWillShow:(NSNotification *)notification {
+    NSDictionary *info = notification.userInfo;
+    CGRect kbFrame = [info[UIKeyboardFrameEndUserInfoKey] CGRectValue];
+    CGRect kbLocal = [self.view convertRect:kbFrame fromView:nil];
+    CGFloat overlap = CGRectGetMaxY(self.view.bounds) - CGRectGetMinY(kbLocal);
+    if (overlap < 0) overlap = 0;
+
+    NSTimeInterval duration = [info[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
+    UIViewAnimationOptions curve = [info[UIKeyboardAnimationCurveUserInfoKey] unsignedIntegerValue] << 16;
+
+    [UIView animateWithDuration:duration delay:0 options:curve animations:^{
+        UIEdgeInsets insets = self.scrollView.contentInset;
+        insets.bottom = overlap;
+        self.scrollView.contentInset = insets;
+        self.scrollView.scrollIndicatorInsets = insets;
+    } completion:nil];
+}
+
+- (void)keyboardWillHide:(NSNotification *)notification {
+    NSDictionary *info = notification.userInfo;
+    NSTimeInterval duration = [info[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
+    UIViewAnimationOptions curve = [info[UIKeyboardAnimationCurveUserInfoKey] unsignedIntegerValue] << 16;
+
+    [UIView animateWithDuration:duration delay:0 options:curve animations:^{
+        UIEdgeInsets insets = self.scrollView.contentInset;
+        insets.bottom = 0;
+        self.scrollView.contentInset = insets;
+        self.scrollView.scrollIndicatorInsets = insets;
+    } completion:nil];
 }
 
 @end
