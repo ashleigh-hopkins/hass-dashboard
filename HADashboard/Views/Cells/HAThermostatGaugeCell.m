@@ -92,6 +92,8 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
 @property (nonatomic, strong) UIImage *cachedGlowImage;   // pre-drawn glow bitmap (pre-iOS 12 only)
 @property (nonatomic, copy) NSArray<NSString *> *lastBuiltModes; // modes the buttons were built for
 @property (nonatomic, copy) NSString *lastBuiltCurrentMode;      // active mode when buttons were built
+// Extra mode selectors (preset, fan, swing) — tappable labels below mode bar
+@property (nonatomic, strong) UIStackView *extraModesStack;
 @end
 
 @implementation HAThermostatGaugeCell
@@ -382,7 +384,15 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
     self.modeStack.translatesAutoresizingMaskIntoConstraints = NO;
     [self.modeBar addSubview:self.modeStack];
 
-    // Mode bar: always pinned to bottom with HA web padding (0 12px 12px)
+    // Extra modes stack (preset, fan, swing) — compact tappable labels below mode bar
+    self.extraModesStack = [[UIStackView alloc] init];
+    self.extraModesStack.axis = UILayoutConstraintAxisHorizontal;
+    self.extraModesStack.distribution = UIStackViewDistributionFillEqually;
+    self.extraModesStack.spacing = 8;
+    self.extraModesStack.translatesAutoresizingMaskIntoConstraints = NO;
+    self.extraModesStack.hidden = YES;
+    [self.contentView addSubview:self.extraModesStack];
+
     [NSLayoutConstraint activateConstraints:@[
         [self.modeBar.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kModeBarSidePad],
         [self.modeBar.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kModeBarSidePad],
@@ -392,6 +402,11 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
         [self.modeStack.trailingAnchor constraintEqualToAnchor:self.modeBar.trailingAnchor constant:-8],
         [self.modeStack.topAnchor constraintEqualToAnchor:self.modeBar.topAnchor constant:4],
         [self.modeStack.bottomAnchor constraintEqualToAnchor:self.modeBar.bottomAnchor constant:-4],
+        // Extra modes: overlaid inside the arc area above mode bar (small text)
+        [self.extraModesStack.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kModeBarSidePad],
+        [self.extraModesStack.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kModeBarSidePad],
+        [self.extraModesStack.bottomAnchor constraintEqualToAnchor:self.modeBar.topAnchor constant:-4],
+        [self.extraModesStack.heightAnchor constraintEqualToConstant:24],
     ]];
 }
 
@@ -864,6 +879,11 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
 
     NSNumber *currentTemp = [entity currentTemperature];
     NSNumber *targetTemp  = [entity targetTemperature];
+    // Dual setpoint: heat_cool mode uses target_temp_high/target_temp_low
+    NSNumber *targetTempHigh = entity.attributes[@"target_temp_high"];
+    NSNumber *targetTempLow = entity.attributes[@"target_temp_low"];
+    BOOL isDualSetpoint = ([targetTempHigh isKindOfClass:[NSNumber class]] &&
+                           [targetTempLow isKindOfClass:[NSNumber class]]);
     NSString *mode = [entity hvacMode];
     NSString *action = [entity hvacAction];
     self.currentMode = mode;
@@ -875,12 +895,22 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
     // Check if card config says show_current_as_primary
     BOOL showCurrentAsPrimary = [configItem.customProperties[@"show_current_as_primary"] boolValue];
 
-    // Status label -- show hvac_action if available, else mode
+    // Status label -- show hvac_action if available, else mode. Append humidity if available.
+    NSString *statusText;
     if ([action isKindOfClass:[NSString class]] && action.length > 0) {
-        self.modeLabel.text = [HAEntityDisplayHelper humanReadableState:action];
+        statusText = [HAEntityDisplayHelper humanReadableState:action];
     } else {
-        self.modeLabel.text = [HAEntityDisplayHelper humanReadableState:mode];
+        statusText = [HAEntityDisplayHelper humanReadableState:mode];
     }
+    NSNumber *currentHumidity = entity.attributes[@"current_humidity"];
+    NSNumber *targetHumidity = entity.attributes[@"target_humidity"];
+    if ([currentHumidity isKindOfClass:[NSNumber class]]) {
+        statusText = [statusText stringByAppendingFormat:@" · %@%%", currentHumidity];
+        if ([targetHumidity isKindOfClass:[NSNumber class]]) {
+            statusText = [statusText stringByAppendingFormat:@" → %@%%", targetHumidity];
+        }
+    }
+    self.modeLabel.text = statusText;
 
     // Gauge arc color based on hvac_action first, then mode
     UIColor *modeColor;
@@ -951,7 +981,10 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
                 self.targetLabel.hidden = YES;
             }
         } else {
-            if (targetTemp && ![mode isEqualToString:@"off"]) {
+            if (isDualSetpoint && ![mode isEqualToString:@"off"]) {
+                self.tempLabel.text = [NSString stringWithFormat:@"%.0f–%.0f%@",
+                    targetTempLow.doubleValue, targetTempHigh.doubleValue, self.tempUnitString];
+            } else if (targetTemp && ![mode isEqualToString:@"off"]) {
                 self.tempLabel.text = [NSString stringWithFormat:@"%.1f%@", targetTemp.doubleValue, self.tempUnitString];
             } else if (currentTemp) {
                 self.tempLabel.text = [NSString stringWithFormat:@"%.0f%@", currentTemp.doubleValue, self.tempUnitString];
@@ -1042,6 +1075,9 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
         }
     }
 
+    // Extra mode selectors: preset, fan, swing (compact tappable labels above mode bar)
+    // TODO: implement updateExtraModesForEntity: for climate preset/fan/swing modes
+
     // Mode bar background adapts to theme
     self.modeBar.backgroundColor = [HATheme effectiveDarkMode]
         ? [[UIColor whiteColor] colorWithAlphaComponent:0.08]
@@ -1113,30 +1149,162 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
                                             entityId:self.entity.entityId];
 }
 
+#pragma mark - Extra Mode Selectors (Preset / Fan / Swing)
+
+- (void)updateExtraModesForEntity:(HAEntity *)entity {
+    for (UIView *v in self.extraModesStack.arrangedSubviews) {
+        [self.extraModesStack removeArrangedSubview:v];
+        [v removeFromSuperview];
+    }
+    BOOL hasExtras = NO;
+
+    // Preset mode
+    NSArray *presetModes = entity.attributes[@"preset_modes"];
+    NSString *currentPreset = entity.attributes[@"preset_mode"];
+    if ([presetModes isKindOfClass:[NSArray class]] && presetModes.count > 0) {
+        NSString *title = currentPreset
+            ? [NSString stringWithFormat:@"%@ \u25BE", [currentPreset capitalizedString]]
+            : @"Preset \u25BE";
+        [self.extraModesStack addArrangedSubview:[self makeExtraModeButton:title tag:100]];
+        hasExtras = YES;
+    }
+    // Fan mode
+    NSArray *fanModes = entity.attributes[@"fan_modes"];
+    NSString *currentFan = entity.attributes[@"fan_mode"];
+    if ([fanModes isKindOfClass:[NSArray class]] && fanModes.count > 0) {
+        NSString *title = currentFan
+            ? [NSString stringWithFormat:@"%@ \u25BE", [currentFan capitalizedString]]
+            : @"Fan \u25BE";
+        [self.extraModesStack addArrangedSubview:[self makeExtraModeButton:title tag:101]];
+        hasExtras = YES;
+    }
+    // Swing mode
+    NSArray *swingModes = entity.attributes[@"swing_modes"];
+    NSString *currentSwing = entity.attributes[@"swing_mode"];
+    if ([swingModes isKindOfClass:[NSArray class]] && swingModes.count > 0) {
+        NSString *title = currentSwing
+            ? [NSString stringWithFormat:@"%@ \u25BE", [currentSwing capitalizedString]]
+            : @"Swing \u25BE";
+        [self.extraModesStack addArrangedSubview:[self makeExtraModeButton:title tag:102]];
+        hasExtras = YES;
+    }
+    self.extraModesStack.hidden = !hasExtras;
+}
+
+- (UIButton *)makeExtraModeButton:(NSString *)title tag:(NSInteger)tag {
+    UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
+    [btn setTitle:title forState:UIControlStateNormal];
+    btn.titleLabel.font = [UIFont systemFontOfSize:11 weight:UIFontWeightMedium];
+    [btn setTitleColor:[HATheme secondaryTextColor] forState:UIControlStateNormal];
+    btn.tag = tag;
+    [btn addTarget:self action:@selector(extraModeTapped:) forControlEvents:UIControlEventTouchUpInside];
+    return btn;
+}
+
+- (void)extraModeTapped:(UIButton *)sender {
+    if (!self.entity) return;
+    NSString *service, *serviceKey;
+    NSArray *options;
+    NSString *current;
+    if (sender.tag == 100) {
+        options = self.entity.attributes[@"preset_modes"];
+        current = self.entity.attributes[@"preset_mode"];
+        service = @"set_preset_mode"; serviceKey = @"preset_mode";
+    } else if (sender.tag == 101) {
+        options = self.entity.attributes[@"fan_modes"];
+        current = self.entity.attributes[@"fan_mode"];
+        service = @"set_fan_mode"; serviceKey = @"fan_mode";
+    } else if (sender.tag == 102) {
+        options = self.entity.attributes[@"swing_modes"];
+        current = self.entity.attributes[@"swing_mode"];
+        service = @"set_swing_mode"; serviceKey = @"swing_mode";
+    } else { return; }
+    if (![options isKindOfClass:[NSArray class]] || options.count == 0) return;
+
+    UIResponder *responder = self;
+    while (responder && ![responder isKindOfClass:[UIViewController class]]) responder = [responder nextResponder];
+    UIViewController *vc = (UIViewController *)responder;
+    if (!vc) return;
+
+    NSString *entityId = self.entity.entityId; // capture before block
+    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:nil message:nil
+                                                           preferredStyle:UIAlertControllerStyleActionSheet];
+    for (NSString *option in options) {
+        BOOL isActive = [option isEqualToString:current];
+        NSString *title = isActive
+            ? [NSString stringWithFormat:@"\u2713 %@", [option capitalizedString]]
+            : [option capitalizedString];
+        UIAlertAction *action = [UIAlertAction actionWithTitle:title
+                                                         style:UIAlertActionStyleDefault
+                                                       handler:^(UIAlertAction *a) {
+            [HAHaptics lightImpact];
+            [[HAConnectionManager sharedManager] callService:service inDomain:@"climate"
+                                                    withData:@{serviceKey: option}
+                                                    entityId:entityId];
+        }];
+        [sheet addAction:action];
+    }
+    [sheet addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+    sheet.popoverPresentationController.sourceView = sender;
+    sheet.popoverPresentationController.sourceRect = sender.bounds;
+    [vc presentViewController:sheet animated:YES completion:nil];
+}
+
 #pragma mark - Actions
 
 - (void)plusTapped {
     if (!self.entity) return;
     [HAHaptics lightImpact];
-    NSNumber *target = [self.entity targetTemperature];
-    double newTarget = target ? target.doubleValue + 0.5 : 20.0;
-    newTarget = MIN(newTarget, self.entityMaxTemp);
-    [[HAConnectionManager sharedManager] callService:@"set_temperature"
-                                            inDomain:@"climate"
-                                            withData:@{@"temperature": @(newTarget)}
-                                            entityId:self.entity.entityId];
+    double step = 0.5;
+    NSNumber *attrStep = self.entity.attributes[@"target_temp_step"];
+    if (attrStep) step = [attrStep doubleValue];
+
+    // Fix #3: Dual setpoint — plus raises high only, minus lowers low only
+    BOOL isDual = [self.entity.state isEqualToString:@"heat_cool"];
+    if (isDual) {
+        NSNumber *high = self.entity.attributes[@"target_temp_high"];
+        double newHigh = high ? [high doubleValue] + step : 24.0;
+        newHigh = MIN(newHigh, self.entityMaxTemp);
+        [[HAConnectionManager sharedManager] callService:@"set_temperature"
+                                                inDomain:@"climate"
+                                                withData:@{@"target_temp_high": @(newHigh)}
+                                                entityId:self.entity.entityId];
+    } else {
+        NSNumber *target = [self.entity targetTemperature];
+        double newTarget = target ? target.doubleValue + step : 20.0;
+        newTarget = MIN(newTarget, self.entityMaxTemp);
+        [[HAConnectionManager sharedManager] callService:@"set_temperature"
+                                                inDomain:@"climate"
+                                                withData:@{@"temperature": @(newTarget)}
+                                                entityId:self.entity.entityId];
+    }
 }
 
 - (void)minusTapped {
     if (!self.entity) return;
     [HAHaptics lightImpact];
-    NSNumber *target = [self.entity targetTemperature];
-    double newTarget = target ? target.doubleValue - 0.5 : 20.0;
-    newTarget = MAX(newTarget, self.entityMinTemp);
-    [[HAConnectionManager sharedManager] callService:@"set_temperature"
-                                            inDomain:@"climate"
-                                            withData:@{@"temperature": @(newTarget)}
-                                            entityId:self.entity.entityId];
+    double step = 0.5;
+    NSNumber *attrStep = self.entity.attributes[@"target_temp_step"];
+    if (attrStep) step = [attrStep doubleValue];
+
+    BOOL isDual = [self.entity.state isEqualToString:@"heat_cool"];
+    if (isDual) {
+        NSNumber *low = self.entity.attributes[@"target_temp_low"];
+        double newLow = low ? [low doubleValue] - step : 20.0;
+        newLow = MAX(newLow, self.entityMinTemp);
+        [[HAConnectionManager sharedManager] callService:@"set_temperature"
+                                                inDomain:@"climate"
+                                                withData:@{@"target_temp_low": @(newLow)}
+                                                entityId:self.entity.entityId];
+    } else {
+        NSNumber *target = [self.entity targetTemperature];
+        double newTarget = target ? target.doubleValue - step : 20.0;
+        newTarget = MAX(newTarget, self.entityMinTemp);
+        [[HAConnectionManager sharedManager] callService:@"set_temperature"
+                                                inDomain:@"climate"
+                                                withData:@{@"temperature": @(newTarget)}
+                                                entityId:self.entity.entityId];
+    }
 }
 
 - (void)prepareForReuse {

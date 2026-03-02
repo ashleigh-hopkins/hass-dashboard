@@ -1,6 +1,7 @@
 #import "HAEntityRowView.h"
 #import "HAEntity.h"
 #import "HATheme.h"
+#import "HASwitch.h"
 #import "HAHaptics.h"
 #import "HAConnectionManager.h"
 #import "HAIconMapper.h"
@@ -11,6 +12,7 @@
 @property (nonatomic, strong) UILabel *iconLabel;
 @property (nonatomic, strong) UILabel *nameLabel;
 @property (nonatomic, strong) UILabel *stateLabel;
+@property (nonatomic, strong) UILabel *secondaryInfoLabel;
 @property (nonatomic, strong) UISwitch *toggleSwitch;
 @property (nonatomic, strong) UIButton *pressButton;
 @property (nonatomic, strong) UIView *separatorLine;
@@ -80,7 +82,7 @@
     [self.stateLabel setContentHuggingPriority:UILayoutPriorityDefaultHigh forAxis:UILayoutConstraintAxisHorizontal];
 
     // Toggle switch (for toggle-capable entities) — scaled down to 80% for compact rows
-    self.toggleSwitch = [[UISwitch alloc] init];
+    self.toggleSwitch = [[HASwitch alloc] init];
     self.toggleSwitch.transform = CGAffineTransformMakeScale(0.8, 0.8);
     self.toggleSwitch.onTintColor = [UIColor colorWithRed:0.0 green:0.75 blue:0.75 alpha:1.0]; // HA teal
     self.toggleSwitch.translatesAutoresizingMaskIntoConstraints = NO;
@@ -163,11 +165,23 @@
         [self.iconLabel.widthAnchor constraintEqualToConstant:24]
     ]];
 
-    // Name label: starts after icon + 8pt, vertically centered
-    // The trailing constraint depends on mode (state label vs slider), created below
+    // Secondary info label (below name, smaller font)
+    self.secondaryInfoLabel = [[UILabel alloc] init];
+    self.secondaryInfoLabel.font = [UIFont systemFontOfSize:11];
+    self.secondaryInfoLabel.textColor = [HATheme secondaryTextColor];
+    self.secondaryInfoLabel.numberOfLines = 1;
+    self.secondaryInfoLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.secondaryInfoLabel.hidden = YES;
+    [self addSubview:self.secondaryInfoLabel];
+
+    // Name label: starts after icon + 8pt, vertically centered.
+    // When secondary_info is visible, name shifts up and secondary sits below.
     [NSLayoutConstraint activateConstraints:@[
         [self.nameLabel.leadingAnchor constraintEqualToAnchor:self.iconLabel.trailingAnchor constant:8],
-        [self.nameLabel.centerYAnchor constraintEqualToAnchor:self.centerYAnchor]
+        [self.nameLabel.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
+        [self.secondaryInfoLabel.leadingAnchor constraintEqualToAnchor:self.nameLabel.leadingAnchor],
+        [self.secondaryInfoLabel.topAnchor constraintEqualToAnchor:self.nameLabel.bottomAnchor constant:1],
+        [self.secondaryInfoLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.stateLabel.leadingAnchor constant:-8],
     ]];
     // Default trailing: name -> stateLabel
     self.nameLabelToStateLabelConstraint = [self.nameLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.stateLabel.leadingAnchor constant:-8];
@@ -246,7 +260,12 @@
     self.nameLabel.textColor = [HATheme primaryTextColor];
     self.stateLabel.textColor = [HATheme secondaryTextColor];
     self.iconLabel.text = [HAEntityDisplayHelper iconGlyphForEntity:entity];
-    self.iconLabel.textColor = [HAEntityDisplayHelper iconColorForEntity:entity];
+    // state_color: tint icon by entity active state. Default NO for entities card rows.
+    if (self.stateColor) {
+        self.iconLabel.textColor = [HAEntityDisplayHelper iconColorForEntity:entity];
+    } else {
+        self.iconLabel.textColor = [HATheme secondaryTextColor];
+    }
 
     NSString *domain = [entity domain];
     BOOL isToggleable = [HAEntityDisplayHelper isEntityToggleable:entity];
@@ -306,7 +325,13 @@
         self.coverButtonsContainer.hidden = YES;
         [self hideInlineSlider];
 
-        NSString *stateText = [HAEntityDisplayHelper stateWithUnitForEntity:entity decimals:2];
+        NSString *stateText;
+        if (self.attributeOverride.length > 0) {
+            id attrVal = entity.attributes[self.attributeOverride];
+            stateText = (attrVal && attrVal != [NSNull null]) ? [NSString stringWithFormat:@"%@", attrVal] : @"—";
+        } else {
+            stateText = [HAEntityDisplayHelper stateWithUnitForEntity:entity decimals:2];
+        }
         // Add dropdown indicator for select entities and enable tap
         if ([domain isEqualToString:HAEntityDomainInputSelect] || [domain isEqualToString:HAEntityDomainSelect]) {
             stateText = [NSString stringWithFormat:@"%@  \u25BE", [stateText uppercaseString]];
@@ -321,6 +346,64 @@
             self.stateLabel.userInteractionEnabled = NO;
         }
         self.stateLabel.text = stateText;
+    }
+
+    // Secondary info (below name label)
+    [self configureSecondaryInfo:entity];
+}
+
+- (void)configureSecondaryInfo:(HAEntity *)entity {
+    if (!self.secondaryInfo || self.secondaryInfo.length == 0 || !entity) {
+        self.secondaryInfoLabel.hidden = YES;
+        // Reset name label to vertically centered when no secondary info
+        for (NSLayoutConstraint *c in self.constraints) {
+            if (c.firstItem == self.nameLabel && c.firstAttribute == NSLayoutAttributeCenterY) {
+                c.constant = 0;
+            }
+        }
+        return;
+    }
+
+    NSString *text = nil;
+    NSString *type = self.secondaryInfo;
+    NSString *format = self.secondaryInfoFormat ?: @"relative";
+
+    if ([type isEqualToString:@"entity-id"]) {
+        text = entity.entityId;
+    } else if ([type isEqualToString:@"last-changed"]) {
+        text = [HAEntityDisplayHelper formattedValue:entity.lastChanged withFormat:format];
+    } else if ([type isEqualToString:@"last-updated"]) {
+        text = [HAEntityDisplayHelper formattedValue:entity.lastUpdated withFormat:format];
+    } else if ([type isEqualToString:@"last-triggered"]) {
+        NSString *triggered = HAAttrString(entity.attributes, @"last_triggered");
+        if (triggered) text = [HAEntityDisplayHelper formattedValue:triggered withFormat:format];
+    } else if ([type isEqualToString:@"position"]) {
+        NSNumber *pos = HAAttrNumber(entity.attributes, HAAttrCurrentPosition);
+        if (pos) text = [NSString stringWithFormat:@"%@%%", pos];
+    } else if ([type isEqualToString:@"tilt-position"]) {
+        NSNumber *tilt = HAAttrNumber(entity.attributes, HAAttrCurrentTiltPosition);
+        if (tilt) text = [NSString stringWithFormat:@"%@%%", tilt];
+    } else if ([type isEqualToString:@"brightness"]) {
+        NSInteger pct = [entity brightnessPercent];
+        if (pct > 0) text = [NSString stringWithFormat:@"%ld%%", (long)pct];
+    }
+
+    if (text.length > 0) {
+        self.secondaryInfoLabel.text = text;
+        self.secondaryInfoLabel.hidden = NO;
+        // Shift name label up to make room for secondary info
+        for (NSLayoutConstraint *c in self.constraints) {
+            if (c.firstItem == self.nameLabel && c.firstAttribute == NSLayoutAttributeCenterY) {
+                c.constant = -7;
+            }
+        }
+    } else {
+        self.secondaryInfoLabel.hidden = YES;
+        for (NSLayoutConstraint *c in self.constraints) {
+            if (c.firstItem == self.nameLabel && c.firstAttribute == NSLayoutAttributeCenterY) {
+                c.constant = 0;
+            }
+        }
     }
 }
 
