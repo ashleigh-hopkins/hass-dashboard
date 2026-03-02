@@ -193,7 +193,7 @@ if [[ "$TARGET" == "all" ]]; then
     deploy_bg "sim"         sim         --no-build ${OPTS[@]+"${OPTS[@]}"}
     deploy_bg "sim-iphone"  sim iphone  --no-build ${OPTS[@]+"${OPTS[@]}"}
     deploy_bg "sim-ios93"   sim-ios93   --no-build ${OPTS[@]+"${OPTS[@]}"}
-    deploy_bg "sim-ios103"  sim-ios103  --no-build ${OPTS[@]+"${OPTS[@]}"}
+    # deploy_bg "sim-ios103"  sim-ios103  --no-build ${OPTS[@]+"${OPTS[@]}"}  # disabled — hangs deploy
     deploy_bg "iphone"      iphone      --no-build ${OPTS[@]+"${OPTS[@]}"}
     deploy_bg "mini5"       mini5       --no-build ${OPTS[@]+"${OPTS[@]}"}
     deploy_bg "mini4"       mini4       --no-build ${OPTS[@]+"${OPTS[@]}"}

@@ -295,11 +295,12 @@
     [container addSubview:self.aboutSection];
 
     // ── DEVELOPER section (placeholder for future options, hidden) ────
-    self.developerSectionHeader = [[UILabel alloc] init];
-    self.developerSectionHeader.hidden = YES;
+    self.developerSectionHeader = [self createSectionHeaderWithText:@"DEVELOPER"];
+    self.developerSectionHeader.hidden = ![HATheme isDeveloperMode];
     [container addSubview:self.developerSectionHeader];
     self.developerSection = [[UIView alloc] init];
-    self.developerSection.hidden = YES;
+    self.developerSection.translatesAutoresizingMaskIntoConstraints = NO;
+    self.developerSection.hidden = ![HATheme isDeveloperMode];
     [container addSubview:self.developerSection];
 
     // ── Log Out & Reset ───────────────────────────────────────────────
