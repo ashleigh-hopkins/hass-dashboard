@@ -136,16 +136,24 @@ static UIImage *_blurredGradientCache = nil;
     UIGraphicsEndImageContext();
 }
 
++ (UIColor *)solidFallbackColor {
+    return [self effectiveDarkMode]
+        ? [UIColor colorWithWhite:0.18 alpha:0.75]
+        : [UIColor colorWithWhite:1.0 alpha:0.75];
+}
+
++ (UIView *)_solidFallbackViewWithCornerRadius:(CGFloat)cornerRadius {
+    UIView *bg = [[UIView alloc] init];
+    bg.backgroundColor = [self solidFallbackColor];
+    bg.layer.cornerRadius = cornerRadius;
+    bg.clipsToBounds = YES;
+    return bg;
+}
+
 + (UIView *)frostedBackgroundViewWithCornerRadius:(CGFloat)cornerRadius {
     // Developer toggle: disable blur, use semi-transparent fallback instead
     if ([self blurDisabled]) {
-        UIView *bg = [[UIView alloc] init];
-        bg.backgroundColor = [self effectiveDarkMode]
-            ? [UIColor colorWithWhite:0.18 alpha:0.75]
-            : [UIColor colorWithWhite:1.0 alpha:0.75];
-        bg.layer.cornerRadius = cornerRadius;
-        bg.clipsToBounds = YES;
-        return bg;
+        return [self _solidFallbackViewWithCornerRadius:cornerRadius];
     }
     if ([self canBlur]) {
         UIVisualEffectView *blur = [[UIVisualEffectView alloc] initWithEffect:
@@ -164,13 +172,7 @@ static UIImage *_blurredGradientCache = nil;
         bgView.layer.cornerRadius = cornerRadius;
         return bgView;
     }
-    UIView *bg = [[UIView alloc] init];
-    bg.backgroundColor = [self effectiveDarkMode]
-        ? [UIColor colorWithWhite:0.18 alpha:0.75]
-        : [UIColor colorWithWhite:1.0 alpha:0.75];
-    bg.layer.cornerRadius = cornerRadius;
-    bg.clipsToBounds = YES;
-    return bg;
+    return [self _solidFallbackViewWithCornerRadius:cornerRadius];
 }
 
 + (void)updateFrostedBackgroundForCell:(UICollectionViewCell *)cell {
@@ -180,12 +182,10 @@ static UIImage *_blurredGradientCache = nil;
     if ([self blurDisabled]) {
         // Developer toggle: semi-transparent solid
         if ([existing isKindOfClass:[UIVisualEffectView class]] || [existing isKindOfClass:[UIImageView class]] || !existing) {
-            cell.backgroundView = [self frostedBackgroundViewWithCornerRadius:cr];
+            cell.backgroundView = [self _solidFallbackViewWithCornerRadius:cr];
         } else {
             // Already a plain UIView — just update color
-            existing.backgroundColor = [self effectiveDarkMode]
-                ? [UIColor colorWithWhite:0.18 alpha:0.75]
-                : [UIColor colorWithWhite:1.0 alpha:0.75];
+            existing.backgroundColor = [self solidFallbackColor];
         }
         return;
     }
