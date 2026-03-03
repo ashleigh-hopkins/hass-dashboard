@@ -72,8 +72,8 @@
 #pragma mark - HASensorReporter Tests
 
 @interface HASensorReporter (TestAccess)
-- (BOOL)isSensorEnabled:(NSString *)sensorId;
 - (id)currentValueForSensor:(NSString *)sensorId;
+- (NSString *)iconForSensor:(NSString *)sensorId;
 @end
 
 @interface HASensorReporterTests : XCTestCase
@@ -90,39 +90,48 @@
 - (void)tearDown {
     [self.reporter stopReporting];
     self.reporter = nil;
-    // Reset sensor enable flags
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
-    [ud removeObjectForKey:@"ha_sensor_battery_level_enabled"];
-    [ud removeObjectForKey:@"ha_sensor_battery_state_enabled"];
-    [ud removeObjectForKey:@"ha_sensor_screen_brightness_enabled"];
     [super tearDown];
 }
 
-- (void)testBatteryLevelEnabledByDefault {
-    // Battery level defaults to ON when key is absent
-    [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"ha_sensor_battery_level_enabled"];
-    XCTAssertTrue([self.reporter isSensorEnabled:@"battery_level"],
-                  @"Battery level should be enabled by default");
+- (void)testAllSensorsHaveValues {
+    // After the per-sensor toggle removal, all sensors always report.
+    // Verify every sensor ID returns a non-nil value.
+    NSArray *sensorIds = @[@"battery_level", @"battery_state", @"screen_brightness",
+                           @"storage_available", @"app_state", @"active_dashboard"];
+    for (NSString *sensorId in sensorIds) {
+        id value = [self.reporter currentValueForSensor:sensorId];
+        XCTAssertNotNil(value, @"Sensor '%@' should return a non-nil value", sensorId);
+    }
 }
 
-- (void)testBatteryStateDisabledByDefault {
-    [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"ha_sensor_battery_state_enabled"];
-    XCTAssertFalse([self.reporter isSensorEnabled:@"battery_state"],
-                   @"Battery state should be disabled by default");
+- (void)testAllSensorsHaveIcons {
+    NSArray *sensorIds = @[@"battery_level", @"battery_state", @"screen_brightness",
+                           @"storage_available", @"app_state", @"active_dashboard"];
+    for (NSString *sensorId in sensorIds) {
+        NSString *icon = [self.reporter iconForSensor:sensorId];
+        XCTAssertTrue([icon hasPrefix:@"mdi:"], @"Sensor '%@' icon should start with mdi:, got '%@'", sensorId, icon);
+    }
 }
 
-- (void)testScreenBrightnessDisabledByDefault {
-    [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"ha_sensor_screen_brightness_enabled"];
-    XCTAssertFalse([self.reporter isSensorEnabled:@"screen_brightness"],
-                   @"Screen brightness should be disabled by default");
+- (void)testStorageValueIsNumber {
+    id value = [self.reporter currentValueForSensor:@"storage_available"];
+    XCTAssertTrue([value isKindOfClass:[NSNumber class]],
+                  @"Storage should be a number, got %@", [value class]);
 }
 
-- (void)testSensorEnabledReadsUserDefaults {
-    [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"ha_sensor_battery_state_enabled"];
-    XCTAssertTrue([self.reporter isSensorEnabled:@"battery_state"]);
+- (void)testAppStateValueIsString {
+    id value = [self.reporter currentValueForSensor:@"app_state"];
+    XCTAssertTrue([value isKindOfClass:[NSString class]],
+                  @"App state should be a string, got %@", [value class]);
+    NSArray *validStates = @[@"Active", @"Inactive", @"Background", @"Unknown"];
+    XCTAssertTrue([validStates containsObject:value],
+                  @"App state '%@' should be one of %@", value, validStates);
+}
 
-    [[NSUserDefaults standardUserDefaults] setBool:NO forKey:@"ha_sensor_battery_state_enabled"];
-    XCTAssertFalse([self.reporter isSensorEnabled:@"battery_state"]);
+- (void)testActiveDashboardValueIsString {
+    id value = [self.reporter currentValueForSensor:@"active_dashboard"];
+    XCTAssertTrue([value isKindOfClass:[NSString class]],
+                  @"Active dashboard should be a string, got %@", [value class]);
 }
 
 - (void)testBatteryLevelValueIsNumber {
