@@ -9,18 +9,10 @@
 #import "HALoginViewController.h"
 #import "HATheme.h"
 #import "HASwitch.h"
-#import <objc/runtime.h>
 
-static const void *kSensorDefaultsKeyAssoc = &kSensorDefaultsKeyAssoc;
 
 // NSUserDefaults keys for device integration
 static NSString *const kDeviceNameOverride    = @"ha_device_name_override";
-static NSString *const kSensorBatteryLevel     = @"ha_sensor_battery_level_enabled";
-static NSString *const kSensorBatteryState     = @"ha_sensor_battery_state_enabled";
-static NSString *const kSensorScreenBrightness = @"ha_sensor_screen_brightness_enabled";
-static NSString *const kSensorStorage          = @"ha_sensor_storage_enabled";
-static NSString *const kSensorAppState         = @"ha_sensor_app_state_enabled";
-static NSString *const kSensorActiveDashboard  = @"ha_sensor_active_dashboard_enabled";
 
 @interface HASettingsViewController ()
 // Connection summary
@@ -67,13 +59,6 @@ static NSString *const kSensorActiveDashboard  = @"ha_sensor_active_dashboard_en
 @property (nonatomic, strong) UISwitch *registrationSwitch;
 @property (nonatomic, strong) UILabel *registrationStatusLabel;
 @property (nonatomic, strong) UITextField *deviceNameField;
-@property (nonatomic, strong) UIView *sensorsContainer;
-@property (nonatomic, strong) UISwitch *batteryLevelSwitch;
-@property (nonatomic, strong) UISwitch *batteryStateSwitch;
-@property (nonatomic, strong) UISwitch *brightnessSwitch;
-@property (nonatomic, strong) UISwitch *storageSwitch;
-@property (nonatomic, strong) UISwitch *appStateSwitch;
-@property (nonatomic, strong) UISwitch *activeDashboardSwitch;
 
 // About
 @property (nonatomic, strong) UIView *aboutSection;
@@ -532,81 +517,7 @@ static NSString *const kSensorActiveDashboard  = @"ha_sensor_active_dashboard_en
     [stack addArrangedSubview:self.deviceNameField];
     [self.deviceNameField.heightAnchor constraintEqualToConstant:36].active = YES;
 
-    // ── Sensors subsection ──
-    self.sensorsContainer = [[UIView alloc] init];
-    self.sensorsContainer.translatesAutoresizingMaskIntoConstraints = NO;
-    self.sensorsContainer.hidden = ![HADeviceRegistration sharedManager].isRegistered;
-    [stack addArrangedSubview:self.sensorsContainer];
-
-    UIStackView *sensorStack = [[UIStackView alloc] init];
-    sensorStack.axis = UILayoutConstraintAxisVertical;
-    sensorStack.spacing = 10;
-    sensorStack.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.sensorsContainer addSubview:sensorStack];
-    [NSLayoutConstraint activateConstraints:@[
-        [sensorStack.topAnchor constraintEqualToAnchor:self.sensorsContainer.topAnchor],
-        [sensorStack.leadingAnchor constraintEqualToAnchor:self.sensorsContainer.leadingAnchor],
-        [sensorStack.trailingAnchor constraintEqualToAnchor:self.sensorsContainer.trailingAnchor],
-        [sensorStack.bottomAnchor constraintEqualToAnchor:self.sensorsContainer.bottomAnchor],
-    ]];
-
-    UILabel *sensorsHeader = [[UILabel alloc] init];
-    sensorsHeader.text = @"SENSORS";
-    sensorsHeader.font = [UIFont systemFontOfSize:11 weight:UIFontWeightMedium];
-    sensorsHeader.textColor = [HATheme secondaryTextColor];
-    sensorsHeader.translatesAutoresizingMaskIntoConstraints = NO;
-    [sensorStack addArrangedSubview:sensorsHeader];
-
-    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    // Battery Level defaults ON
-    if (![defaults objectForKey:kSensorBatteryLevel]) [defaults setBool:YES forKey:kSensorBatteryLevel];
-
-    self.batteryLevelSwitch = [self addSensorToggleToStack:sensorStack
-        title:@"Battery Level" key:kSensorBatteryLevel action:@selector(sensorToggleChanged:)];
-    self.batteryStateSwitch = [self addSensorToggleToStack:sensorStack
-        title:@"Battery State" key:kSensorBatteryState action:@selector(sensorToggleChanged:)];
-    self.brightnessSwitch = [self addSensorToggleToStack:sensorStack
-        title:@"Screen Brightness" key:kSensorScreenBrightness action:@selector(sensorToggleChanged:)];
-    self.storageSwitch = [self addSensorToggleToStack:sensorStack
-        title:@"Storage Available" key:kSensorStorage action:@selector(sensorToggleChanged:)];
-    self.appStateSwitch = [self addSensorToggleToStack:sensorStack
-        title:@"App State" key:kSensorAppState action:@selector(sensorToggleChanged:)];
-    self.activeDashboardSwitch = [self addSensorToggleToStack:sensorStack
-        title:@"Active Dashboard" key:kSensorActiveDashboard action:@selector(sensorToggleChanged:)];
-
     return stack;
-}
-
-- (UISwitch *)addSensorToggleToStack:(UIStackView *)stack title:(NSString *)title key:(NSString *)key action:(SEL)action {
-    UIView *row = [[UIView alloc] init];
-    row.translatesAutoresizingMaskIntoConstraints = NO;
-    [stack addArrangedSubview:row];
-
-    UILabel *label = [[UILabel alloc] init];
-    label.text = title;
-    label.font = [UIFont systemFontOfSize:14];
-    label.textColor = [HATheme primaryTextColor];
-    label.translatesAutoresizingMaskIntoConstraints = NO;
-    [row addSubview:label];
-
-    UISwitch *sw = [[HASwitch alloc] init];
-    sw.on = [[NSUserDefaults standardUserDefaults] boolForKey:key];
-    sw.onTintColor = [HATheme switchTintColor];
-    sw.accessibilityLabel = [NSString stringWithFormat:@"%@ Sensor", title];
-    objc_setAssociatedObject(sw, kSensorDefaultsKeyAssoc, key, OBJC_ASSOCIATION_COPY_NONATOMIC);
-    [sw addTarget:self action:action forControlEvents:UIControlEventValueChanged];
-    sw.translatesAutoresizingMaskIntoConstraints = NO;
-    [row addSubview:sw];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [label.topAnchor constraintEqualToAnchor:row.topAnchor],
-        [label.leadingAnchor constraintEqualToAnchor:row.leadingAnchor],
-        [label.bottomAnchor constraintEqualToAnchor:row.bottomAnchor],
-        [sw.trailingAnchor constraintEqualToAnchor:row.trailingAnchor],
-        [sw.centerYAnchor constraintEqualToAnchor:label.centerYAnchor],
-    ]];
-
-    return sw;
 }
 
 - (void)updateRegistrationStatus {
@@ -634,9 +545,6 @@ static NSString *const kSensorActiveDashboard  = @"ha_sensor_active_dashboard_en
                 // Enable integration manager so sensors start reporting
                 [HADeviceIntegrationManager sharedManager].enabled = YES;
                 [self updateRegistrationStatus];
-                [UIView animateWithDuration:0.25 animations:^{
-                    self.sensorsContainer.hidden = NO;
-                }];
             } else {
                 sender.on = NO;
                 self.registrationStatusLabel.text = [NSString stringWithFormat:@"Registration failed: %@",
@@ -647,9 +555,6 @@ static NSString *const kSensorActiveDashboard  = @"ha_sensor_active_dashboard_en
         [HADeviceIntegrationManager sharedManager].enabled = NO;
         [[HADeviceRegistration sharedManager] unregister];
         [self updateRegistrationStatus];
-        [UIView animateWithDuration:0.25 animations:^{
-            self.sensorsContainer.hidden = YES;
-        }];
     }
 }
 
@@ -669,13 +574,6 @@ static NSString *const kSensorActiveDashboard  = @"ha_sensor_active_dashboard_en
             @"app_version": [[NSBundle mainBundle] infoDictionary][@"CFBundleShortVersionString"] ?: @"0.0.0",
         };
         [[HADeviceRegistration sharedManager] sendWebhookWithType:@"update_registration" data:update completion:nil];
-    }
-}
-
-- (void)sensorToggleChanged:(UISwitch *)sender {
-    NSString *key = objc_getAssociatedObject(sender, kSensorDefaultsKeyAssoc);
-    if (key) {
-        [[NSUserDefaults standardUserDefaults] setBool:sender.isOn forKey:key];
     }
 }
 
