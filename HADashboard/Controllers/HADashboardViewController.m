@@ -38,6 +38,7 @@
 #import "HAMediaPlayerEntityCell.h"
 #import "HATileEntityCell.h"
 #import "HACalendarCardCell.h"
+#import "HALogbookCardCell.h"
 #import "HATopAlignedFlowLayout.h"
 #import "HAHistoryManager.h"
 #import "HASunBasedTheme.h"
@@ -799,6 +800,12 @@ static const CGFloat kRowUnitHeight = 56.0;
     } else if ([item.cardType isEqualToString:@"tile"]) {
         BOOL isCompact = [item.customProperties[@"compact"] boolValue];
         height = (isCompact ? [HATileEntityCell compactHeight] : [HATileEntityCell preferredHeightForConfigItem:item]) + headingExtra;
+    } else if ([item.cardType isEqualToString:@"logbook"]) {
+        NSInteger hours = 24;
+        if ([item.customProperties[@"hours_to_show"] isKindOfClass:[NSNumber class]]) {
+            hours = [item.customProperties[@"hours_to_show"] integerValue];
+        }
+        height = [HALogbookCardCell preferredHeightForHours:hours] + headingExtra;
     } else {
         height = 100.0 + headingExtra;
     }
@@ -1537,6 +1544,8 @@ static const CGFloat kRowUnitHeight = 56.0;
         [(HACameraEntityCell *)cell beginLoading];
     } else if ([cell isKindOfClass:[HACalendarCardCell class]]) {
         [(HACalendarCardCell *)cell beginLoading];
+    } else if ([cell isKindOfClass:[HALogbookCardCell class]]) {
+        [(HALogbookCardCell *)cell beginLoading];
     }
 
     // Apply blur background (idempotent — safe to call from both cellForItem and willDisplay)

@@ -33,7 +33,8 @@ static const CGFloat kPadding        = 12.0;
 @property (nonatomic, strong) UIButton *sourceButton;
 @property (nonatomic, strong) UIButton *shuffleButton;
 @property (nonatomic, strong) UIButton *repeatButton;
-@property (nonatomic, strong) UIProgressView *progressBar;
+@property (nonatomic, strong) UISlider *progressSlider;
+@property (nonatomic, assign) double lastKnownDuration;
 @end
 
 @implementation HAMediaPlayerEntityCell
@@ -180,17 +181,28 @@ static const CGFloat kPadding        = 12.0;
     ]];
 
     // ── Progress bar (below volume) ──
-    self.progressBar = [[UIProgressView alloc] initWithProgressViewStyle:UIProgressViewStyleDefault];
-    self.progressBar.translatesAutoresizingMaskIntoConstraints = NO;
-    self.progressBar.trackTintColor = [[HATheme secondaryTextColor] colorWithAlphaComponent:0.2];
-    self.progressBar.progressTintColor = [HATheme secondaryTextColor];
-    self.progressBar.hidden = YES;
-    [self.contentView addSubview:self.progressBar];
+    self.progressSlider = [[UISlider alloc] init];
+    self.progressSlider.translatesAutoresizingMaskIntoConstraints = NO;
+    self.progressSlider.minimumTrackTintColor = [HATheme secondaryTextColor];
+    self.progressSlider.maximumTrackTintColor = [[HATheme secondaryTextColor] colorWithAlphaComponent:0.2];
+    self.progressSlider.minimumValue = 0.0;
+    self.progressSlider.maximumValue = 1.0;
+    self.progressSlider.continuous = NO;
+    self.progressSlider.hidden = YES;
+    // Smaller thumb for a compact look
+    UIGraphicsBeginImageContextWithOptions(CGSizeMake(10, 10), NO, 0);
+    [[HATheme secondaryTextColor] setFill];
+    [[UIBezierPath bezierPathWithOvalInRect:CGRectMake(0, 0, 10, 10)] fill];
+    UIImage *thumbImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    [self.progressSlider setThumbImage:thumbImage forState:UIControlStateNormal];
+    [self.progressSlider addTarget:self action:@selector(progressSliderChanged:) forControlEvents:UIControlEventValueChanged];
+    [self.contentView addSubview:self.progressSlider];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.progressBar.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kPadding],
-        [self.progressBar.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kPadding],
-        [self.progressBar.topAnchor constraintEqualToAnchor:self.muteButton.bottomAnchor constant:6],
+        [self.progressSlider.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kPadding],
+        [self.progressSlider.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kPadding],
+        [self.progressSlider.topAnchor constraintEqualToAnchor:self.muteButton.bottomAnchor constant:6],
     ]];
 
     // ── Source + shuffle + repeat row (below progress) ──
@@ -214,7 +226,7 @@ static const CGFloat kPadding        = 12.0;
 
     [NSLayoutConstraint activateConstraints:@[
         [self.sourceButton.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kPadding],
-        [self.sourceButton.topAnchor constraintEqualToAnchor:self.progressBar.bottomAnchor constant:6],
+        [self.sourceButton.topAnchor constraintEqualToAnchor:self.progressSlider.bottomAnchor constant:6],
         [self.sourceButton.trailingAnchor constraintLessThanOrEqualToAnchor:self.shuffleButton.leadingAnchor constant:-8],
 
         [self.repeatButton.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kPadding],
@@ -368,15 +380,21 @@ static const CGFloat kPadding        = 12.0;
                                forState:UIControlStateNormal];
     self.muteButton.enabled = available;
 
-    // ── Progress bar ──
+    // ── Progress slider (seek-capable) ──
     NSNumber *duration = [entity mediaDuration];
     NSNumber *position = [entity mediaPosition];
     if (duration && [duration doubleValue] > 0 && position) {
-        float progress = (float)([position doubleValue] / [duration doubleValue]);
-        self.progressBar.progress = MIN(1.0, MAX(0.0, progress));
-        self.progressBar.hidden = NO;
+        self.lastKnownDuration = [duration doubleValue];
+        float progress = (float)([position doubleValue] / self.lastKnownDuration);
+        // Don't update while user is dragging
+        if (!self.progressSlider.isTracking) {
+            self.progressSlider.value = MIN(1.0, MAX(0.0, progress));
+        }
+        self.progressSlider.hidden = NO;
+        self.progressSlider.enabled = available;
     } else {
-        self.progressBar.hidden = YES;
+        self.lastKnownDuration = 0;
+        self.progressSlider.hidden = YES;
     }
 
     // ── Source selector ──
@@ -552,6 +570,16 @@ static const CGFloat kPadding        = 12.0;
                                             entityId:self.entity.entityId];
 }
 
+- (void)progressSliderChanged:(UISlider *)slider {
+    if (!self.entity || self.lastKnownDuration <= 0) return;
+    [HAHaptics lightImpact];
+    double seekPosition = slider.value * self.lastKnownDuration;
+    [[HAConnectionManager sharedManager] callService:@"media_seek"
+                                            inDomain:@"media_player"
+                                            withData:@{@"seek_position": @(seekPosition)}
+                                            entityId:self.entity.entityId];
+}
+
 #pragma mark - Reuse
 
 - (void)prepareForReuse {
@@ -578,8 +606,9 @@ static const CGFloat kPadding        = 12.0;
     self.artLoadTask = nil;
     self.albumArtView.image = nil;
     self.albumArtView.hidden = YES;
-    self.progressBar.progress = 0;
-    self.progressBar.hidden = YES;
+    self.progressSlider.value = 0;
+    self.progressSlider.hidden = YES;
+    self.lastKnownDuration = 0;
     self.sourceButton.hidden = YES;
 }
 

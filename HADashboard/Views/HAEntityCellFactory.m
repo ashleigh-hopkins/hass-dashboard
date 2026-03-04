@@ -43,6 +43,7 @@
 #import "HAAreaCardCell.h"
 #import "HAPictureGlanceCardCell.h"
 #import "HAMapCardCell.h"
+#import "HALogbookCardCell.h"
 
 static NSString *const kBaseCellId             = @"HABaseEntityCell";
 static NSString *const kTileCellId            = @"HATileEntityCell";
@@ -87,6 +88,7 @@ static NSString *const kImageCellId         = @"HAImageEntityCell";
 static NSString *const kAreaCardCellId      = @"HAAreaCardCell";
 static NSString *const kPictureGlanceCellId = @"HAPictureGlanceCardCell";
 static NSString *const kMapCardCellId       = @"HAMapCardCell";
+static NSString *const kLogbookCardCellId   = @"HALogbookCardCell";
 
 @implementation HAEntityCellFactory
 
@@ -134,6 +136,7 @@ static NSString *const kMapCardCellId       = @"HAMapCardCell";
     [collectionView registerClass:[HAAreaCardCell class]          forCellWithReuseIdentifier:kAreaCardCellId];
     [collectionView registerClass:[HAPictureGlanceCardCell class] forCellWithReuseIdentifier:kPictureGlanceCellId];
     [collectionView registerClass:[HAMapCardCell class]           forCellWithReuseIdentifier:kMapCardCellId];
+    [collectionView registerClass:[HALogbookCardCell class]       forCellWithReuseIdentifier:kLogbookCardCellId];
 }
 
 + (NSString *)reuseIdentifierForEntity:(HAEntity *)entity {
@@ -296,6 +299,9 @@ static NSString *const kMapCardCellId       = @"HAMapCardCell";
     }
     if ([cardType isEqualToString:@"map"]) {
         return kMapCardCellId;
+    }
+    if ([cardType isEqualToString:@"logbook"]) {
+        return kLogbookCardCellId;
     }
 
     // Fall through to domain-based lookup

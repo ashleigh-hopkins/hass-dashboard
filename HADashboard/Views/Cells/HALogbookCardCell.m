@@ -75,14 +75,37 @@ static const NSInteger kMaxEntries = 10;
 - (void)configureWithSection:(HADashboardConfigSection *)section
                     entities:(NSDictionary<NSString *, HAEntity *> *)entityDict
                   configItem:(HADashboardConfigItem *)configItem {
-    self.titleLabel.text = section.title ?: @"Logbook";
-    self.hoursToShow = 24; // default
-
     NSDictionary *props = configItem.customProperties;
+
+    // Title: config title > section title > "Logbook"
+    NSString *title = props[@"title"];
+    if (![title isKindOfClass:[NSString class]] || title.length == 0) {
+        title = section.title;
+    }
+    self.titleLabel.text = title ?: @"Logbook";
+
+    self.hoursToShow = 24;
     if ([props[@"hours_to_show"] isKindOfClass:[NSNumber class]]) {
         self.hoursToShow = [props[@"hours_to_show"] integerValue];
     }
-    self.entityFilter = section.entityIds;
+
+    // Entity filter: config entities array > section entityIds
+    NSArray *configEntities = props[@"entities"];
+    if ([configEntities isKindOfClass:[NSArray class]] && configEntities.count > 0) {
+        // Logbook card entities can be strings or dicts with "entity" key
+        NSMutableArray *ids = [NSMutableArray array];
+        for (id item in configEntities) {
+            if ([item isKindOfClass:[NSString class]]) {
+                [ids addObject:item];
+            } else if ([item isKindOfClass:[NSDictionary class]] && [item[@"entity"] isKindOfClass:[NSString class]]) {
+                [ids addObject:item[@"entity"]];
+            }
+        }
+        self.entityFilter = ids;
+    } else {
+        self.entityFilter = section.entityIds;
+    }
+
     self.loaded = NO;
 
     // Clear previous entries
@@ -98,14 +121,12 @@ static const NSInteger kMaxEntries = 10;
     self.loaded = YES;
 
     [self.spinner startAnimating];
-
-    NSString *entityId = self.entityFilter.firstObject;
     __weak typeof(self) weakSelf = self;
 
-    if (entityId) {
-        [[HALogbookManager sharedManager] fetchEntriesForEntityId:entityId
-                                                        hoursBack:self.hoursToShow
-                                                       completion:^(NSArray *entries, NSError *error) {
+    if (self.entityFilter.count > 0) {
+        [[HALogbookManager sharedManager] fetchEntriesForEntityIds:self.entityFilter
+                                                         hoursBack:self.hoursToShow
+                                                        completion:^(NSArray *entries, NSError *error) {
             [weakSelf displayEntries:entries];
         }];
     } else {

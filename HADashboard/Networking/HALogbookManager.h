@@ -16,4 +16,10 @@
                       hoursBack:(NSInteger)hours
                      completion:(void (^)(NSArray *entries, NSError *error))completion;
 
+/// Fetch logbook entries for multiple entities.
+/// Prefers WebSocket (logbook/get_events) when connected, falls back to REST.
+- (void)fetchEntriesForEntityIds:(NSArray<NSString *> *)entityIds
+                       hoursBack:(NSInteger)hours
+                      completion:(void (^)(NSArray *entries, NSError *error))completion;
+
 @end

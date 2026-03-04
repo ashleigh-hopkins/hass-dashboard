@@ -2000,6 +2000,10 @@
             @{@"title": @"Camera Cards", @"cards": @[
                 @{@"type": @"tile", @"entity": @"camera.sc_streaming"},
                 @{@"type": @"tile", @"entity": @"camera.sc_idle"}
+            ]},
+            @{@"title": @"Logbook Card", @"cards": @[
+                @{@"type": @"logbook", @"title": @"Recent Activity", @"hours_to_show": @24,
+                  @"entities": @[@"light.sc_basic_on", @"switch.in_meeting", @"cover.sc_position"]}
             ]}
         ]},
         // ── View 11: Display Options ──

@@ -19,6 +19,8 @@
 @property (nonatomic, strong) UILabel *colorTempLabel;
 @property (nonatomic, strong) UIButton *effectButton;
 @property (nonatomic, strong) UIButton *flashButton;
+@property (nonatomic, strong) UISegmentedControl *transitionSegment;
+@property (nonatomic, strong) UILabel *transitionLabel;
 @property (nonatomic, weak) HAEntity *entity;
 @property (nonatomic, weak) UIView *containerRef;
 @property (nonatomic, assign) BOOL hasColorTemp;
@@ -248,7 +250,27 @@
         [self.flashButton.widthAnchor constraintEqualToConstant:100],
         [self.flashButton.heightAnchor constraintEqualToConstant:36],
     ]];
-    prevAnchor = self.flashButton;
+    // Transition control
+    self.transitionLabel = [[UILabel alloc] init];
+    self.transitionLabel.text = @"Transition";
+    self.transitionLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
+    self.transitionLabel.textColor = [HATheme secondaryTextColor];
+    self.transitionLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    [container addSubview:self.transitionLabel];
+
+    self.transitionSegment = [[UISegmentedControl alloc] initWithItems:@[@"Off", @"1s", @"2s", @"5s", @"10s"]];
+    self.transitionSegment.selectedSegmentIndex = 0; // Off
+    self.transitionSegment.translatesAutoresizingMaskIntoConstraints = NO;
+    [container addSubview:self.transitionSegment];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.transitionLabel.topAnchor constraintEqualToAnchor:self.flashButton.bottomAnchor constant:12],
+        [self.transitionLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
+        [self.transitionSegment.topAnchor constraintEqualToAnchor:self.transitionLabel.bottomAnchor constant:6],
+        [self.transitionSegment.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
+        [self.transitionSegment.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
+    ]];
+    prevAnchor = self.transitionSegment;
 
     // Scene chips (scenes in the same area as this light)
     if (self.areaScenes.count > 0) {
@@ -290,6 +312,7 @@
     if (self.hasColorTemp) h += 58; // label + gradient slider + spacing
     if (self.hasEffects) h += 48; // button
     h += 48; // flash button
+    h += 58; // transition label + segment
     if (self.areaScenes.count > 0) h += 64; // label + chips row
     return h;
 }
@@ -364,7 +387,7 @@
     if (!entity || !self.serviceBlock) return;
     [HAHaptics lightImpact];
     NSInteger brightness = (NSInteger)round((sender.value / 100.0) * 255.0);
-    self.serviceBlock(@"turn_on", [entity domain], @{HAAttrBrightness: @(brightness)}, entity.entityId);
+    self.serviceBlock(@"turn_on", [entity domain], [self mergeTransition:@{HAAttrBrightness: @(brightness)}], entity.entityId);
 }
 
 - (void)colorTempChanged:(UISlider *)sender {
@@ -376,7 +399,7 @@
     if (!entity || !self.serviceBlock) return;
     [HAHaptics lightImpact];
     NSInteger kelvin = (NSInteger)sender.value;
-    self.serviceBlock(@"turn_on", [entity domain], @{HAAttrColorTempKelvin: @(kelvin)}, entity.entityId);
+    self.serviceBlock(@"turn_on", [entity domain], [self mergeTransition:@{HAAttrColorTempKelvin: @(kelvin)}], entity.entityId);
 }
 
 - (void)effectTapped {
@@ -393,7 +416,7 @@
         NSString *domain = [entity domain];
         [alert addAction:[UIAlertAction actionWithTitle:effect style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
             [HAHaptics lightImpact];
-            self.serviceBlock(@"turn_on", domain, @{@"effect": effect}, entityId);
+            self.serviceBlock(@"turn_on", domain, [self mergeTransition:@{@"effect": effect}], entityId);
         }]];
     }
     [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
@@ -410,11 +433,26 @@
 
 #pragma mark - HAColorWheelViewDelegate
 
+- (NSInteger)selectedTransitionSeconds {
+    static NSInteger values[] = {0, 1, 2, 5, 10};
+    NSInteger idx = self.transitionSegment.selectedSegmentIndex;
+    if (idx < 0 || idx > 4) return 0;
+    return values[idx];
+}
+
+- (NSDictionary *)mergeTransition:(NSDictionary *)data {
+    NSInteger t = [self selectedTransitionSeconds];
+    if (t <= 0) return data;
+    NSMutableDictionary *merged = data ? [data mutableCopy] : [NSMutableDictionary dictionary];
+    merged[@"transition"] = @(t);
+    return [merged copy];
+}
+
 - (void)flashTapped {
     HAEntity *entity = self.entity;
     if (!entity || !self.serviceBlock) return;
     [HAHaptics mediumImpact];
-    self.serviceBlock(@"turn_on", [entity domain], @{@"flash": @"short"}, entity.entityId);
+    self.serviceBlock(@"turn_on", [entity domain], [self mergeTransition:@{@"flash": @"short"}], entity.entityId);
 }
 
 - (void)colorWheelView:(HAColorWheelView *)view didChangeHue:(CGFloat)hue saturation:(CGFloat)saturation {
@@ -426,7 +464,7 @@
     if (!entity || !self.serviceBlock) return;
     [HAHaptics lightImpact];
     self.serviceBlock(@"turn_on", [entity domain],
-                      @{@"hs_color": @[@(hue), @(saturation)]},
+                      [self mergeTransition:@{@"hs_color": @[@(hue), @(saturation)]}],
                       entity.entityId);
 }
 

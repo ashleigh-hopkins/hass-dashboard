@@ -7,6 +7,12 @@
 #import "HATheme.h"
 #import "HAConnectionManager.h"
 #import "HAHaptics.h"
+#import "HAAction.h"
+#import "HAActionDispatcher.h"
+#import <objc/runtime.h>
+
+static const void *kButtonActionKey = &kButtonActionKey;
+static const void *kButtonEntityIdKey = &kButtonEntityIdKey;
 
 static const CGFloat kHeadingHeight = 28.0;
 static const CGFloat kHeadingGap    = 2.0;
@@ -437,6 +443,12 @@ static const CGFloat kSceneChipRowHeight = 44.0; // chip height + padding
                 btnRow.tag = 999;
                 btnRow.translatesAutoresizingMaskIntoConstraints = NO;
                 [btnRow.heightAnchor constraintEqualToConstant:36].active = YES;
+                // Wire tap action from config
+                NSDictionary *tapAction = rowInfo[@"tap_action"];
+                if ([tapAction isKindOfClass:[NSDictionary class]]) {
+                    objc_setAssociatedObject(btnRow, kButtonActionKey, tapAction, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+                    [btnRow addTarget:self action:@selector(buttonRowTapped:) forControlEvents:UIControlEventTouchUpInside];
+                }
                 NSInteger insertIdx = MIN(entityRowIdx, (NSInteger)self.stackView.arrangedSubviews.count);
                 [self.stackView insertArrangedSubview:btnRow atIndex:insertIdx];
                 entityRowIdx++;
@@ -453,17 +465,29 @@ static const CGFloat kSceneChipRowHeight = 44.0; // chip height + padding
                 NSArray *entities = rowInfo[@"entities"];
                 if ([entities isKindOfClass:[NSArray class]]) {
                     for (id btnEntry in entities) {
+                        NSString *entityId = nil;
                         NSString *btnName = nil;
                         if ([btnEntry isKindOfClass:[NSString class]]) {
-                            btnName = btnEntry;
+                            entityId = btnEntry;
+                            HAEntity *e = entityDict[entityId];
+                            btnName = [e friendlyName] ?: entityId;
                         } else if ([btnEntry isKindOfClass:[NSDictionary class]]) {
-                            btnName = btnEntry[@"name"] ?: btnEntry[@"entity"] ?: @"Button";
+                            entityId = btnEntry[@"entity"];
+                            btnName = btnEntry[@"name"];
+                            if (!btnName) {
+                                HAEntity *e = entityDict[entityId];
+                                btnName = [e friendlyName] ?: entityId ?: @"Button";
+                            }
                         }
                         UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
                         [btn setTitle:btnName forState:UIControlStateNormal];
                         btn.titleLabel.font = [UIFont systemFontOfSize:12 weight:UIFontWeightMedium];
                         btn.backgroundColor = [HATheme buttonBackgroundColor];
                         btn.layer.cornerRadius = 6;
+                        if (entityId) {
+                            objc_setAssociatedObject(btn, kButtonEntityIdKey, entityId, OBJC_ASSOCIATION_COPY_NONATOMIC);
+                            [btn addTarget:self action:@selector(buttonsRowEntityTapped:) forControlEvents:UIControlEventTouchUpInside];
+                        }
                         [btnStack addArrangedSubview:btn];
                     }
                 }
@@ -667,6 +691,38 @@ static const CGFloat kSceneChipRowHeight = 44.0; // chip height + padding
     NSURL *url = [NSURL URLWithString:urlStr];
     if (url) {
         [[UIApplication sharedApplication] openURL:url options:@{} completionHandler:nil];
+    }
+}
+
+- (void)buttonRowTapped:(UIButton *)sender {
+    [HAHaptics lightImpact];
+    NSDictionary *actionDict = objc_getAssociatedObject(sender, kButtonActionKey);
+    if (!actionDict) return;
+    HAAction *action = [HAAction actionFromDictionary:actionDict];
+    if (!action) return;
+    UIViewController *vc = nil;
+    UIResponder *responder = self;
+    while ((responder = [responder nextResponder])) {
+        if ([responder isKindOfClass:[UIViewController class]]) {
+            vc = (UIViewController *)responder;
+            break;
+        }
+    }
+    [[HAActionDispatcher sharedDispatcher] executeAction:action forEntity:nil fromViewController:vc];
+}
+
+- (void)buttonsRowEntityTapped:(UIButton *)sender {
+    [HAHaptics lightImpact];
+    NSString *entityId = objc_getAssociatedObject(sender, kButtonEntityIdKey);
+    if (!entityId) return;
+    HAConnectionManager *conn = [HAConnectionManager sharedManager];
+    HAEntity *entity = [conn entityForId:entityId];
+    if (!entity) return;
+    NSString *service = entity.toggleService;
+    if (service) {
+        [conn callService:service inDomain:[entity domain] withData:nil entityId:entityId];
+    } else {
+        [conn callService:@"toggle" inDomain:@"homeassistant" withData:nil entityId:entityId];
     }
 }
 
