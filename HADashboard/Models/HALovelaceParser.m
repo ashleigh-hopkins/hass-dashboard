@@ -1000,18 +1000,31 @@
                     NSMutableArray *overlayElements = [NSMutableArray arrayWithCapacity:elements.count];
                     for (NSDictionary *elem in elements) {
                         if (![elem isKindOfClass:[NSDictionary class]]) continue;
-                        NSString *elemEntity = elem[@"entity"];
-                        if (![elemEntity isKindOfClass:[NSString class]] || elemEntity.length == 0) continue;
                         NSMutableDictionary *overlayEntry = [NSMutableDictionary dictionary];
-                        overlayEntry[@"entity_id"] = elemEntity;
+                        // Entity (optional — some elements are icon-only with call-service)
+                        NSString *elemEntity = elem[@"entity"];
+                        if ([elemEntity isKindOfClass:[NSString class]] && elemEntity.length > 0) {
+                            overlayEntry[@"entity_id"] = elemEntity;
+                        }
+                        // Icon override from card config (takes precedence over entity icon)
+                        NSString *elemIcon = elem[@"icon"];
+                        if ([elemIcon isKindOfClass:[NSString class]] && elemIcon.length > 0) {
+                            overlayEntry[@"icon"] = elemIcon;
+                        }
+                        // Tap action
                         NSDictionary *tapAction = elem[@"tap_action"];
                         if ([tapAction isKindOfClass:[NSDictionary class]]) {
                             NSString *action = tapAction[@"action"];
                             if ([action isKindOfClass:[NSString class]] && action.length > 0) {
                                 overlayEntry[@"tap_action"] = action;
                             }
+                            // Preserve full tap action for call-service
+                            overlayEntry[@"tap_action_config"] = tapAction;
                         }
-                        [overlayElements addObject:[overlayEntry copy]];
+                        // Include element if it has entity OR icon (don't skip icon-only elements)
+                        if (overlayEntry[@"entity_id"] || overlayEntry[@"icon"]) {
+                            [overlayElements addObject:[overlayEntry copy]];
+                        }
                     }
                     if (overlayElements.count > 0) {
                         props[@"overlayElements"] = [overlayElements copy];

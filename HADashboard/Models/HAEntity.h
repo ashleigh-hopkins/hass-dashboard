@@ -122,7 +122,8 @@ extern NSString *const HAEntityDomainCalendar;
 - (NSString *)inputTextPattern;     // regex pattern (may be nil)
 
 /// Camera-specific
-- (NSString *)cameraProxyPath; // /api/camera_proxy/<entity_id>
+- (NSString *)cameraProxyPath;       // /api/camera_proxy/<entity_id>
+- (NSString *)cameraStreamPath;      // /api/camera_proxy_stream/<entity_id>
 
 /// Weather-specific
 - (NSString *)weatherCondition;       // state: sunny, cloudy, rainy, etc.

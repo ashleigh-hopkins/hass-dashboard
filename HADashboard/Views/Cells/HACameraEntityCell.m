@@ -5,6 +5,9 @@
 #import "HAConnectionManager.h"
 #import "HAEntityDisplayHelper.h"
 #import "HAIconMapper.h"
+#import "HAMJPEGStreamParser.h"
+#import <AVFoundation/AVFoundation.h>
+#import <objc/runtime.h>
 
 static const NSTimeInterval kSnapshotRefreshInterval = 5.0;
 static const NSInteger kMaxConsecutiveFailuresBeforeClear = 3;
@@ -31,9 +34,10 @@ static const NSInteger kOverlayButtonTagBase = 9000;
 @property (nonatomic, assign) BOOL needsSnapshotLoad;
 @property (nonatomic, assign) NSInteger consecutiveFailures;
 
-// Camera service buttons (power toggle + snapshot)
+// Camera service buttons (power toggle + snapshot + fullscreen)
 @property (nonatomic, strong) UIButton *cameraPowerButton;
 @property (nonatomic, strong) UIButton *cameraSnapshotButton;
+@property (nonatomic, strong) UIButton *cameraFullscreenButton;
 
 // Overlay action buttons
 @property (nonatomic, strong) UIView *overlayBar;
@@ -42,13 +46,55 @@ static const NSInteger kOverlayButtonTagBase = 9000;
 // Toggling snapshot-top constraint: below nameLabel or at contentView top
 @property (nonatomic, strong) NSLayoutConstraint *snapshotTopWithName;
 @property (nonatomic, strong) NSLayoutConstraint *snapshotTopNoName;
+
+// MJPEG streaming
+@property (nonatomic, strong) HAMJPEGStreamParser *streamParser;
+@property (nonatomic, assign) BOOL useStreaming;       // default YES
+@property (nonatomic, assign) BOOL streamFailed;       // fell back to snapshot polling
+
+// HLS streaming (AVPlayer)
+@property (nonatomic, strong) AVPlayer *hlsPlayer;
+@property (nonatomic, strong) AVPlayerLayer *hlsPlayerLayer;
+@property (nonatomic, assign) BOOL hlsFailed;
+
+// Fullscreen mirror — when set, frames update both snapshotView and this view.
+// Strong ref: the weak reference was zeroed during modal presentation animation.
+@property (nonatomic, strong) UIImageView *fullscreenImageView;
+@property (nonatomic, assign) NSUInteger frameCount; // diagnostic counter
+
+// Button layout constraints
+@property (nonatomic, strong) NSLayoutConstraint *snapAfterPowerConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *snapAtEdgeConstraint;
 @end
+
+/// Stream mode override from developer settings
+typedef NS_ENUM(NSInteger, HACameraStreamMode) {
+    HACameraStreamModeAuto = 0,    // Pick best (HLS if STREAM feature, else MJPEG, else snapshot)
+    HACameraStreamModeMJPEG,       // Force MJPEG
+    HACameraStreamModeHLS,         // Force HLS
+    HACameraStreamModeSnapshot,    // Force snapshot polling
+};
+
+static HACameraStreamMode currentStreamMode(void) {
+    NSString *mode = [[NSUserDefaults standardUserDefaults] stringForKey:@"HADevStreamMode"];
+    if ([mode isEqualToString:@"mjpeg"])    return HACameraStreamModeMJPEG;
+    if ([mode isEqualToString:@"hls"])      return HACameraStreamModeHLS;
+    if ([mode isEqualToString:@"snapshot"]) return HACameraStreamModeSnapshot;
+    return HACameraStreamModeAuto;
+}
 
 @implementation HACameraEntityCell
 
 - (void)setupSubviews {
     [super setupSubviews];
     self.stateLabel.hidden = YES;
+    self.useStreaming = YES;
+
+    // Retry HLS after WebSocket connects (cells often load before WS is authenticated)
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(wsDidConnect:)
+                                                 name:HAConnectionManagerDidConnectNotification
+                                               object:nil];
 
     // Snapshot image view — fills the cell below the name label
     self.snapshotView = [[UIImageView alloc] init];
@@ -128,11 +174,11 @@ static const NSInteger kOverlayButtonTagBase = 9000;
     self.stateBadge.clipsToBounds = YES;
     self.stateBadge.translatesAutoresizingMaskIntoConstraints = NO;
     self.stateBadge.hidden = YES;
-    [self.snapshotView addSubview:self.stateBadge];
+    [self.contentView addSubview:self.stateBadge];
 
     [NSLayoutConstraint activateConstraints:@[
         [self.stateBadge.topAnchor constraintEqualToAnchor:self.snapshotView.topAnchor constant:6],
-        [self.stateBadge.trailingAnchor constraintEqualToAnchor:self.snapshotView.trailingAnchor constant:-6],
+        [self.stateBadge.trailingAnchor constraintEqualToAnchor:self.snapshotView.trailingAnchor constant:-38],
         [self.stateBadge.heightAnchor constraintEqualToConstant:16],
         [self.stateBadge.widthAnchor constraintGreaterThanOrEqualToConstant:40],
     ]];
@@ -145,7 +191,7 @@ static const NSInteger kOverlayButtonTagBase = 9000;
     self.cameraPowerButton.translatesAutoresizingMaskIntoConstraints = NO;
     self.cameraPowerButton.hidden = YES;
     [self.cameraPowerButton addTarget:self action:@selector(cameraPowerTapped) forControlEvents:UIControlEventTouchUpInside];
-    [self.snapshotView addSubview:self.cameraPowerButton];
+    [self.contentView addSubview:self.cameraPowerButton];
 
     // Camera snapshot button (left of power)
     self.cameraSnapshotButton = [UIButton buttonWithType:UIButtonTypeCustom];
@@ -155,11 +201,21 @@ static const NSInteger kOverlayButtonTagBase = 9000;
     self.cameraSnapshotButton.translatesAutoresizingMaskIntoConstraints = NO;
     self.cameraSnapshotButton.hidden = YES;
     [self.cameraSnapshotButton addTarget:self action:@selector(cameraSnapshotTapped) forControlEvents:UIControlEventTouchUpInside];
-    [self.snapshotView addSubview:self.cameraSnapshotButton];
+    [self.contentView addSubview:self.cameraSnapshotButton];
+
+    // Fullscreen button (top-right, next to LIVE badge)
+    self.cameraFullscreenButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    self.cameraFullscreenButton.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.5];
+    self.cameraFullscreenButton.layer.cornerRadius = 14;
+    self.cameraFullscreenButton.clipsToBounds = YES;
+    self.cameraFullscreenButton.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.cameraFullscreenButton addTarget:self action:@selector(cameraFullscreenTapped) forControlEvents:UIControlEventTouchUpInside];
+    [self.contentView addSubview:self.cameraFullscreenButton];
 
     // Set icons via MDI glyphs
     NSString *powerGlyph = [HAIconMapper glyphForIconName:@"power"] ?: @"\u23FB";
-    NSString *snapGlyph = [HAIconMapper glyphForIconName:@"camera"] ?: @"\U0001F4F7";
+    NSString *snapGlyph = [HAIconMapper glyphForIconName:@"camera-iris"] ?: [HAIconMapper glyphForIconName:@"camera"] ?: @"\U0001F4F7";
+    NSString *fullscreenGlyph = [HAIconMapper glyphForIconName:@"fullscreen"] ?: @"\u26F6";
     UIFont *iconFont = [HAIconMapper mdiFontOfSize:14];
     [self.cameraPowerButton setAttributedTitle:[[NSAttributedString alloc] initWithString:powerGlyph
         attributes:@{NSFontAttributeName: iconFont, NSForegroundColorAttributeName: [UIColor whiteColor]}]
@@ -167,6 +223,18 @@ static const NSInteger kOverlayButtonTagBase = 9000;
     [self.cameraSnapshotButton setAttributedTitle:[[NSAttributedString alloc] initWithString:snapGlyph
         attributes:@{NSFontAttributeName: iconFont, NSForegroundColorAttributeName: [UIColor whiteColor]}]
         forState:UIControlStateNormal];
+    [self.cameraFullscreenButton setAttributedTitle:[[NSAttributedString alloc] initWithString:fullscreenGlyph
+        attributes:@{NSFontAttributeName: iconFont, NSForegroundColorAttributeName: [UIColor whiteColor]}]
+        forState:UIControlStateNormal];
+
+    // Snapshot button leads from power button when visible, from snapshotView edge when hidden.
+    // Use two constraints with different priorities — the active one wins.
+    NSLayoutConstraint *snapAfterPower = [self.cameraSnapshotButton.leadingAnchor constraintEqualToAnchor:self.cameraPowerButton.trailingAnchor constant:4];
+    snapAfterPower.priority = UILayoutPriorityDefaultHigh; // 750 — used when power visible
+    NSLayoutConstraint *snapAtEdge = [self.cameraSnapshotButton.leadingAnchor constraintEqualToAnchor:self.snapshotView.leadingAnchor constant:6];
+    snapAtEdge.priority = UILayoutPriorityDefaultLow; // 250 — used when power hidden
+    self.snapAfterPowerConstraint = snapAfterPower;
+    self.snapAtEdgeConstraint = snapAtEdge;
 
     [NSLayoutConstraint activateConstraints:@[
         [self.cameraPowerButton.topAnchor constraintEqualToAnchor:self.snapshotView.topAnchor constant:6],
@@ -174,9 +242,15 @@ static const NSInteger kOverlayButtonTagBase = 9000;
         [self.cameraPowerButton.widthAnchor constraintEqualToConstant:28],
         [self.cameraPowerButton.heightAnchor constraintEqualToConstant:28],
         [self.cameraSnapshotButton.topAnchor constraintEqualToAnchor:self.snapshotView.topAnchor constant:6],
-        [self.cameraSnapshotButton.leadingAnchor constraintEqualToAnchor:self.cameraPowerButton.trailingAnchor constant:4],
+        snapAfterPower,
+        snapAtEdge,
         [self.cameraSnapshotButton.widthAnchor constraintEqualToConstant:28],
         [self.cameraSnapshotButton.heightAnchor constraintEqualToConstant:28],
+        // Fullscreen button — top-right corner
+        [self.cameraFullscreenButton.topAnchor constraintEqualToAnchor:self.snapshotView.topAnchor constant:6],
+        [self.cameraFullscreenButton.trailingAnchor constraintEqualToAnchor:self.snapshotView.trailingAnchor constant:-6],
+        [self.cameraFullscreenButton.widthAnchor constraintEqualToConstant:28],
+        [self.cameraFullscreenButton.heightAnchor constraintEqualToConstant:28],
     ]];
 
     // Shared session for image fetches — no caching to always get fresh frames
@@ -206,6 +280,8 @@ static const NSInteger kOverlayButtonTagBase = 9000;
 
     // If entity changed, reset image and restart refresh cycle
     BOOL entityChanged = ![self.currentEntityId isEqualToString:entity.entityId];
+    NSLog(@"[HACameraEntityCell] configure %p: %@ → %@ (changed=%d)", self,
+          self.currentEntityId, entity.entityId, entityChanged);
     self.currentEntityId = entity.entityId;
 
     if (!entity.isAvailable) {
@@ -219,12 +295,13 @@ static const NSInteger kOverlayButtonTagBase = 9000;
     self.errorLabel.hidden = YES;
 
     // State badge: show recording/streaming indicator
+    // Show LIVE when HA reports streaming OR when our MJPEG/HLS stream is active
     NSString *camState = entity.state;
     if ([camState isEqualToString:@"recording"]) {
         self.stateBadge.text = @" REC ";
         self.stateBadge.backgroundColor = [[UIColor redColor] colorWithAlphaComponent:0.8];
         self.stateBadge.hidden = NO;
-    } else if ([camState isEqualToString:@"streaming"]) {
+    } else if ([camState isEqualToString:@"streaming"] || self.streamParser.isStreaming || self.hlsPlayer) {
         self.stateBadge.text = @" LIVE ";
         self.stateBadge.backgroundColor = [[UIColor systemGreenColor] colorWithAlphaComponent:0.8];
         self.stateBadge.hidden = NO;
@@ -233,19 +310,32 @@ static const NSInteger kOverlayButtonTagBase = 9000;
     }
 
     if (entityChanged) {
+        // Different entity — tear down existing stream and reset
+        [self stopRefresh];
         self.snapshotView.image = nil;
         self.consecutiveFailures = 0;
-        // Defer fetch until cell is visible (beginLoading)
+        self.streamFailed = NO;
+        self.hlsFailed = NO;
         self.needsSnapshotLoad = YES;
     }
+    // Same entity: stream continues uninterrupted
 
-    // Camera service buttons: show when entity is available
+    // Camera service buttons: show when entity supports ON_OFF and is available
+    // CameraEntityFeature: ON_OFF = 1 (bit 0), STREAM = 2 (bit 1)
     NSInteger features = [entity supportedFeatures];
-    BOOL supportsTurnOn = (features & 1) != 0;
-    BOOL supportsTurnOff = (features & 2) != 0;
-    self.cameraPowerButton.hidden = !(supportsTurnOn || supportsTurnOff) || !entity.isAvailable;
-    // Snapshot is always available for cameras
+    BOOL supportsOnOff = (features & 1) != 0;
+    BOOL powerVisible = supportsOnOff && entity.isAvailable;
+    self.cameraPowerButton.hidden = !powerVisible;
     self.cameraSnapshotButton.hidden = !entity.isAvailable;
+    // Collapse snapshot button to left edge when power button is hidden
+    self.snapAfterPowerConstraint.priority = powerVisible ? UILayoutPriorityDefaultHigh : UILayoutPriorityDefaultLow;
+    self.snapAtEdgeConstraint.priority = powerVisible ? UILayoutPriorityDefaultLow : UILayoutPriorityDefaultHigh;
+    // Ensure buttons render above the image content
+    // Buttons are contentView children — always above snapshotView's image layer
+    [self.contentView bringSubviewToFront:self.cameraPowerButton];
+    [self.contentView bringSubviewToFront:self.cameraSnapshotButton];
+    [self.contentView bringSubviewToFront:self.cameraFullscreenButton];
+    [self.contentView bringSubviewToFront:self.stateBadge];
 
     // Configure overlay action buttons from customProperties
     [self configureOverlayElementsFromConfigItem:configItem];
@@ -263,6 +353,102 @@ static const NSInteger kOverlayButtonTagBase = 9000;
 - (void)cameraSnapshotTapped {
     if (!self.entity) return;
     [self callService:@"snapshot" inDomain:@"camera" withData:@{@"filename": @"/config/www/snapshot.jpg"}];
+}
+
+/// Override hitTest to ensure button taps are consumed by the button,
+/// not by the collection view's cell selection gesture recognizer.
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+    // Check fullscreen, snapshot, and power buttons first
+    NSArray *buttons = @[self.cameraFullscreenButton, self.cameraSnapshotButton, self.cameraPowerButton];
+    for (UIButton *btn in buttons) {
+        if (btn.hidden || btn.alpha < 0.01) continue;
+        CGPoint btnPoint = [self convertPoint:point toView:btn];
+        if ([btn pointInside:btnPoint withEvent:event]) {
+            return btn;
+        }
+    }
+    return [super hitTest:point withEvent:event];
+}
+
+- (void)cameraFullscreenTapped {
+    NSLog(@"[HACameraEntityCell] FULLSCREEN TAPPED for %@", self.currentEntityId);
+    if (!self.entity) return;
+
+    UIResponder *responder = self;
+    while ((responder = [responder nextResponder])) {
+        if ([responder isKindOfClass:[UIViewController class]]) break;
+    }
+    UIViewController *vc = (UIViewController *)responder;
+    if (!vc) return;
+
+    UIViewController *fullscreen = [[UIViewController alloc] init];
+    fullscreen.modalPresentationStyle = UIModalPresentationFullScreen;
+    fullscreen.view.backgroundColor = [UIColor blackColor];
+
+    // For HLS: move the AVPlayerLayer to fullscreen view
+    // For MJPEG/snapshot: mirror frames via fullscreenImageView property
+    UIImageView *imageView = [[UIImageView alloc] initWithImage:self.snapshotView.image];
+    imageView.contentMode = UIViewContentModeScaleAspectFit;
+    imageView.frame = fullscreen.view.bounds;
+    imageView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    [fullscreen.view addSubview:imageView];
+
+    // For HLS: create a SECOND AVPlayerLayer on the same AVPlayer.
+    // One AVPlayer renders to multiple layers independently.
+    // Moving the existing layer breaks rendering.
+    AVPlayerLayer *fsLayer = nil;
+    if (self.hlsPlayer) {
+        fsLayer = [AVPlayerLayer playerLayerWithPlayer:self.hlsPlayer];
+        fsLayer.videoGravity = AVLayerVideoGravityResizeAspect;
+        [imageView.layer addSublayer:fsLayer];
+    }
+
+    // MJPEG/snapshot: mirror frames
+    self.fullscreenImageView = imageView;
+    NSLog(@"[HACameraEntityCell] Fullscreen opened for %@ — imageView=%p weak=%p streaming=%d hlsPlayer=%@",
+          self.currentEntityId, imageView, self.fullscreenImageView,
+          self.streamParser.isStreaming, self.hlsPlayer ? @"YES" : @"NO");
+
+    // Close button — top-right
+    UIButton *closeButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    closeButton.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.6];
+    closeButton.layer.cornerRadius = 18;
+    closeButton.clipsToBounds = YES;
+    NSString *closeGlyph = [HAIconMapper glyphForIconName:@"close"] ?: @"✕";
+    UIFont *closeFont = [HAIconMapper mdiFontOfSize:18];
+    [closeButton setAttributedTitle:[[NSAttributedString alloc] initWithString:closeGlyph
+        attributes:@{NSFontAttributeName: closeFont, NSForegroundColorAttributeName: [UIColor whiteColor]}]
+        forState:UIControlStateNormal];
+    closeButton.frame = CGRectMake(fullscreen.view.bounds.size.width - 50, 40, 36, 36);
+    closeButton.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleBottomMargin;
+    [closeButton addTarget:self action:@selector(dismissFullscreenButton:) forControlEvents:UIControlEventTouchUpInside];
+    [fullscreen.view addSubview:closeButton];
+
+    // Camera name — bottom-left
+    UILabel *nameLabel = [[UILabel alloc] init];
+    nameLabel.text = [self.entity friendlyName] ?: self.currentEntityId;
+    nameLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightMedium];
+    nameLabel.textColor = [UIColor whiteColor];
+    nameLabel.frame = CGRectMake(16, fullscreen.view.bounds.size.height - 50, fullscreen.view.bounds.size.width - 32, 30);
+    nameLabel.autoresizingMask = UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleWidth;
+    [fullscreen.view addSubview:nameLabel];
+
+    __weak AVPlayerLayer *weakFSLayer = fsLayer;
+    [vc presentViewController:fullscreen animated:YES completion:^{
+        // Set HLS layer frame AFTER presentation (view has its final size now)
+        __strong AVPlayerLayer *layer = weakFSLayer;
+        if (layer) {
+            layer.frame = imageView.bounds;
+        }
+    }];
+}
+
+- (void)dismissFullscreenButton:(UIButton *)sender {
+    self.fullscreenImageView = nil;
+    // The fullscreen's AVPlayerLayer is a separate layer on the same AVPlayer —
+    // it gets deallocated when the fullscreen VC is dismissed. Card's layer is untouched.
+    UIViewController *presented = sender.window.rootViewController.presentedViewController;
+    [presented dismissViewControllerAnimated:YES completion:nil];
 }
 
 #pragma mark - Overlay Action Buttons
@@ -297,8 +483,9 @@ static const NSInteger kOverlayButtonTagBase = 9000;
         NSDictionary *elem = elements[i];
         NSString *entityId = elem[@"entity_id"];
         NSString *tapAction = elem[@"tap_action"];
+        NSString *configIcon = elem[@"icon"]; // Icon override from dashboard config
 
-        // Create circular button view — more opaque for visibility over camera feeds
+        // Create circular button view
         UIView *button = [[UIView alloc] init];
         button.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.6];
         button.layer.cornerRadius = kOverlayButtonSize / 2.0;
@@ -311,8 +498,8 @@ static const NSInteger kOverlayButtonTagBase = 9000;
         iconLabel.tag = 1;
         [button addSubview:iconLabel];
 
-        // Add tap gesture if element has toggle action
-        if ([tapAction isEqualToString:@"toggle"]) {
+        // Enable tap for toggle and call-service actions
+        if ([tapAction isEqualToString:@"toggle"] || [tapAction isEqualToString:@"call-service"]) {
             UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(overlayButtonTapped:)];
             [button addGestureRecognizer:tap];
             button.userInteractionEnabled = YES;
@@ -323,9 +510,26 @@ static const NSInteger kOverlayButtonTagBase = 9000;
         [self.overlayBar addSubview:button];
         [self.overlayButtons addObject:button];
 
-        // Set initial icon state from current entity
-        HAEntity *overlayEntity = [connMgr entityForId:entityId];
-        [self updateButton:button forEntity:overlayEntity];
+        // Set icon: config override > entity icon > fallback
+        if (configIcon) {
+            // Use the icon specified in the dashboard card config
+            NSString *iconName = configIcon;
+            if ([iconName hasPrefix:@"mdi:"]) iconName = [iconName substringFromIndex:4];
+            NSString *glyph = [HAIconMapper glyphForIconName:iconName];
+            if (glyph) {
+                UIFont *mdiFont = [HAIconMapper mdiFontOfSize:kOverlayIconFontSize];
+                iconLabel.attributedText = [[NSAttributedString alloc] initWithString:glyph
+                    attributes:@{NSFontAttributeName: mdiFont, NSForegroundColorAttributeName: [UIColor whiteColor]}];
+            } else {
+                iconLabel.text = @"?";
+                iconLabel.font = [UIFont systemFontOfSize:kOverlayIconFontSize];
+                iconLabel.textColor = [UIColor whiteColor];
+            }
+        } else if (entityId) {
+            // Use entity's icon
+            HAEntity *overlayEntity = [connMgr entityForId:entityId];
+            [self updateButton:button forEntity:overlayEntity];
+        }
     }
 
     // Observe entity updates so overlay buttons reflect current state
@@ -385,18 +589,35 @@ static const NSInteger kOverlayButtonTagBase = 9000;
     NSString *entityId = elem[@"entity_id"];
     NSString *tapAction = elem[@"tap_action"];
 
-    if (![tapAction isEqualToString:@"toggle"] || !entityId) return;
-
-    // Visual feedback: briefly dim the button
+    // Visual feedback
     button.alpha = 0.5;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.15 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         button.alpha = 1.0;
     });
 
-    [[HAConnectionManager sharedManager] callService:@"toggle"
-                                            inDomain:@"homeassistant"
-                                            withData:nil
-                                            entityId:entityId];
+    if ([tapAction isEqualToString:@"toggle"] && entityId) {
+        [[HAConnectionManager sharedManager] callService:@"toggle"
+                                                inDomain:@"homeassistant"
+                                                withData:nil
+                                                entityId:entityId];
+    } else if ([tapAction isEqualToString:@"call-service"]) {
+        NSDictionary *actionConfig = elem[@"tap_action_config"];
+        NSString *service = actionConfig[@"service"]; // e.g. "button.press"
+        NSDictionary *serviceData = actionConfig[@"data"];
+        if ([service isKindOfClass:[NSString class]]) {
+            // Split "button.press" into domain "button" and service "press"
+            NSArray *parts = [service componentsSeparatedByString:@"."];
+            if (parts.count == 2) {
+                NSString *domain = parts[0];
+                NSString *svc = parts[1];
+                NSString *svcEntityId = serviceData[@"entity_id"];
+                [[HAConnectionManager sharedManager] callService:svc
+                                                        inDomain:domain
+                                                        withData:nil
+                                                        entityId:svcEntityId];
+            }
+        }
+    }
 }
 
 - (void)overlayEntityDidUpdate:(NSNotification *)notification {
@@ -453,6 +674,10 @@ static const NSInteger kOverlayButtonTagBase = 9000;
 - (void)layoutSubviews {
     [super layoutSubviews];
     [self layoutOverlayBar];
+    // Keep HLS player layer frame in sync with snapshot view
+    if (self.hlsPlayerLayer) {
+        self.hlsPlayerLayer.frame = self.snapshotView.bounds;
+    }
 }
 
 #pragma mark - Snapshot Fetching
@@ -496,9 +721,9 @@ static const NSInteger kOverlayButtonTagBase = 9000;
     }
 
     __weak typeof(self) weakSelf = self;
+    NSString *expectedEntityId = [self.currentEntityId copy];
     self.currentTask = [self.imageSession dataTaskWithRequest:request
         completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
-            // Handle errors on main thread (lightweight)
             if (error && error.code == NSURLErrorCancelled) return;
 
             NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
@@ -508,6 +733,7 @@ static const NSInteger kOverlayButtonTagBase = 9000;
                 dispatch_async(dispatch_get_main_queue(), ^{
                     __strong typeof(weakSelf) strongSelf = weakSelf;
                     if (!strongSelf) return;
+                    if (![strongSelf.currentEntityId isEqualToString:expectedEntityId]) return;
                     [strongSelf.loadingSpinner stopAnimating];
                     strongSelf.consecutiveFailures++;
                     BOOL hasExistingImage = (strongSelf.snapshotView.image != nil);
@@ -538,16 +764,222 @@ static const NSInteger kOverlayButtonTagBase = 9000;
             dispatch_async(dispatch_get_main_queue(), ^{
                 __strong typeof(weakSelf) strongSelf = weakSelf;
                 if (!strongSelf) return;
+                if (![strongSelf.currentEntityId isEqualToString:expectedEntityId]) return;
                 [strongSelf.loadingSpinner stopAnimating];
                 if (image) {
                     strongSelf.consecutiveFailures = 0;
                     strongSelf.snapshotView.image = image;
+                    if (strongSelf.fullscreenImageView) {
+                        strongSelf.fullscreenImageView.image = image;
+                    }
                     strongSelf.errorLabel.hidden = YES;
                     [strongSelf layoutOverlayBar];
                 }
             });
         }];
     [self.currentTask resume];
+}
+
+#pragma mark - MJPEG Streaming
+
+- (void)startMJPEGStream {
+    HAAuthManager *auth = [HAAuthManager sharedManager];
+    if (!auth.isConfigured || !self.entity) return;
+
+    NSString *streamPath = [self.entity cameraStreamPath];
+    if (!streamPath) {
+        self.streamFailed = YES;
+        [self beginLoading]; // retry will use snapshot fallback
+        return;
+    }
+
+    NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"%@%@", auth.serverURL, streamPath]];
+    if (!url) {
+        self.streamFailed = YES;
+        [self beginLoading];
+        return;
+    }
+
+    NSLog(@"[HACameraEntityCell] Starting MJPEG stream: %@ (cell %p)", url, self);
+    [self.loadingSpinner startAnimating];
+
+    self.streamParser = [[HAMJPEGStreamParser alloc] init];
+    __weak typeof(self) weakSelf = self;
+    NSString *expectedEntityId = [self.currentEntityId copy];
+    HAMJPEGStreamParser *expectedParser = self.streamParser;
+
+    self.streamParser.frameHandler = ^(UIImage *frame) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        // Guard: reject frames from a stale parser (cell was reused for a different entity)
+        if (strongSelf.streamParser != expectedParser) return;
+        if (![strongSelf.currentEntityId isEqualToString:expectedEntityId]) {
+            NSLog(@"[HACameraEntityCell] Rejecting stale frame: expected %@ but cell is now %@ (cell %p)",
+                  expectedEntityId, strongSelf.currentEntityId, strongSelf);
+            return;
+        }
+        strongSelf.frameCount++;
+        strongSelf.snapshotView.image = frame;
+        // Mirror to fullscreen view if presented
+        UIImageView *fsIV = strongSelf.fullscreenImageView;
+        if (fsIV) {
+            fsIV.image = frame;
+        }
+        // Log every frame during fullscreen, every 30th otherwise
+        if (fsIV || strongSelf.frameCount % 30 == 1) {
+            NSLog(@"[HACameraEntityCell] Frame %lu for %@ — fs=%p card=%p streaming=%d",
+                  (unsigned long)strongSelf.frameCount, expectedEntityId,
+                  fsIV, strongSelf.snapshotView, strongSelf.streamParser.isStreaming);
+        }
+        [strongSelf.loadingSpinner stopAnimating];
+        strongSelf.errorLabel.hidden = YES;
+        strongSelf.consecutiveFailures = 0;
+        // Show LIVE badge now that stream is delivering frames
+        if (strongSelf.stateBadge.hidden) {
+            strongSelf.stateBadge.text = @" LIVE ";
+            strongSelf.stateBadge.backgroundColor = [[UIColor systemGreenColor] colorWithAlphaComponent:0.8];
+            strongSelf.stateBadge.hidden = NO;
+        }
+    };
+
+    self.streamParser.errorHandler = ^(NSError *error) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        if (strongSelf.streamParser != expectedParser) return;
+        NSLog(@"[HACameraEntityCell] MJPEG stream failed: %@ — falling back to snapshot (cell %p)", error.localizedDescription, strongSelf);
+        strongSelf.streamFailed = YES;
+        strongSelf.streamParser = nil;
+        strongSelf.needsSnapshotLoad = YES;
+        [strongSelf beginLoading];
+    };
+
+    [self.streamParser startWithURL:url authToken:auth.accessToken];
+}
+
+#pragma mark - HLS Streaming (AVPlayer)
+
+- (void)startHLSStream {
+    if (!self.entity || !self.entity.entityId) {
+        self.hlsFailed = YES;
+        [self beginLoading];
+        return;
+    }
+
+    NSLog(@"[HACameraEntityCell] Requesting HLS stream for %@ (cell %p)", self.entity.entityId, self);
+    [self.loadingSpinner startAnimating];
+
+    NSDictionary *command = @{
+        @"type": @"camera/stream",
+        @"entity_id": self.entity.entityId,
+    };
+    __weak typeof(self) weakSelf = self;
+    NSString *expectedEntityId = [self.currentEntityId copy];
+    [[HAConnectionManager sharedManager] sendCommand:command completion:^(id result, NSError *error) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        if (![strongSelf.currentEntityId isEqualToString:expectedEntityId]) return;
+
+        if (error || ![result isKindOfClass:[NSDictionary class]]) {
+            NSLog(@"[HACameraEntityCell] HLS stream request failed: %@ — falling back to MJPEG",
+                  error.localizedDescription ?: @"unexpected response");
+            strongSelf.hlsFailed = YES;
+            strongSelf.needsSnapshotLoad = YES;
+            [strongSelf beginLoading]; // Will fall through to MJPEG
+            return;
+        }
+
+        NSString *hlsURL = result[@"url"];
+        if (![hlsURL isKindOfClass:[NSString class]] || hlsURL.length == 0) {
+            NSLog(@"[HACameraEntityCell] HLS stream: no URL in response");
+            strongSelf.hlsFailed = YES;
+            strongSelf.needsSnapshotLoad = YES;
+            [strongSelf beginLoading];
+            return;
+        }
+
+        // Resolve relative URLs against HA server
+        NSURL *streamURL;
+        if ([hlsURL hasPrefix:@"http://"] || [hlsURL hasPrefix:@"https://"]) {
+            streamURL = [NSURL URLWithString:hlsURL];
+        } else {
+            HAAuthManager *auth = [HAAuthManager sharedManager];
+            streamURL = [NSURL URLWithString:[NSString stringWithFormat:@"%@%@", auth.serverURL, hlsURL]];
+        }
+        if (!streamURL) {
+            strongSelf.hlsFailed = YES;
+            [strongSelf beginLoading];
+            return;
+        }
+
+        NSLog(@"[HACameraEntityCell] Starting HLS playback: %@", streamURL);
+        [strongSelf playHLSURL:streamURL];
+    }];
+}
+
+- (void)playHLSURL:(NSURL *)url {
+    // HLS streams from HA include auth token as query param — no additional auth headers needed
+    AVPlayerItem *item = [AVPlayerItem playerItemWithURL:url];
+    self.hlsPlayer = [AVPlayer playerWithPlayerItem:item];
+    self.hlsPlayer.volume = 0; // Mute by default — dashboard use case
+
+    // Observe playback errors
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(hlsPlaybackFailed:)
+                                                 name:AVPlayerItemFailedToPlayToEndTimeNotification
+                                               object:item];
+    // Also observe status for initial load failure
+    [item addObserver:self forKeyPath:@"status" options:NSKeyValueObservingOptionNew context:NULL];
+
+    self.hlsPlayerLayer = [AVPlayerLayer playerLayerWithPlayer:self.hlsPlayer];
+    self.hlsPlayerLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;
+    self.hlsPlayerLayer.frame = self.snapshotView.bounds;
+    [self.snapshotView.layer addSublayer:self.hlsPlayerLayer];
+
+    [self.hlsPlayer play];
+    [self.loadingSpinner stopAnimating];
+    // Show LIVE badge for HLS playback
+    self.stateBadge.text = @" LIVE ";
+    self.stateBadge.backgroundColor = [[UIColor systemGreenColor] colorWithAlphaComponent:0.8];
+    self.stateBadge.hidden = NO;
+}
+
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
+    if ([keyPath isEqualToString:@"status"] && [object isKindOfClass:[AVPlayerItem class]]) {
+        AVPlayerItem *item = (AVPlayerItem *)object;
+        if (item.status == AVPlayerItemStatusFailed) {
+            NSLog(@"[HACameraEntityCell] HLS playback error: %@", item.error.localizedDescription);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [self stopHLSPlayer];
+                self.hlsFailed = YES;
+                self.needsSnapshotLoad = YES;
+                [self beginLoading]; // Fallback to MJPEG
+            });
+        }
+    }
+}
+
+- (void)hlsPlaybackFailed:(NSNotification *)note {
+    NSLog(@"[HACameraEntityCell] HLS playback failed to end time");
+    [self stopHLSPlayer];
+    self.hlsFailed = YES;
+    self.needsSnapshotLoad = YES;
+    [self beginLoading];
+}
+
+- (void)stopHLSPlayer {
+    if (self.hlsPlayer) {
+        [self.hlsPlayer pause];
+        AVPlayerItem *item = self.hlsPlayer.currentItem;
+        if (item) {
+            [[NSNotificationCenter defaultCenter] removeObserver:self
+                                                            name:AVPlayerItemFailedToPlayToEndTimeNotification
+                                                          object:item];
+            @try { [item removeObserver:self forKeyPath:@"status"]; } @catch (id e) {}
+        }
+        self.hlsPlayer = nil;
+    }
+    [self.hlsPlayerLayer removeFromSuperlayer];
+    self.hlsPlayerLayer = nil;
 }
 
 #pragma mark - Refresh Timer
@@ -568,15 +1000,29 @@ static const NSInteger kOverlayButtonTagBase = 9000;
 - (void)beginLoading {
     if (!self.currentEntityId) return;
 
-    if (self.needsSnapshotLoad) {
-        // New entity — fetch immediately
+    // Already streaming — don't restart
+    if (self.streamParser.isStreaming || self.hlsPlayer) return;
+
+    // Fetch snapshot immediately for fast initial display — stream replaces it
+    if (!self.snapshotView.image && self.needsSnapshotLoad) {
         self.needsSnapshotLoad = NO;
         [self fetchSnapshot];
     }
 
-    // Always ensure the refresh timer is running. Cell reloads (from entity
-    // state updates on overlay entities) kill the timer in prepareForReuse
-    // but don't set needsSnapshotLoad, so the timer must be restarted here.
+    HACameraStreamMode mode = currentStreamMode();
+    BOOL entitySupportsStream = ([self.entity supportedFeatures] & 2) != 0; // STREAM = bit 1
+
+    // Stream factory: pick method based on mode override + entity capabilities
+    if (mode == HACameraStreamModeHLS || (mode == HACameraStreamModeAuto && entitySupportsStream && !self.hlsFailed)) {
+        [self startHLSStream];
+        return;
+    }
+    if (mode == HACameraStreamModeMJPEG || (mode == HACameraStreamModeAuto && !self.streamFailed)) {
+        [self startMJPEGStream];
+        return;
+    }
+
+    // All streams failed — fall back to snapshot polling
     if (!self.refreshTimer) {
         [self startRefreshTimer];
     }
@@ -591,21 +1037,49 @@ static const NSInteger kOverlayButtonTagBase = 9000;
     self.refreshTimer = nil;
     [self.currentTask cancel];
     self.currentTask = nil;
+    [self.streamParser stop];
+    self.streamParser = nil;
+    [self stopHLSPlayer];
+}
+
+- (void)wsDidConnect:(NSNotification *)note {
+    if (!self.currentEntityId || !self.window) return;
+    if (!self.hlsFailed) return;
+    BOOL entitySupportsStream = ([self.entity supportedFeatures] & 2) != 0;
+    if (!entitySupportsStream) return;
+    NSLog(@"[HACameraEntityCell] WS connected — upgrading to HLS for %@", self.currentEntityId);
+    // Stop current MJPEG stream so beginLoading can start HLS
+    [self.streamParser stop];
+    self.streamParser = nil;
+    self.hlsFailed = NO;
+    [self beginLoading];
 }
 
 - (void)didMoveToWindow {
     [super didMoveToWindow];
     if (!self.window) {
+        // Don't stop the stream if fullscreen is presented — the cell loses its
+        // window during modal presentation but the stream must continue to deliver
+        // frames to fullscreenImageView.
+        if (self.fullscreenImageView) {
+            NSLog(@"[HACameraEntityCell] Cell lost window but fullscreen is active — keeping stream alive for %@", self.currentEntityId);
+            return;
+        }
         [self stopRefresh];
     }
 }
 
 - (void)prepareForReuse {
     [super prepareForReuse];
-    [self stopRefresh];
-    // Keep snapshotView.image and currentEntityId — the last good frame stays
-    // visible. If the same entity rebinds, entityChanged will be NO and we skip
-    // the image clear. If a different entity binds, configureWithEntity: nils it.
+    // Do NOT stop the MJPEG/HLS stream here. If the same entity rebinds
+    // (common during collection view reloads), the stream continues
+    // uninterrupted. Entity ID guards in frame/error callbacks prevent
+    // cross-contamination if a different entity binds.
+    // Only cancel lightweight snapshot operations.
+    [self.refreshTimer invalidate];
+    self.refreshTimer = nil;
+    [self.currentTask cancel];
+    self.currentTask = nil;
     self.errorLabel.hidden = YES;
     self.errorLabel.text = nil;
     self.consecutiveFailures = 0;

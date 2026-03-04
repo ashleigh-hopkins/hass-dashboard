@@ -323,6 +323,11 @@ NSString *const HAEntityDomainCalendar     = @"calendar";
     return [NSString stringWithFormat:@"/api/camera_proxy/%@", self.entityId];
 }
 
+- (NSString *)cameraStreamPath {
+    if (!self.entityId) return nil;
+    return [NSString stringWithFormat:@"/api/camera_proxy_stream/%@", self.entityId];
+}
+
 #pragma mark - Weather
 
 - (NSString *)weatherCondition {
