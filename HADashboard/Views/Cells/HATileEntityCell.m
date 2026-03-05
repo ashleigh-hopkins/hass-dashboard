@@ -155,6 +155,7 @@
     // passing through to the collection view's didSelectItem.
     self.tileIconLabel.userInteractionEnabled = YES;
     UITapGestureRecognizer *iconTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(iconTapped:)];
+    iconTap.delegate = self;
     [self.tileIconLabel addGestureRecognizer:iconTap];
 
     // Body tap toggles via didSelectItemAtIndexPath.
@@ -569,6 +570,15 @@
         [HAHaptics lightImpact];
         self.iconTapBlock();
     }
+}
+
+/// When iconTapBlock is nil, the gesture should fail so the touch passes
+/// through to the collection view's didSelectItemAtIndexPath (e.g. script buttons).
+- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer {
+    if (gestureRecognizer.view == self.tileIconLabel && !self.iconTapBlock) {
+        return NO; // Let the tap pass through to the collection view
+    }
+    return YES;
 }
 
 @end

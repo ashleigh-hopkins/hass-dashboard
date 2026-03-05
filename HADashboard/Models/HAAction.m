@@ -46,10 +46,16 @@ NSString *const HAActionTypeNone         = @"none";
 
 + (instancetype)defaultTapActionForEntity:(HAEntity *)entity {
     HAAction *action = [[HAAction alloc] init];
-    if (entity && [self isToggleDomain:[entity domain]]) {
+    NSString *domain = [entity domain];
+    if (entity && [self isToggleDomain:domain]) {
+        action.action = HAActionTypeToggle;
+    } else if ([domain isEqualToString:@"scene"] || [domain isEqualToString:@"script"]
+               || [domain isEqualToString:@"button"]) {
+        // Actionable entities: activate on tap
         action.action = HAActionTypeToggle;
     } else {
-        action.action = HAActionTypeMoreInfo;
+        // Non-toggle entities: tap does nothing. Use long-press for more_info.
+        action.action = HAActionTypeNone;
     }
     return action;
 }
