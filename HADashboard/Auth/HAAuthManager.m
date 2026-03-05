@@ -14,6 +14,7 @@ static NSString *const kSelectedDashboardKey = @"ha_selected_dashboard";
 static NSString *const kKioskModeKey     = @"ha_kiosk_mode";
 static NSString *const kDemoModeKey      = @"ha_demo_mode";
 static NSString *const kAutoReloadDashboardKey = @"ha_auto_reload_dashboard";
+static NSString *const kCameraGlobalMuteKey = @"HACameraGlobalMute";
 
 @interface HAAuthManager ()
 @property (nonatomic, copy, readwrite) NSString *serverURL;
@@ -25,6 +26,7 @@ static NSString *const kAutoReloadDashboardKey = @"ha_auto_reload_dashboard";
 @property (nonatomic, assign, readwrite, getter=isKioskMode) BOOL kioskMode;
 @property (nonatomic, assign, readwrite, getter=isDemoMode) BOOL demoMode;
 @property (nonatomic, assign, readwrite) BOOL autoReloadDashboard;
+@property (nonatomic, assign, readwrite) BOOL cameraGlobalMute;
 @property (nonatomic, strong) NSTimer *refreshTimer;
 @property (nonatomic, assign) BOOL isRefreshing;
 @end
@@ -58,6 +60,12 @@ static NSString *const kAutoReloadDashboardKey = @"ha_auto_reload_dashboard";
             _autoReloadDashboard = [[NSUserDefaults standardUserDefaults] boolForKey:kAutoReloadDashboardKey];
         } else {
             _autoReloadDashboard = YES;
+        }
+        // Camera mute: default YES (muted) when never configured
+        if ([[NSUserDefaults standardUserDefaults] objectForKey:kCameraGlobalMuteKey] != nil) {
+            _cameraGlobalMute = [[NSUserDefaults standardUserDefaults] boolForKey:kCameraGlobalMuteKey];
+        } else {
+            _cameraGlobalMute = YES;
         }
 
         // Restore auth mode
@@ -278,6 +286,12 @@ static NSString *const kAutoReloadDashboardKey = @"ha_auto_reload_dashboard";
 - (void)setAutoReloadDashboard:(BOOL)enabled {
     _autoReloadDashboard = enabled;
     [[NSUserDefaults standardUserDefaults] setBool:enabled forKey:kAutoReloadDashboardKey];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+}
+
+- (void)setCameraGlobalMute:(BOOL)muted {
+    _cameraGlobalMute = muted;
+    [[NSUserDefaults standardUserDefaults] setBool:muted forKey:kCameraGlobalMuteKey];
     [[NSUserDefaults standardUserDefaults] synchronize];
 }
 

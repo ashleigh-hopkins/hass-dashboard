@@ -53,6 +53,10 @@ static NSString *const kDeviceNameOverride    = @"ha_device_name_override";
 @property (nonatomic, strong) UIView *autoReloadSection;
 @property (nonatomic, strong) UISwitch *autoReloadSwitch;
 
+// Camera audio mute
+@property (nonatomic, strong) UIView *cameraMuteSection;
+@property (nonatomic, strong) UISwitch *cameraMuteSwitch;
+
 // Device Integration
 @property (nonatomic, strong) UILabel *integrationSectionHeader;
 @property (nonatomic, strong) UIView *integrationSection;
@@ -301,6 +305,16 @@ static NSString *const kDeviceNameOverride    = @"ha_device_name_override";
     self.autoReloadSwitch = autoReloadSw;
     [container addSubview:self.autoReloadSection];
 
+    // Camera audio mute default
+    UISwitch *camMuteSw = nil;
+    self.cameraMuteSection = [self createToggleSection:@"Mute Camera Audio"
+        helpText:@"Camera streams are muted by default. Turn this off to hear audio when opening fullscreen camera views (HLS streams only)."
+        isOn:[[HAAuthManager sharedManager] cameraGlobalMute]
+        target:self action:@selector(cameraMuteSwitchToggled:)
+        switchOut:&camMuteSw];
+    self.cameraMuteSwitch = camMuteSw;
+    [container addSubview:self.cameraMuteSection];
+
     // ── DEVICE INTEGRATION section ────────────────────────────────────
     self.integrationSectionHeader = [self createSectionHeaderWithText:@"DEVICE INTEGRATION"];
     [container addSubview:self.integrationSectionHeader];
@@ -383,6 +397,7 @@ static NSString *const kDeviceNameOverride    = @"ha_device_name_override";
         @"kiosk":     self.kioskSection,
         @"demo":      self.demoSection,
         @"autoReload":self.autoReloadSection,
+        @"camMute":   self.cameraMuteSection,
         @"intHdr":    self.integrationSectionHeader,
         @"intSec":    self.integrationSection,
         @"aboutHdr":  self.aboutSectionHeader,
@@ -394,7 +409,7 @@ static NSString *const kDeviceNameOverride    = @"ha_device_name_override";
     NSDictionary *metrics = @{@"p": @16, @"sh": @32, @"hg": @10, @"fh": @44};
 
     [container addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:
-        @"V:|[connHdr]-hg-[connRow]-sh-[appHdr]-hg-[themeStack]-sh-[dispHdr]-hg-[kiosk]-p-[demo]-p-[autoReload]-sh-[intHdr]-hg-[intSec]-sh-[aboutHdr]-hg-[about]-sh-[devHdr]-hg-[dev]-sh-[logout(fh)]|"
+        @"V:|[connHdr]-hg-[connRow]-sh-[appHdr]-hg-[themeStack]-sh-[dispHdr]-hg-[kiosk]-p-[demo]-p-[autoReload]-p-[camMute]-sh-[intHdr]-hg-[intSec]-sh-[aboutHdr]-hg-[about]-sh-[devHdr]-hg-[dev]-sh-[logout(fh)]|"
         options:0 metrics:metrics views:views]];
 
     for (NSString *name in views) {
@@ -807,6 +822,10 @@ static NSString *const kDeviceNameOverride    = @"ha_device_name_override";
 
 - (void)autoReloadSwitchToggled:(UISwitch *)sender {
     [[HAAuthManager sharedManager] setAutoReloadDashboard:sender.isOn];
+}
+
+- (void)cameraMuteSwitchToggled:(UISwitch *)sender {
+    [[HAAuthManager sharedManager] setCameraGlobalMute:sender.isOn];
 }
 
 - (void)blurDisabledToggled:(UISwitch *)sender {

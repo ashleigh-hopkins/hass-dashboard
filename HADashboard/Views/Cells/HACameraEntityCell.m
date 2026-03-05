@@ -34,10 +34,11 @@ static const NSInteger kOverlayButtonTagBase = 9000;
 @property (nonatomic, assign) BOOL needsSnapshotLoad;
 @property (nonatomic, assign) NSInteger consecutiveFailures;
 
-// Camera service buttons (power toggle + snapshot + fullscreen)
+// Camera service buttons (power toggle + snapshot + fullscreen + volume)
 @property (nonatomic, strong) UIButton *cameraPowerButton;
 @property (nonatomic, strong) UIButton *cameraSnapshotButton;
 @property (nonatomic, strong) UIButton *cameraFullscreenButton;
+@property (nonatomic, strong) UIButton *cameraVolumeButton; // grid volume toggle (HLS only)
 
 // Overlay action buttons
 @property (nonatomic, strong) UIView *overlayBar;
@@ -56,11 +57,23 @@ static const NSInteger kOverlayButtonTagBase = 9000;
 @property (nonatomic, strong) AVPlayer *hlsPlayer;
 @property (nonatomic, strong) AVPlayerLayer *hlsPlayerLayer;
 @property (nonatomic, assign) BOOL hlsFailed;
+@property (nonatomic, assign) BOOL hlsRequestInFlight; // prevent duplicate WS requests
 
 // Fullscreen mirror — when set, frames update both snapshotView and this view.
 // Strong ref: the weak reference was zeroed during modal presentation animation.
 @property (nonatomic, strong) UIImageView *fullscreenImageView;
 @property (nonatomic, assign) NSUInteger frameCount; // diagnostic counter
+
+// LIVE badge tracking — only show when frames are actually being delivered
+@property (nonatomic, assign) BOOL receivingFrames;  // set YES on frame delivery, NO on stream stop
+@property (nonatomic, strong) NSDate *lastFrameTime;  // for stale stream detection
+@property (nonatomic, assign) BOOL hlsLive;           // HLS confirmed rendering (readyForDisplay)
+@property (nonatomic, assign) NSUInteger recentFrameCount; // frames received in current window
+@property (nonatomic, strong) NSDate *frameWindowStart;    // start of fps measurement window
+
+// Stream resilience — auto-reconnect on interruption
+@property (nonatomic, strong) NSTimer *healthCheckTimer;  // periodic stream health check
+@property (nonatomic, assign) NSInteger reconnectAttempts; // exponential backoff counter
 
 // Button layout constraints
 @property (nonatomic, strong) NSLayoutConstraint *snapAfterPowerConstraint;
@@ -212,6 +225,16 @@ static HACameraStreamMode currentStreamMode(void) {
     [self.cameraFullscreenButton addTarget:self action:@selector(cameraFullscreenTapped) forControlEvents:UIControlEventTouchUpInside];
     [self.contentView addSubview:self.cameraFullscreenButton];
 
+    // Volume toggle button (bottom-right, HLS only — hidden until HLS active)
+    self.cameraVolumeButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    self.cameraVolumeButton.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.5];
+    self.cameraVolumeButton.layer.cornerRadius = 14;
+    self.cameraVolumeButton.clipsToBounds = YES;
+    self.cameraVolumeButton.translatesAutoresizingMaskIntoConstraints = NO;
+    self.cameraVolumeButton.hidden = YES; // Hidden until HLS stream is active
+    [self.cameraVolumeButton addTarget:self action:@selector(gridVolumeTapped) forControlEvents:UIControlEventTouchUpInside];
+    [self.contentView addSubview:self.cameraVolumeButton];
+
     // Set icons via MDI glyphs
     NSString *powerGlyph = [HAIconMapper glyphForIconName:@"power"] ?: @"\u23FB";
     NSString *snapGlyph = [HAIconMapper glyphForIconName:@"camera-iris"] ?: [HAIconMapper glyphForIconName:@"camera"] ?: @"\U0001F4F7";
@@ -251,6 +274,11 @@ static HACameraStreamMode currentStreamMode(void) {
         [self.cameraFullscreenButton.trailingAnchor constraintEqualToAnchor:self.snapshotView.trailingAnchor constant:-6],
         [self.cameraFullscreenButton.widthAnchor constraintEqualToConstant:28],
         [self.cameraFullscreenButton.heightAnchor constraintEqualToConstant:28],
+        // Volume button — bottom-right corner
+        [self.cameraVolumeButton.bottomAnchor constraintEqualToAnchor:self.snapshotView.bottomAnchor constant:-6],
+        [self.cameraVolumeButton.trailingAnchor constraintEqualToAnchor:self.snapshotView.trailingAnchor constant:-6],
+        [self.cameraVolumeButton.widthAnchor constraintEqualToConstant:28],
+        [self.cameraVolumeButton.heightAnchor constraintEqualToConstant:28],
     ]];
 
     // Shared session for image fetches — no caching to always get fresh frames
@@ -295,15 +323,15 @@ static HACameraStreamMode currentStreamMode(void) {
     self.errorLabel.hidden = YES;
 
     // State badge: show recording/streaming indicator
-    // Show LIVE when HA reports streaming OR when our MJPEG/HLS stream is active
+    // Only show LIVE when we are actually receiving video frames — not just "connected"
     NSString *camState = entity.state;
     if ([camState isEqualToString:@"recording"]) {
         self.stateBadge.text = @" REC ";
         self.stateBadge.backgroundColor = [[UIColor redColor] colorWithAlphaComponent:0.8];
         self.stateBadge.hidden = NO;
-    } else if ([camState isEqualToString:@"streaming"] || self.streamParser.isStreaming || self.hlsPlayer) {
+    } else if (self.receivingFrames) {
         self.stateBadge.text = @" LIVE ";
-        self.stateBadge.backgroundColor = [[UIColor systemGreenColor] colorWithAlphaComponent:0.8];
+        self.stateBadge.backgroundColor = [[UIColor colorWithRed:0.2 green:0.8 blue:0.3 alpha:0.8] colorWithAlphaComponent:0.8];
         self.stateBadge.hidden = NO;
     } else {
         self.stateBadge.hidden = YES;
@@ -335,6 +363,7 @@ static HACameraStreamMode currentStreamMode(void) {
     [self.contentView bringSubviewToFront:self.cameraPowerButton];
     [self.contentView bringSubviewToFront:self.cameraSnapshotButton];
     [self.contentView bringSubviewToFront:self.cameraFullscreenButton];
+    [self.contentView bringSubviewToFront:self.cameraVolumeButton];
     [self.contentView bringSubviewToFront:self.stateBadge];
 
     // Configure overlay action buttons from customProperties
@@ -359,7 +388,7 @@ static HACameraStreamMode currentStreamMode(void) {
 /// not by the collection view's cell selection gesture recognizer.
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
     // Check fullscreen, snapshot, and power buttons first
-    NSArray *buttons = @[self.cameraFullscreenButton, self.cameraSnapshotButton, self.cameraPowerButton];
+    NSArray *buttons = @[self.cameraVolumeButton, self.cameraFullscreenButton, self.cameraSnapshotButton, self.cameraPowerButton];
     for (UIButton *btn in buttons) {
         if (btn.hidden || btn.alpha < 0.01) continue;
         CGPoint btnPoint = [self convertPoint:point toView:btn];
@@ -435,14 +464,29 @@ static HACameraStreamMode currentStreamMode(void) {
 
     // Audio controls — bottom-right (HLS only, MJPEG has no audio)
     if (self.hlsPlayer) {
+        BOOL globalMute = [[HAAuthManager sharedManager] cameraGlobalMute];
         UIFont *iconFont = [HAIconMapper mdiFontOfSize:18];
         NSString *muteGlyph = [HAIconMapper glyphForIconName:@"volume-off"] ?: @"🔇";
+        NSString *unmuteGlyph = [HAIconMapper glyphForIconName:@"volume-high"] ?: @"🔊";
+
+        // Load per-camera volume (or default to 0.5)
+        NSString *volKey = [NSString stringWithFormat:@"HACameraVolume_%@", self.currentEntityId];
+        CGFloat savedVol = [[NSUserDefaults standardUserDefaults] floatForKey:volKey];
+        if (savedVol <= 0) savedVol = 0.5;
+
+        // If global mute is OFF, start unmuted with saved per-camera volume
+        BOOL startMuted = globalMute;
+        if (!startMuted) {
+            self.hlsPlayer.volume = savedVol;
+        }
+
+        NSString *initialGlyph = startMuted ? muteGlyph : unmuteGlyph;
         UIButton *muteButton = [UIButton buttonWithType:UIButtonTypeCustom];
         muteButton.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.6];
         muteButton.layer.cornerRadius = 18;
         muteButton.clipsToBounds = YES;
-        muteButton.tag = 8001; // identify for glyph updates
-        [muteButton setAttributedTitle:[[NSAttributedString alloc] initWithString:muteGlyph
+        muteButton.tag = 8001;
+        [muteButton setAttributedTitle:[[NSAttributedString alloc] initWithString:initialGlyph
             attributes:@{NSFontAttributeName: iconFont, NSForegroundColorAttributeName: [UIColor whiteColor]}]
             forState:UIControlStateNormal];
         muteButton.frame = CGRectMake(fullscreen.view.bounds.size.width - 50,
@@ -451,18 +495,17 @@ static HACameraStreamMode currentStreamMode(void) {
         [muteButton addTarget:self action:@selector(fullscreenMuteToggled:) forControlEvents:UIControlEventTouchUpInside];
         [fullscreen.view addSubview:muteButton];
 
-        // Volume slider — horizontal, left of mute button, hidden until unmuted
+        // Volume slider — horizontal, left of mute button
         UISlider *volumeSlider = [[UISlider alloc] init];
         volumeSlider.minimumValue = 0;
         volumeSlider.maximumValue = 1.0;
-        CGFloat savedVol = [[NSUserDefaults standardUserDefaults] floatForKey:@"HACameraVolume"];
-        volumeSlider.value = savedVol > 0 ? savedVol : 0.5;
+        volumeSlider.value = savedVol;
         volumeSlider.minimumTrackTintColor = [UIColor whiteColor];
         volumeSlider.maximumTrackTintColor = [UIColor colorWithWhite:0.4 alpha:1];
         volumeSlider.frame = CGRectMake(fullscreen.view.bounds.size.width - 200,
                                         fullscreen.view.bounds.size.height - 46, 140, 28);
         volumeSlider.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleTopMargin;
-        volumeSlider.hidden = YES; // Hidden until unmuted
+        volumeSlider.hidden = startMuted; // Show if not muted
         volumeSlider.tag = 8002;
         [volumeSlider addTarget:self action:@selector(fullscreenVolumeChanged:) forControlEvents:UIControlEventValueChanged];
         [fullscreen.view addSubview:volumeSlider];
@@ -492,10 +535,11 @@ static HACameraStreamMode currentStreamMode(void) {
 
     BOOL wasMuted = (self.hlsPlayer.volume == 0);
     UIFont *iconFont = [HAIconMapper mdiFontOfSize:18];
+    NSString *volKey = [NSString stringWithFormat:@"HACameraVolume_%@", self.currentEntityId];
 
     if (wasMuted) {
-        // Unmute — restore saved volume
-        CGFloat vol = [[NSUserDefaults standardUserDefaults] floatForKey:@"HACameraVolume"];
+        // Unmute — restore per-camera volume
+        CGFloat vol = [[NSUserDefaults standardUserDefaults] floatForKey:volKey];
         if (vol <= 0) vol = 0.5;
         self.hlsPlayer.volume = vol;
 
@@ -528,7 +572,9 @@ static HACameraStreamMode currentStreamMode(void) {
 - (void)fullscreenVolumeChanged:(UISlider *)slider {
     if (!self.hlsPlayer) return;
     self.hlsPlayer.volume = slider.value;
-    [[NSUserDefaults standardUserDefaults] setFloat:slider.value forKey:@"HACameraVolume"];
+    // Save per-camera volume
+    NSString *volKey = [NSString stringWithFormat:@"HACameraVolume_%@", self.currentEntityId];
+    [[NSUserDefaults standardUserDefaults] setFloat:slider.value forKey:volKey];
 
     // Update mute button icon based on volume level
     UIButton *muteBtn = (UIButton *)[slider.superview viewWithTag:8001];
@@ -945,11 +991,32 @@ static HACameraStreamMode currentStreamMode(void) {
         [strongSelf.loadingSpinner stopAnimating];
         strongSelf.errorLabel.hidden = YES;
         strongSelf.consecutiveFailures = 0;
-        // Show LIVE badge now that stream is delivering frames
-        if (strongSelf.stateBadge.hidden) {
-            strongSelf.stateBadge.text = @" LIVE ";
-            strongSelf.stateBadge.backgroundColor = [[UIColor systemGreenColor] colorWithAlphaComponent:0.8];
-            strongSelf.stateBadge.hidden = NO;
+        strongSelf.reconnectAttempts = 0;
+        strongSelf.lastFrameTime = [NSDate date];
+
+        // Frame rate tracking for LIVE badge — only show LIVE for real video (>1fps).
+        // HA proxies static cameras as MJPEG too, but they deliver frames very slowly.
+        if (!strongSelf.frameWindowStart) {
+            strongSelf.frameWindowStart = [NSDate date];
+            strongSelf.recentFrameCount = 0;
+        }
+        strongSelf.recentFrameCount++;
+        NSTimeInterval windowAge = -[strongSelf.frameWindowStart timeIntervalSinceNow];
+        if (windowAge > 3.0) {
+            // Evaluate: need >3 frames in 3 seconds (roughly >1fps) to count as live
+            BOOL isLiveRate = (strongSelf.recentFrameCount >= 3);
+            if (isLiveRate && !strongSelf.receivingFrames) {
+                strongSelf.receivingFrames = YES;
+                [strongSelf startHealthCheckTimer];
+                NSLog(@"[HACameraEntityCell] MJPEG stream confirmed live for %@ (%lu frames in %.1fs)",
+                      expectedEntityId, (unsigned long)strongSelf.recentFrameCount, windowAge);
+            } else if (!isLiveRate && strongSelf.receivingFrames) {
+                strongSelf.receivingFrames = NO;
+            }
+            // Reset window
+            strongSelf.frameWindowStart = [NSDate date];
+            strongSelf.recentFrameCount = 0;
+            [strongSelf updateLiveBadge];
         }
     };
 
@@ -957,11 +1024,11 @@ static HACameraStreamMode currentStreamMode(void) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
         if (strongSelf.streamParser != expectedParser) return;
-        NSLog(@"[HACameraEntityCell] MJPEG stream failed: %@ — falling back to snapshot (cell %p)", error.localizedDescription, strongSelf);
-        strongSelf.streamFailed = YES;
+        NSLog(@"[HACameraEntityCell] MJPEG stream failed: %@ — attempting reconnect (cell %p)", error.localizedDescription, strongSelf);
         strongSelf.streamParser = nil;
-        strongSelf.needsSnapshotLoad = YES;
-        [strongSelf beginLoading];
+        strongSelf.receivingFrames = NO;
+        [strongSelf updateLiveBadge];
+        [strongSelf attemptStreamReconnect];
     };
 
     [self.streamParser startWithURL:url authToken:auth.accessToken];
@@ -975,7 +1042,9 @@ static HACameraStreamMode currentStreamMode(void) {
         [self beginLoading];
         return;
     }
+    if (self.hlsRequestInFlight) return; // Already requesting
 
+    self.hlsRequestInFlight = YES;
     NSLog(@"[HACameraEntityCell] Requesting HLS stream for %@ (cell %p)", self.entity.entityId, self);
     [self.loadingSpinner startAnimating];
 
@@ -988,6 +1057,7 @@ static HACameraStreamMode currentStreamMode(void) {
     [[HAConnectionManager sharedManager] sendCommand:command completion:^(id result, NSError *error) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
+        strongSelf.hlsRequestInFlight = NO;
         if (![strongSelf.currentEntityId isEqualToString:expectedEntityId]) return;
 
         if (error || ![result isKindOfClass:[NSDictionary class]]) {
@@ -1031,27 +1101,52 @@ static HACameraStreamMode currentStreamMode(void) {
     // HLS streams from HA include auth token as query param — no additional auth headers needed
     AVPlayerItem *item = [AVPlayerItem playerItemWithURL:url];
     self.hlsPlayer = [AVPlayer playerWithPlayerItem:item];
-    self.hlsPlayer.volume = 0; // Mute by default — dashboard use case
+
+    // Apply volume: if global mute is OFF, play audio at per-camera volume
+    BOOL globalMute = [[HAAuthManager sharedManager] cameraGlobalMute];
+    if (globalMute) {
+        self.hlsPlayer.volume = 0;
+    } else {
+        NSString *volKey = [NSString stringWithFormat:@"HACameraVolume_%@", self.currentEntityId];
+        CGFloat savedVol = [[NSUserDefaults standardUserDefaults] floatForKey:volKey];
+        self.hlsPlayer.volume = (savedVol > 0) ? savedVol : 0.5;
+    }
 
     // Observe playback errors
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(hlsPlaybackFailed:)
                                                  name:AVPlayerItemFailedToPlayToEndTimeNotification
                                                object:item];
-    // Also observe status for initial load failure
+    // Observe stalls for resilience
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(hlsPlaybackStalled:)
+                                                 name:AVPlayerItemPlaybackStalledNotification
+                                               object:item];
+    // Observe status for initial load failure AND readyToPlay
     [item addObserver:self forKeyPath:@"status" options:NSKeyValueObservingOptionNew context:NULL];
 
     self.hlsPlayerLayer = [AVPlayerLayer playerLayerWithPlayer:self.hlsPlayer];
+    // Observe readyForDisplay — the definitive signal that video is rendering (iOS 6+)
+    // Include NSKeyValueObservingOptionInitial to fire immediately if already ready
+    [self.hlsPlayerLayer addObserver:self forKeyPath:@"readyForDisplay"
+                             options:(NSKeyValueObservingOptionNew | NSKeyValueObservingOptionInitial) context:NULL];
     self.hlsPlayerLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;
     self.hlsPlayerLayer.frame = self.snapshotView.bounds;
-    [self.snapshotView.layer addSublayer:self.hlsPlayerLayer];
+    // Insert at bottom of layer stack so subviews (overlay buttons, controls) render above video
+    [self.snapshotView.layer insertSublayer:self.hlsPlayerLayer atIndex:0];
 
     [self.hlsPlayer play];
     [self.loadingSpinner stopAnimating];
-    // Show LIVE badge for HLS playback
-    self.stateBadge.text = @" LIVE ";
-    self.stateBadge.backgroundColor = [[UIColor systemGreenColor] colorWithAlphaComponent:0.8];
-    self.stateBadge.hidden = NO;
+    // Don't show LIVE badge yet — wait for readyForDisplay KVO.
+    // But also check immediately in case readyForDisplay was already YES before observer was added.
+    if (self.hlsPlayerLayer.readyForDisplay) {
+        NSLog(@"[HACameraEntityCell] HLS layer already ready for %@", self.currentEntityId);
+        self.receivingFrames = YES;
+        self.hlsLive = YES;
+        self.lastFrameTime = [NSDate date];
+        [self startHealthCheckTimer];
+        [self updateLiveBadge];
+    }
 }
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
@@ -1065,19 +1160,224 @@ static HACameraStreamMode currentStreamMode(void) {
                 self.needsSnapshotLoad = YES;
                 [self beginLoading]; // Fallback to MJPEG
             });
+        } else if (item.status == AVPlayerItemStatusReadyToPlay) {
+            NSLog(@"[HACameraEntityCell] HLS ready to play for %@", self.currentEntityId);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [self startHealthCheckTimer];
+                // readyForDisplay KVO may have already fired (or missed) — poll briefly
+                if (!self.receivingFrames) {
+                    [self pollReadyForDisplay:5];
+                }
+            });
+        }
+    } else if ([keyPath isEqualToString:@"readyForDisplay"] && [object isKindOfClass:[AVPlayerLayer class]]) {
+        BOOL ready = [change[NSKeyValueChangeNewKey] boolValue];
+        if (ready) {
+            NSLog(@"[HACameraEntityCell] HLS rendering video for %@", self.currentEntityId);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                self.receivingFrames = YES;
+                self.hlsLive = YES;
+                self.lastFrameTime = [NSDate date];
+                self.reconnectAttempts = 0;
+                [self updateLiveBadge];
+                [self.loadingSpinner stopAnimating];
+                self.errorLabel.hidden = YES;
+            });
         }
     }
 }
 
 - (void)hlsPlaybackFailed:(NSNotification *)note {
-    NSLog(@"[HACameraEntityCell] HLS playback failed to end time");
-    [self stopHLSPlayer];
-    self.hlsFailed = YES;
-    self.needsSnapshotLoad = YES;
-    [self beginLoading];
+    NSLog(@"[HACameraEntityCell] HLS playback failed to end time for %@", self.currentEntityId);
+    self.receivingFrames = NO;
+    [self updateLiveBadge];
+    [self attemptStreamReconnect];
+}
+
+- (void)hlsPlaybackStalled:(NSNotification *)note {
+    NSLog(@"[HACameraEntityCell] HLS playback stalled for %@ — will auto-resume on buffer refill",
+          self.currentEntityId);
+    // AVPlayer auto-resumes when buffer refills (isPlaybackLikelyToKeepUp becomes YES).
+    // Mark as not receiving frames so LIVE badge reflects reality.
+    self.receivingFrames = NO;
+    [self updateLiveBadge];
+    // Ensure player keeps trying to play
+    if (self.hlsPlayer && self.hlsPlayer.rate == 0) {
+        [self.hlsPlayer play];
+    }
+}
+
+#pragma mark - LIVE Badge
+
+- (void)updateLiveBadge {
+    if (self.receivingFrames) {
+        self.stateBadge.text = @" LIVE ";
+        self.stateBadge.backgroundColor = [UIColor colorWithRed:0.2 green:0.8 blue:0.3 alpha:0.8];
+        self.stateBadge.hidden = NO;
+        [self.contentView bringSubviewToFront:self.stateBadge];
+    } else if ([self.entity.state isEqualToString:@"recording"]) {
+        self.stateBadge.text = @" REC ";
+        self.stateBadge.backgroundColor = [[UIColor redColor] colorWithAlphaComponent:0.8];
+        self.stateBadge.hidden = NO;
+        [self.contentView bringSubviewToFront:self.stateBadge];
+    } else {
+        self.stateBadge.hidden = YES;
+    }
+
+    // Show volume button only for active HLS streams
+    BOOL showVolume = (self.hlsPlayer != nil && self.receivingFrames);
+    self.cameraVolumeButton.hidden = !showVolume;
+    if (showVolume) {
+        [self updateGridVolumeIcon];
+        [self.contentView bringSubviewToFront:self.cameraVolumeButton];
+    }
+}
+
+- (void)updateGridVolumeIcon {
+    UIFont *iconFont = [HAIconMapper mdiFontOfSize:14];
+    NSString *glyph;
+    if (self.hlsPlayer.volume <= 0.01) {
+        glyph = [HAIconMapper glyphForIconName:@"volume-off"] ?: @"M";
+    } else {
+        glyph = [HAIconMapper glyphForIconName:@"volume-high"] ?: @"V";
+    }
+    [self.cameraVolumeButton setAttributedTitle:[[NSAttributedString alloc] initWithString:glyph
+        attributes:@{NSFontAttributeName: iconFont, NSForegroundColorAttributeName: [UIColor whiteColor]}]
+        forState:UIControlStateNormal];
+}
+
+- (void)gridVolumeTapped {
+    if (!self.hlsPlayer) return;
+
+    NSString *volKey = [NSString stringWithFormat:@"HACameraVolume_%@", self.currentEntityId];
+    if (self.hlsPlayer.volume > 0.01) {
+        // Mute
+        self.hlsPlayer.volume = 0;
+    } else {
+        // Unmute to per-camera volume
+        CGFloat vol = [[NSUserDefaults standardUserDefaults] floatForKey:volKey];
+        if (vol <= 0) vol = 0.5;
+        self.hlsPlayer.volume = vol;
+    }
+    [self updateGridVolumeIcon];
+}
+
+/// Poll readyForDisplay a few times in case KVO missed the transition
+- (void)pollReadyForDisplay:(NSInteger)remaining {
+    if (remaining <= 0 || !self.hlsPlayerLayer || self.receivingFrames) return;
+    if (self.hlsPlayerLayer.readyForDisplay) {
+        NSLog(@"[HACameraEntityCell] HLS readyForDisplay confirmed via poll for %@", self.currentEntityId);
+        self.receivingFrames = YES;
+        self.hlsLive = YES;
+        self.lastFrameTime = [NSDate date];
+        self.reconnectAttempts = 0;
+        [self updateLiveBadge];
+        return;
+    }
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [weakSelf pollReadyForDisplay:remaining - 1];
+    });
+}
+
+#pragma mark - Stream Health Check
+
+- (void)startHealthCheckTimer {
+    [self.healthCheckTimer invalidate];
+    self.healthCheckTimer = [NSTimer scheduledTimerWithTimeInterval:15.0
+                                                            target:self
+                                                          selector:@selector(healthCheckFired)
+                                                          userInfo:nil
+                                                           repeats:YES];
+}
+
+- (void)healthCheckFired {
+    if (!self.currentEntityId || !self.window) {
+        [self.healthCheckTimer invalidate];
+        self.healthCheckTimer = nil;
+        return;
+    }
+
+    // Check HLS health: player exists but rate is 0 and not buffering
+    if (self.hlsPlayer) {
+        AVPlayerItem *item = self.hlsPlayer.currentItem;
+        BOOL stalled = (self.hlsPlayer.rate == 0 && item && item.status == AVPlayerItemStatusReadyToPlay);
+        if (stalled && self.receivingFrames) {
+            NSLog(@"[HACameraEntityCell] Health check: HLS stalled for %@ — attempting resume", self.currentEntityId);
+            [self.hlsPlayer play];
+            // If still stalled after next health check, reconnect
+        } else if (stalled && !self.receivingFrames) {
+            NSLog(@"[HACameraEntityCell] Health check: HLS dead for %@ — reconnecting", self.currentEntityId);
+            [self attemptStreamReconnect];
+        }
+        return;
+    }
+
+    // Check MJPEG health: parser claims streaming but no frames recently
+    if (self.streamParser.isStreaming && self.lastFrameTime) {
+        NSTimeInterval age = -[self.lastFrameTime timeIntervalSinceNow];
+        if (age > 30.0) {
+            NSLog(@"[HACameraEntityCell] Health check: MJPEG stale for %@ (%.0fs since last frame) — reconnecting",
+                  self.currentEntityId, age);
+            [self attemptStreamReconnect];
+        }
+    }
+}
+
+#pragma mark - Stream Reconnection
+
+- (void)attemptStreamReconnect {
+    if (!self.currentEntityId || !self.window) return;
+
+    self.reconnectAttempts++;
+    // Exponential backoff: 0s, 2s, 5s, then give up and fall back
+    NSTimeInterval delays[] = {0, 2.0, 5.0};
+    NSInteger maxAttempts = 3;
+
+    if (self.reconnectAttempts > maxAttempts) {
+        NSLog(@"[HACameraEntityCell] Max reconnect attempts (%ld) for %@ — falling back to snapshot polling",
+              (long)maxAttempts, self.currentEntityId);
+        [self stopHLSPlayer];
+        [self.streamParser stop];
+        self.streamParser = nil;
+        self.receivingFrames = NO;
+        [self updateLiveBadge];
+        // Mark BOTH stream modes as failed so beginLoading falls through to snapshot polling
+        self.hlsFailed = YES;
+        self.streamFailed = YES;
+        self.needsSnapshotLoad = YES;
+        [self beginLoading]; // Will skip HLS + MJPEG, start snapshot refresh timer
+        return;
+    }
+
+    NSTimeInterval delay = delays[MIN(self.reconnectAttempts - 1, 2)];
+    NSLog(@"[HACameraEntityCell] Reconnect attempt %ld for %@ (delay=%.0fs)",
+          (long)self.reconnectAttempts, self.currentEntityId, delay);
+
+    __weak typeof(self) weakSelf = self;
+    NSString *expectedEntityId = [self.currentEntityId copy];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf || ![strongSelf.currentEntityId isEqualToString:expectedEntityId]) return;
+        if (!strongSelf.window) return;
+
+        // Tear down current stream
+        [strongSelf stopHLSPlayer];
+        [strongSelf.streamParser stop];
+        strongSelf.streamParser = nil;
+        strongSelf.receivingFrames = NO;
+        [strongSelf updateLiveBadge];
+
+        // Reset failed flags to allow fresh attempt
+        strongSelf.hlsFailed = NO;
+        strongSelf.streamFailed = NO;
+        strongSelf.needsSnapshotLoad = YES;
+        [strongSelf beginLoading];
+    });
 }
 
 - (void)stopHLSPlayer {
+    self.hlsLive = NO;
     if (self.hlsPlayer) {
         [self.hlsPlayer pause];
         AVPlayerItem *item = self.hlsPlayer.currentItem;
@@ -1085,12 +1385,18 @@ static HACameraStreamMode currentStreamMode(void) {
             [[NSNotificationCenter defaultCenter] removeObserver:self
                                                             name:AVPlayerItemFailedToPlayToEndTimeNotification
                                                           object:item];
+            [[NSNotificationCenter defaultCenter] removeObserver:self
+                                                            name:AVPlayerItemPlaybackStalledNotification
+                                                          object:item];
             @try { [item removeObserver:self forKeyPath:@"status"]; } @catch (id e) {}
         }
         self.hlsPlayer = nil;
     }
-    [self.hlsPlayerLayer removeFromSuperlayer];
-    self.hlsPlayerLayer = nil;
+    if (self.hlsPlayerLayer) {
+        @try { [self.hlsPlayerLayer removeObserver:self forKeyPath:@"readyForDisplay"]; } @catch (id e) {}
+        [self.hlsPlayerLayer removeFromSuperlayer];
+        self.hlsPlayerLayer = nil;
+    }
 }
 
 #pragma mark - Refresh Timer
@@ -1111,8 +1417,8 @@ static HACameraStreamMode currentStreamMode(void) {
 - (void)beginLoading {
     if (!self.currentEntityId) return;
 
-    // Already have HLS — don't restart anything
-    if (self.hlsPlayer) return;
+    // Already have HLS or requesting — don't restart anything
+    if (self.hlsPlayer || self.hlsRequestInFlight) return;
 
     // 1. Snapshot immediately for fast initial display
     if (!self.snapshotView.image && self.needsSnapshotLoad) {
@@ -1153,17 +1459,30 @@ static HACameraStreamMode currentStreamMode(void) {
 - (void)stopRefresh {
     [self.refreshTimer invalidate];
     self.refreshTimer = nil;
+    [self.healthCheckTimer invalidate];
+    self.healthCheckTimer = nil;
     [self.currentTask cancel];
     self.currentTask = nil;
     [self.streamParser stop];
     self.streamParser = nil;
     [self stopHLSPlayer];
+    self.receivingFrames = NO;
+    self.hlsLive = NO;
+    self.lastFrameTime = nil;
+    self.reconnectAttempts = 0;
+    self.hlsRequestInFlight = NO;
+    self.recentFrameCount = 0;
+    self.frameWindowStart = nil;
 }
 
 - (void)wsDidConnect:(NSNotification *)note {
     if (!self.currentEntityId || !self.window) return;
     // Already on HLS — nothing to do
     if (self.hlsPlayer) return;
+
+    // WS reconnect clears HLS failure flag — allows fresh attempt
+    self.hlsFailed = NO;
+    self.reconnectAttempts = 0;
 
     HACameraStreamMode mode = currentStreamMode();
     BOOL entitySupportsStream = ([self.entity supportedFeatures] & 2) != 0;
@@ -1172,12 +1491,16 @@ static HACameraStreamMode currentStreamMode(void) {
     // In forced HLS mode: always try
     BOOL shouldTryHLS = (mode == HACameraStreamModeHLS) ||
                         (mode == HACameraStreamModeAuto && entitySupportsStream);
-    if (!shouldTryHLS || self.hlsFailed) return;
+    if (!shouldTryHLS) return;
 
     NSLog(@"[HACameraEntityCell] WS connected — attempting HLS for %@", self.currentEntityId);
     // Stop MJPEG so HLS can take over. If HLS fails, error handler restarts MJPEG.
     [self.streamParser stop];
     self.streamParser = nil;
+    self.receivingFrames = NO;
+    self.recentFrameCount = 0;
+    self.frameWindowStart = nil;
+    [self updateLiveBadge];
     [self startHLSStream];
 }
 
@@ -1227,6 +1550,7 @@ static HACameraStreamMode currentStreamMode(void) {
 }
 
 - (void)dealloc {
+    [self.healthCheckTimer invalidate];
     [self stopRefresh];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }

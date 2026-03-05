@@ -31,6 +31,9 @@ typedef NS_ENUM(NSInteger, HAAuthMode) {
 /// Auto-reload dashboard when its Lovelace config changes on the server (default: YES)
 @property (nonatomic, readonly) BOOL autoReloadDashboard;
 
+/// Camera streams are muted by default in grid and fullscreen (default: YES)
+@property (nonatomic, readonly) BOOL cameraGlobalMute;
+
 /// Save long-lived access token (existing flow)
 - (void)saveServerURL:(NSString *)url token:(NSString *)token;
 
@@ -59,6 +62,7 @@ typedef NS_ENUM(NSInteger, HAAuthMode) {
 - (void)setKioskMode:(BOOL)enabled;
 - (void)setDemoMode:(BOOL)enabled;
 - (void)setAutoReloadDashboard:(BOOL)enabled;
+- (void)setCameraGlobalMute:(BOOL)muted;
 - (void)clearCredentials;
 
 /// Returns full base URL for REST API, e.g. http://192.168.1.100:8123/api
