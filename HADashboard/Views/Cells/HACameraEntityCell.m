@@ -60,6 +60,8 @@ static const NSInteger kOverlayButtonTagBase = 9000;
 @property (nonatomic, strong) AVPlayerLayer *hlsPlayerLayer;
 @property (nonatomic, assign) BOOL hlsFailed;
 @property (nonatomic, assign) BOOL hlsRequestInFlight; // prevent duplicate WS requests
+@property (nonatomic, assign) BOOL hlsStatusKVORegistered;  // track KVO registration
+@property (nonatomic, assign) BOOL hlsReadyKVORegistered;   // track KVO registration
 
 // Fullscreen mirror — when set, frames update both snapshotView and this view.
 // Strong ref: the weak reference was zeroed during modal presentation animation.
@@ -1148,12 +1150,16 @@ static HACameraStreamMode currentStreamMode(void) {
                                                object:item];
     // Observe status for initial load failure AND readyToPlay
     [item addObserver:self forKeyPath:@"status" options:NSKeyValueObservingOptionNew context:NULL];
+    self.hlsStatusKVORegistered = YES;
 
     self.hlsPlayerLayer = [AVPlayerLayer playerLayerWithPlayer:self.hlsPlayer];
     // Observe readyForDisplay — the definitive signal that video is rendering (iOS 6+)
-    // Include NSKeyValueObservingOptionInitial to fire immediately if already ready
+    // Do NOT use NSKeyValueObservingOptionInitial — it fires synchronously during
+    // addObserver: which can trigger a CALayer transaction during layout, crashing
+    // with NSInternalInconsistencyException on iOS 26.
     [self.hlsPlayerLayer addObserver:self forKeyPath:@"readyForDisplay"
-                             options:(NSKeyValueObservingOptionNew | NSKeyValueObservingOptionInitial) context:NULL];
+                             options:NSKeyValueObservingOptionNew context:NULL];
+    self.hlsReadyKVORegistered = YES;
     self.hlsPlayerLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;
     self.hlsPlayerLayer.frame = self.snapshotView.bounds;
     // DON'T add the layer to the view yet — wait until readyForDisplay confirms
@@ -1162,6 +1168,10 @@ static HACameraStreamMode currentStreamMode(void) {
 
     [self.hlsPlayer play];
     [self.loadingSpinner stopAnimating];
+
+    // Start polling for readyForDisplay since we don't use NSKeyValueObservingOptionInitial
+    // (it causes crashes during layout cycles on iOS 26)
+    [self pollReadyForDisplay:10];
 }
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
@@ -1438,12 +1448,18 @@ static HACameraStreamMode currentStreamMode(void) {
             [[NSNotificationCenter defaultCenter] removeObserver:self
                                                             name:AVPlayerItemPlaybackStalledNotification
                                                           object:item];
-            @try { [item removeObserver:self forKeyPath:@"status"]; } @catch (id e) {}
+            if (self.hlsStatusKVORegistered) {
+                [item removeObserver:self forKeyPath:@"status"];
+                self.hlsStatusKVORegistered = NO;
+            }
         }
         self.hlsPlayer = nil;
     }
     if (self.hlsPlayerLayer) {
-        @try { [self.hlsPlayerLayer removeObserver:self forKeyPath:@"readyForDisplay"]; } @catch (id e) {}
+        if (self.hlsReadyKVORegistered) {
+            [self.hlsPlayerLayer removeObserver:self forKeyPath:@"readyForDisplay"];
+            self.hlsReadyKVORegistered = NO;
+        }
         [self.hlsPlayerLayer removeFromSuperlayer];
         self.hlsPlayerLayer = nil;
     }
