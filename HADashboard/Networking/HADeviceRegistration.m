@@ -70,7 +70,7 @@ static NSString *const kDeviceNameOverride   = @"ha_device_name_override";
         NSString *reason = auth.isDemoMode ? @"Cannot register in demo mode" : @"Not configured — no server URL or token";
         NSError *err = [NSError errorWithDomain:@"HADeviceRegistration" code:-1
                                        userInfo:@{NSLocalizedDescriptionKey: reason}];
-        if (completion) dispatch_async(dispatch_get_main_queue(), ^{ completion(NO, err); });
+        dispatch_async(dispatch_get_main_queue(), ^{ if (completion) completion(NO, err); });
         return;
     }
 
@@ -84,7 +84,7 @@ static NSString *const kDeviceNameOverride   = @"ha_device_name_override";
     NSError *jsonError = nil;
     request.HTTPBody = [NSJSONSerialization dataWithJSONObject:body options:0 error:&jsonError];
     if (jsonError) {
-        if (completion) dispatch_async(dispatch_get_main_queue(), ^{ completion(NO, jsonError); });
+        dispatch_async(dispatch_get_main_queue(), ^{ if (completion) completion(NO, jsonError); });
         return;
     }
 
@@ -184,7 +184,7 @@ static NSString *const kDeviceNameOverride   = @"ha_device_name_override";
     if (!webhookURL) {
         NSError *err = [NSError errorWithDomain:@"HADeviceRegistration" code:-3
                                        userInfo:@{NSLocalizedDescriptionKey: @"Not registered — no webhook URL"}];
-        if (completion) dispatch_async(dispatch_get_main_queue(), ^{ completion(nil, err); });
+        ha_dispatchMainCompletion(completion, nil, err);
         return;
     }
 
@@ -198,14 +198,14 @@ static NSString *const kDeviceNameOverride   = @"ha_device_name_override";
     NSError *jsonError = nil;
     request.HTTPBody = [NSJSONSerialization dataWithJSONObject:payload options:0 error:&jsonError];
     if (jsonError) {
-        if (completion) dispatch_async(dispatch_get_main_queue(), ^{ completion(nil, jsonError); });
+        ha_dispatchMainCompletion(completion, nil, jsonError);
         return;
     }
 
     NSURLSessionDataTask *task = [self.session dataTaskWithRequest:request
         completionHandler:^(NSData *responseData, NSURLResponse *response, NSError *error) {
             if (error) {
-                dispatch_async(dispatch_get_main_queue(), ^{ if (completion) completion(nil, error); });
+                ha_dispatchMainCompletion(completion, nil, error);
                 return;
             }
 
@@ -229,7 +229,7 @@ static NSString *const kDeviceNameOverride   = @"ha_device_name_override";
                 NSString *msg = [NSString stringWithFormat:@"Webhook failed: HTTP %ld", (long)http.statusCode];
                 NSError *httpErr = [NSError errorWithDomain:@"HADeviceRegistration" code:http.statusCode
                                                   userInfo:@{NSLocalizedDescriptionKey: msg}];
-                dispatch_async(dispatch_get_main_queue(), ^{ if (completion) completion(nil, httpErr); });
+                ha_dispatchMainCompletion(completion, nil, httpErr);
                 return;
             }
 
@@ -241,7 +241,7 @@ static NSString *const kDeviceNameOverride   = @"ha_device_name_override";
                     HALogW(@"HADeviceRegistration", @"JSON parse error: %@", jsonError2.localizedDescription);
                 }
             }
-            dispatch_async(dispatch_get_main_queue(), ^{ if (completion) completion(parsed, nil); });
+            ha_dispatchMainCompletion(completion, parsed, nil);
         }];
     [task resume];
 }

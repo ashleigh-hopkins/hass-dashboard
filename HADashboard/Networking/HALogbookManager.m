@@ -36,10 +36,8 @@
     NSString *serverURL = [[HAAuthManager sharedManager] serverURL];
     NSString *token = [[HAAuthManager sharedManager] accessToken];
     if (!serverURL || !token) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            completion(nil, [NSError errorWithDomain:@"HALogbookManager" code:-1
-                                           userInfo:@{NSLocalizedDescriptionKey: @"Not configured"}]);
-        });
+        ha_dispatchMainCompletion(completion, nil, [NSError errorWithDomain:@"HALogbookManager" code:-1
+                                       userInfo:@{NSLocalizedDescriptionKey: @"Not configured"}]);
         return;
     }
 
@@ -63,10 +61,8 @@
 
     NSURL *url = [NSURL URLWithString:urlStr];
     if (!url) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            completion(nil, [NSError errorWithDomain:@"HALogbookManager" code:-2
-                                           userInfo:@{NSLocalizedDescriptionKey: @"Invalid URL"}]);
-        });
+        ha_dispatchMainCompletion(completion, nil, [NSError errorWithDomain:@"HALogbookManager" code:-2
+                                       userInfo:@{NSLocalizedDescriptionKey: @"Invalid URL"}]);
         return;
     }
 
@@ -76,9 +72,7 @@
     NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithRequest:request
         completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
             if (error || !data) {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    completion(nil, error);
-                });
+                ha_dispatchMainCompletion(completion, nil, error);
                 return;
             }
 
@@ -88,15 +82,11 @@
                 HALogW(@"HALogbookManager", @"JSON parse error: %@", jsonError.localizedDescription);
             }
             if (![entries isKindOfClass:[NSArray class]]) {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    completion(@[], nil);
-                });
+                ha_dispatchMainCompletion(completion, @[], nil);
                 return;
             }
 
-            dispatch_async(dispatch_get_main_queue(), ^{
-                completion(entries, nil);
-            });
+            ha_dispatchMainCompletion(completion, entries, nil);
         }];
     [task resume];
 }

@@ -29,24 +29,18 @@ static NSString *const kRedirectURI = @"https://hadashboard.local/";
                completion:(void (^)(NSString *authCode, NSError *error))completion {
     // Step 1: Initiate login flow
     NSURL *flowURL = [NSURL URLWithString:[NSString stringWithFormat:@"%@/auth/login_flow", self.serverURL]];
-    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:flowURL];
-    request.HTTPMethod = @"POST";
-    [request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
-
     NSDictionary *body = @{
         @"client_id": kClientId,
         @"handler": @[@"homeassistant", [NSNull null]],
         @"redirect_uri": kRedirectURI,
     };
-    request.HTTPBody = [NSJSONSerialization dataWithJSONObject:body options:0 error:nil];
+    NSMutableURLRequest *request = [NSMutableURLRequest ha_postRequestWithURL:flowURL jsonBody:body];
 
     __weak typeof(self) weakSelf = self;
     NSURLSessionDataTask *task = [self.session dataTaskWithRequest:request
         completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
             if (error) {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    completion(nil, error);
-                });
+                ha_dispatchMainCompletion(completion, nil, error);
                 return;
             }
 
@@ -54,17 +48,13 @@ static NSString *const kRedirectURI = @"https://hadashboard.local/";
             NSDictionary *result = [self parseJSONData:data];
 
             if (httpResp.statusCode != 200 || !result) {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    completion(nil, [self errorWithMessage:@"Failed to start login flow" code:httpResp.statusCode]);
-                });
+                ha_dispatchMainCompletion(completion, nil, [self errorWithMessage:@"Failed to start login flow" code:httpResp.statusCode]);
                 return;
             }
 
             NSString *flowId = result[@"flow_id"];
             if (!flowId) {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    completion(nil, [self errorWithMessage:@"No flow_id in response" code:0]);
-                });
+                ha_dispatchMainCompletion(completion, nil, [self errorWithMessage:@"No flow_id in response" code:0]);
                 return;
             }
 
@@ -79,23 +69,17 @@ static NSString *const kRedirectURI = @"https://hadashboard.local/";
                    flowId:(NSString *)flowId
                completion:(void (^)(NSString *authCode, NSError *error))completion {
     NSURL *submitURL = [NSURL URLWithString:[NSString stringWithFormat:@"%@/auth/login_flow/%@", self.serverURL, flowId]];
-    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:submitURL];
-    request.HTTPMethod = @"POST";
-    [request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
-
     NSDictionary *body = @{
         @"username": username,
         @"password": password,
         @"client_id": kClientId,
     };
-    request.HTTPBody = [NSJSONSerialization dataWithJSONObject:body options:0 error:nil];
+    NSMutableURLRequest *request = [NSMutableURLRequest ha_postRequestWithURL:submitURL jsonBody:body];
 
     NSURLSessionDataTask *task = [self.session dataTaskWithRequest:request
         completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
             if (error) {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    completion(nil, error);
-                });
+                ha_dispatchMainCompletion(completion, nil, error);
                 return;
             }
 
@@ -103,9 +87,7 @@ static NSString *const kRedirectURI = @"https://hadashboard.local/";
             NSDictionary *result = [self parseJSONData:data];
 
             if (httpResp.statusCode != 200 || !result) {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    completion(nil, [self errorWithMessage:@"Login failed — check username/password" code:httpResp.statusCode]);
-                });
+                ha_dispatchMainCompletion(completion, nil, [self errorWithMessage:@"Login failed — check username/password" code:httpResp.statusCode]);
                 return;
             }
 
@@ -119,9 +101,7 @@ static NSString *const kRedirectURI = @"https://hadashboard.local/";
                     NSString *baseErr = ((NSDictionary *)errors)[@"base"];
                     if (baseErr) errMsg = baseErr;
                 }
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    completion(nil, [self errorWithMessage:errMsg code:401]);
-                });
+                ha_dispatchMainCompletion(completion, nil, [self errorWithMessage:errMsg code:401]);
                 return;
             }
 
@@ -129,16 +109,12 @@ static NSString *const kRedirectURI = @"https://hadashboard.local/";
                 // Success — extract the auth code from the result
                 NSString *authCode = result[@"result"];
                 if (authCode) {
-                    dispatch_async(dispatch_get_main_queue(), ^{
-                        completion(authCode, nil);
-                    });
+                    ha_dispatchMainCompletion(completion, authCode, nil);
                     return;
                 }
             }
 
-            dispatch_async(dispatch_get_main_queue(), ^{
-                completion(nil, [self errorWithMessage:@"Unexpected login response" code:0]);
-            });
+            ha_dispatchMainCompletion(completion, nil, [self errorWithMessage:@"Unexpected login response" code:0]);
         }];
     [task resume];
 }
@@ -171,15 +147,13 @@ static NSString *const kRedirectURI = @"https://hadashboard.local/";
     NSURLSessionDataTask *task = [self.session dataTaskWithRequest:request
         completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
             if (error) {
-                dispatch_async(dispatch_get_main_queue(), ^{ completion(nil, error); });
+                ha_dispatchMainCompletion(completion, nil, error);
                 return;
             }
 
             NSHTTPURLResponse *httpResp = (NSHTTPURLResponse *)response;
             if (httpResp.statusCode != 200 || !data) {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    completion(nil, [self errorWithMessage:@"Failed to fetch auth providers" code:httpResp.statusCode]);
-                });
+                ha_dispatchMainCompletion(completion, nil, [self errorWithMessage:@"Failed to fetch auth providers" code:httpResp.statusCode]);
                 return;
             }
 
@@ -191,9 +165,7 @@ static NSString *const kRedirectURI = @"https://hadashboard.local/";
             } else if ([parsed isKindOfClass:[NSArray class]]) {
                 providers = parsed;
             }
-            dispatch_async(dispatch_get_main_queue(), ^{
-                completion(providers, providers ? nil : [self errorWithMessage:@"Invalid providers response" code:0]);
-            });
+            ha_dispatchMainCompletion(completion, providers, providers ? nil : [self errorWithMessage:@"Invalid providers response" code:0]);
         }];
     [task resume];
 }
@@ -217,16 +189,12 @@ static NSString *const kRedirectURI = @"https://hadashboard.local/";
 
 - (void)startTrustedNetworkFlowWithCompletion:(void (^)(NSString *, NSDictionary *, NSString *, NSError *))completion {
     NSURL *flowURL = [NSURL URLWithString:[NSString stringWithFormat:@"%@/auth/login_flow", self.serverURL]];
-    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:flowURL];
-    request.HTTPMethod = @"POST";
-    [request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
-
     NSDictionary *body = @{
         @"client_id": kClientId,
         @"handler": @[@"trusted_networks", [NSNull null]],
         @"redirect_uri": kRedirectURI,
     };
-    request.HTTPBody = [NSJSONSerialization dataWithJSONObject:body options:0 error:nil];
+    NSMutableURLRequest *request = [NSMutableURLRequest ha_postRequestWithURL:flowURL jsonBody:body];
 
     NSURLSessionDataTask *task = [self.session dataTaskWithRequest:request
         completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
@@ -303,15 +271,11 @@ static NSString *const kRedirectURI = @"https://hadashboard.local/";
                           flowId:(NSString *)flowId
                       completion:(void (^)(NSString *, NSDictionary *, NSString *, NSError *))completion {
     NSURL *submitURL = [NSURL URLWithString:[NSString stringWithFormat:@"%@/auth/login_flow/%@", self.serverURL, flowId]];
-    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:submitURL];
-    request.HTTPMethod = @"POST";
-    [request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
-
     NSDictionary *body = @{
         @"user": userId,
         @"client_id": kClientId,
     };
-    request.HTTPBody = [NSJSONSerialization dataWithJSONObject:body options:0 error:nil];
+    NSMutableURLRequest *request = [NSMutableURLRequest ha_postRequestWithURL:submitURL jsonBody:body];
 
     NSURLSessionDataTask *task = [self.session dataTaskWithRequest:request
         completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
@@ -401,9 +365,7 @@ static NSString *const kRedirectURI = @"https://hadashboard.local/";
     NSURLSessionDataTask *task = [self.session dataTaskWithRequest:request
         completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
             if (error) {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    completion(nil, error);
-                });
+                ha_dispatchMainCompletion(completion, nil, error);
                 return;
             }
 
@@ -412,15 +374,11 @@ static NSString *const kRedirectURI = @"https://hadashboard.local/";
 
             if (httpResp.statusCode != 200 || !result) {
                 NSString *errMsg = [result[@"error_description"] isKindOfClass:[NSString class]] ? result[@"error_description"] : @"Token exchange failed";
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    completion(nil, [self errorWithMessage:errMsg code:httpResp.statusCode]);
-                });
+                ha_dispatchMainCompletion(completion, nil, [self errorWithMessage:errMsg code:httpResp.statusCode]);
                 return;
             }
 
-            dispatch_async(dispatch_get_main_queue(), ^{
-                completion(result, nil);
-            });
+            ha_dispatchMainCompletion(completion, result, nil);
         }];
     [task resume];
 }

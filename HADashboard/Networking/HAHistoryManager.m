@@ -68,9 +68,7 @@
         NSInteger hours = (NSInteger)([endDate timeIntervalSinceDate:startDate] / 3600.0);
         if (hours < 1) hours = 24;
         NSArray *fakePoints = [[HADemoDataProvider sharedProvider] historyPointsForEntityId:entityId hoursBack:hours];
-        dispatch_async(dispatch_get_main_queue(), ^{
-            completion(fakePoints, nil);
-        });
+        ha_dispatchMainCompletion(completion, fakePoints, nil);
         return;
     }
 
@@ -81,17 +79,13 @@
 
     NSArray *cached = [self.cache objectForKey:cacheKey];
     if (cached) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            completion(cached, nil);
-        });
+        ha_dispatchMainCompletion(completion, cached, nil);
         return;
     }
 
     NSURLRequest *request = [self requestForEntityId:entityId startDate:startDate endDate:endDate minimal:YES];
     if (!request) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            completion(nil, [self errorWithMessage:@"Not configured"]);
-        });
+        ha_dispatchMainCompletion(completion, nil, [self errorWithMessage:@"Not configured"]);
         return;
     }
 
@@ -99,9 +93,7 @@
     NSUInteger capturedMax = effectiveMax;
     NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
         if (error || !data) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                completion(nil, error);
-            });
+            ha_dispatchMainCompletion(completion, nil, error);
             return;
         }
 
@@ -110,9 +102,7 @@
             [self.cache setObject:points forKey:capturedKey];
         }
 
-        dispatch_async(dispatch_get_main_queue(), ^{
-            completion(points, nil);
-        });
+        ha_dispatchMainCompletion(completion, points, nil);
     }];
     [task resume];
 }
@@ -128,9 +118,7 @@
         NSInteger hours = (NSInteger)([endDate timeIntervalSinceDate:startDate] / 3600.0);
         if (hours < 1) hours = 24;
         NSArray *fakeSegments = [[HADemoDataProvider sharedProvider] timelineSegmentsForEntityId:entityId hoursBack:hours];
-        dispatch_async(dispatch_get_main_queue(), ^{
-            completion(fakeSegments, nil);
-        });
+        ha_dispatchMainCompletion(completion, fakeSegments, nil);
         return;
     }
 
@@ -140,26 +128,20 @@
 
     NSArray *cached = [self.cache objectForKey:cacheKey];
     if (cached) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            completion(cached, nil);
-        });
+        ha_dispatchMainCompletion(completion, cached, nil);
         return;
     }
 
     NSURLRequest *request = [self requestForEntityId:entityId startDate:startDate endDate:endDate minimal:NO];
     if (!request) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            completion(nil, [self errorWithMessage:@"Not configured"]);
-        });
+        ha_dispatchMainCompletion(completion, nil, [self errorWithMessage:@"Not configured"]);
         return;
     }
 
     NSString *capturedKey = [cacheKey copy];
     NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
         if (error || !data) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                completion(nil, error);
-            });
+            ha_dispatchMainCompletion(completion, nil, error);
             return;
         }
 
@@ -168,9 +150,7 @@
             [self.cache setObject:segments forKey:capturedKey];
         }
 
-        dispatch_async(dispatch_get_main_queue(), ^{
-            completion(segments, nil);
-        });
+        ha_dispatchMainCompletion(completion, segments, nil);
     }];
     [task resume];
 }
