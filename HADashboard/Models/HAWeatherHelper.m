@@ -1,4 +1,5 @@
 #import "HAWeatherHelper.h"
+#import "HALog.h"
 #import "HAEntity.h"
 #import "HAConnectionManager.h"
 
@@ -66,7 +67,7 @@
 
     [[HAConnectionManager sharedManager] sendCommand:command completion:^(id result, NSError *error) {
         if (error) {
-            NSLog(@"[WeatherHelper] Forecast fetch failed: %@", error.localizedDescription);
+            HALogE(@"weather", @"Forecast fetch failed: %@", error.localizedDescription);
             if (completion) completion(nil, error);
             return;
         }
@@ -90,7 +91,7 @@
         if ([forecast isKindOfClass:[NSArray class]] && forecast.count > 0) {
             if (completion) completion(forecast, nil);
         } else {
-            NSLog(@"[WeatherHelper] No forecast data in response: %@", result);
+            HALogW(@"weather", @"No forecast data in response: %@", result);
             if (completion) completion(nil, nil);
         }
     }];

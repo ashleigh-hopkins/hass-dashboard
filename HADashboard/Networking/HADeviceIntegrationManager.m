@@ -1,4 +1,5 @@
 #import "HADeviceIntegrationManager.h"
+#import "HALog.h"
 #import "HASensorReporter.h"
 #import "HARemoteCommandHandler.h"
 #import "HANotificationPresenter.h"
@@ -77,12 +78,12 @@ static NSString *const kEnabledKey = @"HADeviceIntegration_enabled";
     self.sensorReporter = [[HASensorReporter alloc] init];
     [self.sensorReporter registerSensors];
     [self.sensorReporter startReporting];
-    NSLog(@"[HADeviceIntegration] Sensor reporter started");
+    HALogI(@"device", @"Sensor reporter started");
 
     // Start command handler
     self.commandHandler = [[HARemoteCommandHandler alloc] init];
     [self.commandHandler startListening];
-    NSLog(@"[HADeviceIntegration] Command handler started");
+    HALogI(@"device", @"Command handler started");
 
     // Start notification presenter (displays non-command notifications as banners)
     [[HANotificationPresenter sharedPresenter] start];
@@ -97,7 +98,7 @@ static NSString *const kEnabledKey = @"HADeviceIntegration_enabled";
     [self.commandHandler stopListening];
     self.commandHandler = nil;
     [[HANotificationPresenter sharedPresenter] stop];
-    NSLog(@"[HADeviceIntegration] Stopped");
+    HALogI(@"device", @"Stopped");
 }
 
 #pragma mark - Notifications
@@ -126,7 +127,7 @@ static NSString *const kEnabledKey = @"HADeviceIntegration_enabled";
 }
 
 - (void)reloadRequested:(NSNotification *)note {
-    NSLog(@"[HADeviceIntegration] Reload: stop → disconnect → reconnect → start");
+    HALogI(@"device", @"Reload: stop → disconnect → reconnect → start");
     [self stop];
     HAConnectionManager *cm = [HAConnectionManager sharedManager];
     [cm disconnect];

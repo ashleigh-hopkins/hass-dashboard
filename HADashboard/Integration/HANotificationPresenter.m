@@ -1,4 +1,5 @@
 #import "HANotificationPresenter.h"
+#import "HALog.h"
 #import <UIKit/UIKit.h>
 #if __IPHONE_OS_VERSION_MAX_ALLOWED >= 100000
 #import <UserNotifications/UserNotifications.h>
@@ -34,7 +35,7 @@ NSString *const HADisplayNotificationReceivedNotification = @"HADisplayNotificat
                                              selector:@selector(notificationReceived:)
                                                  name:HADisplayNotificationReceivedNotification
                                                object:nil];
-    NSLog(@"[HANotificationPresenter] Started listening");
+    HALogI(@"notif", @"Started listening");
 }
 
 - (void)stop {
@@ -43,7 +44,7 @@ NSString *const HADisplayNotificationReceivedNotification = @"HADisplayNotificat
     [[NSNotificationCenter defaultCenter] removeObserver:self
                                                     name:HADisplayNotificationReceivedNotification
                                                   object:nil];
-    NSLog(@"[HANotificationPresenter] Stopped");
+    HALogI(@"notif", @"Stopped");
 }
 
 - (void)dealloc {
@@ -61,9 +62,9 @@ NSString *const HADisplayNotificationReceivedNotification = @"HADisplayNotificat
         [center requestAuthorizationWithOptions:(UNAuthorizationOptionAlert | UNAuthorizationOptionSound)
                               completionHandler:^(BOOL granted, NSError *error) {
             if (granted) {
-                NSLog(@"[HANotificationPresenter] Notification permission granted");
+                HALogI(@"notif", @"Notification permission granted");
             } else {
-                NSLog(@"[HANotificationPresenter] Notification permission denied: %@", error.localizedDescription);
+                HALogW(@"notif", @"Notification permission denied: %@", error.localizedDescription);
             }
         }];
     } else {
@@ -71,7 +72,7 @@ NSString *const HADisplayNotificationReceivedNotification = @"HADisplayNotificat
         UIUserNotificationSettings *settings = [UIUserNotificationSettings settingsForTypes:(UIUserNotificationTypeAlert | UIUserNotificationTypeSound)
                                                                                  categories:nil];
         [[UIApplication sharedApplication] registerUserNotificationSettings:settings];
-        NSLog(@"[HANotificationPresenter] Registered iOS 9 notification settings");
+        HALogI(@"notif", @"Registered iOS 9 notification settings");
     }
 }
 
@@ -97,7 +98,7 @@ NSString *const HADisplayNotificationReceivedNotification = @"HADisplayNotificat
 }
 
 - (void)fireLocalNotificationWithTitle:(NSString *)title message:(NSString *)message {
-    NSLog(@"[HANotificationPresenter] Firing local notification: %@ — %@", title ?: @"(no title)", message);
+    HALogI(@"notif", @"Firing local notification: %@ — %@", title ?: @"(no title)", message);
 
     if (@available(iOS 10.0, *)) {
         UNMutableNotificationContent *content = [[UNMutableNotificationContent alloc] init];
@@ -112,7 +113,7 @@ NSString *const HADisplayNotificationReceivedNotification = @"HADisplayNotificat
         [[UNUserNotificationCenter currentNotificationCenter] addNotificationRequest:request
                                                                withCompletionHandler:^(NSError *error) {
             if (error) {
-                NSLog(@"[HANotificationPresenter] Failed to fire notification: %@", error.localizedDescription);
+                HALogE(@"notif", @"Failed to fire notification: %@", error.localizedDescription);
             }
         }];
     } else {

@@ -5,6 +5,7 @@
 #import "HAAuthManager.h"
 #import "HANotificationPresenter.h"
 #import "HATheme.h"
+#import "HALog.h"
 
 /// We reuse the existing navigate notification for view switching.
 extern NSString *const HAActionNavigateNotification;
@@ -30,7 +31,7 @@ NSString *const HARemoteCommandReloadNotification = @"HARemoteCommandReloadNotif
 
     NSString *webhookId = [HADeviceRegistration sharedManager].webhookId;
     if (!webhookId) {
-        NSLog(@"[HARemoteCommandHandler] Cannot subscribe — no webhook_id (not registered)");
+        HALogW(@"cmd", @"Cannot subscribe — no webhook_id (not registered)");
         return;
     }
 
@@ -50,9 +51,9 @@ NSString *const HARemoteCommandReloadNotification = @"HARemoteCommandReloadNotif
     }];
 
     if (self.subscriptionId == 0) {
-        NSLog(@"[HARemoteCommandHandler] Failed to open push channel (not connected)");
+        HALogE(@"cmd", @"Failed to open push channel (not connected)");
     } else {
-        NSLog(@"[HARemoteCommandHandler] Push notification channel open (id=%ld, webhook=%@)",
+        HALogI(@"cmd", @"Push notification channel open (id=%ld, webhook=%@)",
               (long)self.subscriptionId, webhookId);
     }
 }
@@ -103,7 +104,7 @@ NSString *const HARemoteCommandReloadNotification = @"HARemoteCommandReloadNotif
 
     // Not a command — display as an in-app notification banner
     if ([message isKindOfClass:[NSString class]] && message.length > 0) {
-        NSLog(@"[HARemoteCommandHandler] Display notification: %@", message);
+        HALogI(@"cmd", @"Display notification: %@", message);
         [[NSNotificationCenter defaultCenter] postNotificationName:HADisplayNotificationReceivedNotification
                                                             object:self
                                                           userInfo:eventData];
@@ -122,11 +123,11 @@ NSString *const HARemoteCommandReloadNotification = @"HARemoteCommandReloadNotif
         @"webhook_id": webhookId,
         @"confirm_id": confirmId,
     } completion:nil];
-    NSLog(@"[HARemoteCommandHandler] Confirmed notification: %@", confirmId);
+    HALogD(@"cmd", @"Confirmed notification: %@", confirmId);
 }
 
 - (void)dispatchCommand:(NSString *)command data:(NSDictionary *)data {
-    NSLog(@"[HARemoteCommandHandler] Dispatching command: %@", command);
+    HALogI(@"cmd", @"Dispatching command: %@", command);
 
     if ([command isEqualToString:@"command_screen_brightness_level"] ||
         [command isEqualToString:@"set_brightness"]) {
@@ -149,7 +150,7 @@ NSString *const HARemoteCommandReloadNotification = @"HARemoteCommandReloadNotif
     } else if ([command isEqualToString:@"reload"]) {
         [self handleReload];
     } else {
-        NSLog(@"[HARemoteCommandHandler] Unknown command: %@", command);
+        HALogW(@"cmd", @"Unknown command: %@", command);
     }
 
     // Post generic notification for extensibility
@@ -178,20 +179,20 @@ NSString *const HARemoteCommandReloadNotification = @"HARemoteCommandReloadNotif
     value = fminf(fmaxf(value, 0.0), 1.0);
 
     [UIScreen mainScreen].brightness = value;
-    NSLog(@"[HARemoteCommandHandler] Set brightness to %.0f%%", value * 100);
+    HALogI(@"cmd", @"Set brightness to %.0f%%", value * 100);
 }
 
 - (void)handleScreenOn {
     CGFloat restore = self.savedBrightness > 0 ? self.savedBrightness : 0.5;
     [UIScreen mainScreen].brightness = restore;
-    NSLog(@"[HARemoteCommandHandler] Screen on (brightness %.0f%%)", restore * 100);
+    HALogI(@"cmd", @"Screen on (brightness %.0f%%)", restore * 100);
 }
 
 - (void)handleScreenOff {
     CGFloat current = [UIScreen mainScreen].brightness;
     if (current > 0) self.savedBrightness = current;
     [UIScreen mainScreen].brightness = 0.0;
-    NSLog(@"[HARemoteCommandHandler] Screen off (saved brightness %.0f%%)", self.savedBrightness * 100);
+    HALogI(@"cmd", @"Screen off (saved brightness %.0f%%)", self.savedBrightness * 100);
 }
 
 - (void)handleSwitchDashboard:(NSDictionary *)data {
@@ -201,7 +202,7 @@ NSString *const HARemoteCommandReloadNotification = @"HARemoteCommandReloadNotif
     HAAuthManager *auth = [HAAuthManager sharedManager];
     [auth saveSelectedDashboardPath:dashboard];
     [[HAConnectionManager sharedManager] fetchLovelaceConfig:dashboard];
-    NSLog(@"[HARemoteCommandHandler] Switched to dashboard: %@", dashboard);
+    HALogI(@"cmd", @"Switched to dashboard: %@", dashboard);
 }
 
 - (void)handleSwitchView:(NSDictionary *)data {
@@ -219,7 +220,7 @@ NSString *const HARemoteCommandReloadNotification = @"HARemoteCommandReloadNotif
     [[NSNotificationCenter defaultCenter] postNotificationName:HAActionNavigateNotification
                                                         object:nil
                                                       userInfo:@{@"path": path}];
-    NSLog(@"[HARemoteCommandHandler] Switch view to: %@", path);
+    HALogI(@"cmd", @"Switch view to: %@", path);
 }
 
 - (void)handleSetTheme:(NSDictionary *)data {
@@ -233,7 +234,7 @@ NSString *const HARemoteCommandReloadNotification = @"HARemoteCommandReloadNotif
     } else {
         [HATheme setCurrentMode:HAThemeModeAuto];
     }
-    NSLog(@"[HARemoteCommandHandler] Set theme mode: %@", mode);
+    HALogI(@"cmd", @"Set theme mode: %@", mode);
 }
 
 - (void)handleSetGradient:(NSDictionary *)data {
@@ -251,7 +252,7 @@ NSString *const HARemoteCommandReloadNotification = @"HARemoteCommandReloadNotif
         if (value) {
             [HATheme setGradientEnabled:YES];
             [HATheme setGradientPreset:[value integerValue]];
-            NSLog(@"[HARemoteCommandHandler] Set gradient preset: %@", preset);
+            HALogI(@"cmd", @"Set gradient preset: %@", preset);
             return;
         }
     }
@@ -263,7 +264,7 @@ NSString *const HARemoteCommandReloadNotification = @"HARemoteCommandReloadNotif
         [HATheme setGradientEnabled:YES];
         [HATheme setGradientPreset:HAGradientPresetCustom];
         [HATheme setCustomGradientHex1:hex1 hex2:hex2];
-        NSLog(@"[HARemoteCommandHandler] Set custom gradient: %@ → %@", hex1, hex2);
+        HALogI(@"cmd", @"Set custom gradient: %@ → %@", hex1, hex2);
         return;
     }
 
@@ -271,7 +272,7 @@ NSString *const HARemoteCommandReloadNotification = @"HARemoteCommandReloadNotif
     NSNumber *enabled = data[@"enabled"];
     if ([enabled isKindOfClass:[NSNumber class]] && ![enabled boolValue]) {
         [HATheme setGradientEnabled:NO];
-        NSLog(@"[HARemoteCommandHandler] Disabled gradient");
+        HALogI(@"cmd", @"Disabled gradient");
     }
 }
 
@@ -280,13 +281,13 @@ NSString *const HARemoteCommandReloadNotification = @"HARemoteCommandReloadNotif
     if (![enabled isKindOfClass:[NSNumber class]]) return;
 
     [[HAAuthManager sharedManager] setKioskMode:[enabled boolValue]];
-    NSLog(@"[HARemoteCommandHandler] Kiosk mode: %@", [enabled boolValue] ? @"ON" : @"OFF");
+    HALogI(@"cmd", @"Kiosk mode: %@", [enabled boolValue] ? @"ON" : @"OFF");
 }
 
 - (void)handleReload {
     // Post notification so HADeviceIntegrationManager can coordinate stop→disconnect→reconnect→start
     [[NSNotificationCenter defaultCenter] postNotificationName:HARemoteCommandReloadNotification object:nil];
-    NSLog(@"[HARemoteCommandHandler] Reload requested");
+    HALogI(@"cmd", @"Reload requested");
 }
 
 @end

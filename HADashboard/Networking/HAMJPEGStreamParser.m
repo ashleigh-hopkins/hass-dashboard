@@ -1,4 +1,5 @@
 #import "HAMJPEGStreamParser.h"
+#import "HALog.h"
 
 /// Queue for JPEG decoding — avoid blocking main thread with image decompression.
 static dispatch_queue_t _decodeQueue;
@@ -90,7 +91,7 @@ static const NSTimeInterval kFirstFrameTimeout = 10.0;
     }
 
     NSString *contentType = http.allHeaderFields[@"Content-Type"];
-    NSLog(@"[HAMJPEGStreamParser] Response %ld, Content-Type: %@", (long)http.statusCode, contentType);
+    HALogD(@"cam", @"Response %ld, Content-Type: %@", (long)http.statusCode, contentType);
 
     // NSURLSession splits multipart/x-mixed-replace into per-part responses.
     // First call: Content-Type is multipart/x-mixed-replace (extract boundary).
@@ -109,7 +110,7 @@ static const NSTimeInterval kFirstFrameTimeout = 10.0;
 
     // First response — check if it's actually multipart
     if (contentType && ![contentType containsString:@"multipart"]) {
-        NSLog(@"[HAMJPEGStreamParser] Not a multipart stream (Content-Type: %@) — aborting", contentType);
+        HALogW(@"cam", @"Not a multipart stream (Content-Type: %@) — aborting", contentType);
         NSError *error = [NSError errorWithDomain:@"HAMJPEGStreamParser" code:-3
             userInfo:@{NSLocalizedDescriptionKey: @"Not a multipart MJPEG stream"}];
         [self reportError:error];
@@ -257,7 +258,7 @@ static const NSTimeInterval kFirstFrameTimeout = 10.0;
 
 - (void)firstFrameTimedOut {
     if (!self.streaming || self.receivedFirstFrame) return;
-    NSLog(@"[HAMJPEGStreamParser] No frame received within %.0fs — aborting", kFirstFrameTimeout);
+    HALogW(@"cam", @"No frame received within %.0fs — aborting", kFirstFrameTimeout);
     self.streaming = NO;
     [self.task cancel];
     NSError *error = [NSError errorWithDomain:@"HAMJPEGStreamParser" code:-4

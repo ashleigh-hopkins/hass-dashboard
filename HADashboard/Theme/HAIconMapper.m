@@ -1,5 +1,5 @@
 #import "HAIconMapper.h"
-#import "HAStartupLog.h"
+#import "HALog.h"
 #import <CoreText/CoreText.h>
 
 static NSString *_mdiFontName = nil;
@@ -10,17 +10,17 @@ static NSDictionary<NSString *, NSString *> *_domainIconMap = nil;
 
 + (void)initialize {
     if (self != [HAIconMapper class]) return;
-    [HAStartupLog log:@"HAIconMapper +initialize BEGIN"];
-    [HAStartupLog log:@"  loadFont BEGIN"];
+    HALogD(@"icon", @"HAIconMapper +initialize BEGIN");
+    HALogD(@"icon", @"  loadFont BEGIN");
     [self loadFont];
-    [HAStartupLog log:@"  loadFont END"];
-    [HAStartupLog log:@"  loadCodepoints BEGIN"];
+    HALogD(@"icon", @"  loadFont END");
+    HALogD(@"icon", @"  loadCodepoints BEGIN");
     [self loadCodepoints];
-    [HAStartupLog log:@"  loadCodepoints END"];
-    [HAStartupLog log:@"  buildDomainMap BEGIN"];
+    HALogD(@"icon", @"  loadCodepoints END");
+    HALogD(@"icon", @"  buildDomainMap BEGIN");
     [self buildDomainMap];
-    [HAStartupLog log:@"  buildDomainMap END"];
-    [HAStartupLog log:@"HAIconMapper +initialize END"];
+    HALogD(@"icon", @"  buildDomainMap END");
+    HALogD(@"icon", @"HAIconMapper +initialize END");
 }
 
 + (void)loadFont {
@@ -32,13 +32,13 @@ static NSDictionary<NSString *, NSString *> *_domainIconMap = nil;
     //
     // Instead, look up the PostScript name from the already-registered font
     // by scanning the font family list. This is pure in-process work.
-    [HAStartupLog log:@"    loadFont: scanning registered font families"];
+    HALogD(@"icon", @"    loadFont: scanning registered font families");
     for (NSString *family in [UIFont familyNames]) {
         for (NSString *name in [UIFont fontNamesForFamilyName:family]) {
             // MDI font PostScript name contains "materialdesignicons"
             if ([name.lowercaseString containsString:@"materialdesignicons"]) {
                 _mdiFontName = name;
-                [HAStartupLog log:[NSString stringWithFormat:@"    loadFont: found name=%@", _mdiFontName]];
+                HALogD(@"icon", @"    loadFont: found name=%@", _mdiFontName);
                 return;
             }
         }
@@ -48,12 +48,12 @@ static NSDictionary<NSString *, NSString *> *_domainIconMap = nil;
     // try the known PostScript name directly
     if ([UIFont fontWithName:@"materialdesignicons-webfont" size:12]) {
         _mdiFontName = @"materialdesignicons-webfont";
-        [HAStartupLog log:@"    loadFont: using fallback name"];
+        HALogD(@"icon", @"    loadFont: using fallback name");
         return;
     }
 
-    [HAStartupLog log:@"    loadFont: MDI font NOT FOUND in registered fonts"];
-    NSLog(@"[HAIconMapper] MDI font not found — is it listed in UIAppFonts?");
+    HALogD(@"icon", @"    loadFont: MDI font NOT FOUND in registered fonts");
+    HALogE(@"icon", @"MDI font not found — is it listed in UIAppFonts?");
 }
 
 + (void)loadCodepoints {

@@ -553,8 +553,8 @@ case "$TARGET" in
             # Flush the preferences daemon cache so NSUserDefaults reads the new plist
             killall cfprefsd 2>/dev/null || true
 
-            # Clear any previous startup log
-            rm -f /tmp/ha-launch.log
+            # Clear any previous log
+            rm -f /tmp/ha-log.txt
 
             # Give SpringBoard time to finish processing uicache
             sleep 2
@@ -563,12 +563,12 @@ case "$TARGET" in
             open $BUNDLE_ID
         "
 
-        # Wait for app to start (or crash) then fetch startup log
+        # Wait for app to start (or crash) then fetch log
         echo "   Waiting for startup log..."
         sleep 8
         echo ""
-        echo "── /tmp/ha-launch.log ──────────────────────────────────"
-        $IPAD_SSH "cat /tmp/ha-launch.log 2>/dev/null || echo '(no log file found)'"
+        echo "── Documents/ha-log.txt ─────────────────────────────────"
+        $IPAD_SSH "cat /var/mobile/Documents/ha-log.txt 2>/dev/null || echo '(no log file found)'"
         echo "────────────────────────────────────────────────────────"
         echo ""
         echo "✅ Deployed to iPad 2 (WiFi)"

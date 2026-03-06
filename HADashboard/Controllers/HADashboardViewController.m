@@ -1,4 +1,5 @@
 #import "HADashboardViewController.h"
+#import "HALog.h"
 #import "HAAuthManager.h"
 #import "HAConnectionManager.h"
 #import "HADashboardConfig.h"
@@ -309,7 +310,7 @@ static NSString * const kSectionHeaderReuseId = @"HASectionHeader";
 - (void)didReceiveMemoryWarning {
     [super didReceiveMemoryWarning];
     [[HAHistoryManager sharedManager] clearCache];
-    NSLog(@"[HADashboard] Memory warning received, caches cleared");
+    HALogW(@"dash", @"Memory warning received, caches cleared");
 }
 
 - (BOOL)prefersStatusBarHidden {
@@ -948,7 +949,7 @@ static const CGFloat kRowUnitHeight = 56.0;
         if ([[NSFileManager defaultManager] fileExistsAtPath:triggerFile]) {
             self.screenshotScheduled = YES;
             [[NSFileManager defaultManager] removeItemAtPath:triggerFile error:nil];
-            NSLog(@"[Screenshot] Trigger found, will capture in 3s");
+            HALogD(@"dash", @"Screenshot trigger found, will capture in 3s");
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
                 [self captureScreenshotToPath:outputFile];
             });
@@ -2188,10 +2189,10 @@ heightForHeaderInSection:(NSInteger)section {
         self.selectedViewIndex = 0;
     }
 
-    NSLog(@"[Dashboard] Received Lovelace config: %lu views", (unsigned long)dashboard.views.count);
+    HALogI(@"dash", @"Received Lovelace config: %lu views", (unsigned long)dashboard.views.count);
     for (NSUInteger i = 0; i < dashboard.views.count; i++) {
         HALovelaceView *view = dashboard.views[i];
-        NSLog(@"  View %lu: %@ (%lu cards)", (unsigned long)i, view.title, (unsigned long)view.rawCards.count);
+        HALogD(@"dash", @"  View %lu: %@ (%lu cards)", (unsigned long)i, view.title, (unsigned long)view.rawCards.count);
     }
 
     [self populateViewPicker];
@@ -2199,7 +2200,7 @@ heightForHeaderInSection:(NSInteger)section {
 }
 
 - (void)connectionManagerDidFailToLoadLovelaceDashboard:(HAConnectionManager *)manager {
-    NSLog(@"[Dashboard] Lovelace fetch failed, falling back to default entity dashboard");
+    HALogW(@"dash", @"Lovelace fetch failed, falling back to default entity dashboard");
     self.lovelaceFetchDone = YES;
     [self rebuildDashboard];
 }
@@ -2213,7 +2214,7 @@ heightForHeaderInSection:(NSInteger)section {
 - (void)captureScreenshotToPath:(NSString *)path {
     UIWindow *window = [UIApplication sharedApplication].keyWindow;
     if (!window) {
-        NSLog(@"[Screenshot] No key window");
+        HALogW(@"dash", @"Screenshot: No key window");
         return;
     }
 
@@ -2223,13 +2224,13 @@ heightForHeaderInSection:(NSInteger)section {
     UIGraphicsEndImageContext();
 
     if (!image) {
-        NSLog(@"[Screenshot] Capture failed");
+        HALogE(@"dash", @"Screenshot capture failed");
         return;
     }
 
     NSData *pngData = UIImagePNGRepresentation(image);
     BOOL ok = [pngData writeToFile:path atomically:YES];
-    NSLog(@"[Screenshot] %@ -> %@ (%lu bytes)", ok ? @"Saved" : @"FAILED", path, (unsigned long)pngData.length);
+    HALogI(@"dash", @"Screenshot %@ -> %@ (%lu bytes)", ok ? @"Saved" : @"FAILED", path, (unsigned long)pngData.length);
 }
 
 @end

@@ -1,4 +1,5 @@
 #import "HADeviceRegistration.h"
+#import "HALog.h"
 #import "HAAuthManager.h"
 #import "HAKeychainHelper.h"
 #import "NSMutableURLRequest+HAHelpers.h"
@@ -126,7 +127,7 @@ static NSString *const kDeviceNameOverride   = @"ha_device_name_override";
             if (self.cloudhookURL) [HAKeychainHelper setString:self.cloudhookURL forKey:kKeychainCloudhookURL];
             if (self.remoteUIURL)  [HAKeychainHelper setString:self.remoteUIURL forKey:kKeychainRemoteUIURL];
 
-            NSLog(@"[HADeviceRegistration] Registered with webhook_id: %@", self.webhookId);
+            HALogI(@"device", @"Registered with webhook_id: %@", self.webhookId);
 
             dispatch_async(dispatch_get_main_queue(), ^{
                 [[NSNotificationCenter defaultCenter] postNotificationName:HADeviceRegistrationDidCompleteNotification
@@ -145,7 +146,7 @@ static NSString *const kDeviceNameOverride   = @"ha_device_name_override";
     [HAKeychainHelper removeItemForKey:kKeychainWebhookId];
     [HAKeychainHelper removeItemForKey:kKeychainCloudhookURL];
     [HAKeychainHelper removeItemForKey:kKeychainRemoteUIURL];
-    NSLog(@"[HADeviceRegistration] Unregistered (local credentials cleared)");
+    HALogI(@"device", @"Unregistered (local credentials cleared)");
 }
 
 #pragma mark - Webhook
@@ -208,7 +209,7 @@ static NSString *const kDeviceNameOverride   = @"ha_device_name_override";
 
             // Fix 3: 410 Gone means webhook is invalid — clear registration
             if (http.statusCode == 410) {
-                NSLog(@"[HADeviceRegistration] 410 Gone — webhook invalidated, clearing registration");
+                HALogW(@"device", @"410 Gone — webhook invalidated, clearing registration");
                 [self unregister];
                 dispatch_async(dispatch_get_main_queue(), ^{
                     [[NSNotificationCenter defaultCenter] postNotificationName:HADeviceRegistrationDidInvalidateNotification

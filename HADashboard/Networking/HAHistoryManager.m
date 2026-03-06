@@ -1,4 +1,5 @@
 #import "HAHistoryManager.h"
+#import "HALog.h"
 #import "HAAuthManager.h"
 #import "HADemoDataProvider.h"
 #import "NSMutableURLRequest+HAHelpers.h"
@@ -233,7 +234,7 @@
     @try {
         result = [NSJSONSerialization JSONObjectWithData:data options:0 error:&jsonError];
     } @catch (NSException *e) {
-        NSLog(@"[HAHistoryManager] JSON parse exception: %@", e.reason);
+        HALogE(@"history", @"JSON parse exception: %@", e.reason);
         return @[];
     }
     if (jsonError || ![result isKindOfClass:[NSArray class]] || result.count == 0) return @[];
@@ -307,7 +308,7 @@
     @try {
         result = [NSJSONSerialization JSONObjectWithData:data options:0 error:&jsonError];
     } @catch (NSException *e) {
-        NSLog(@"[HAHistoryManager] Timeline JSON parse exception: %@", e.reason);
+        HALogE(@"history", @"Timeline JSON parse exception: %@", e.reason);
         return @[];
     }
     if (jsonError || ![result isKindOfClass:[NSArray class]] || result.count == 0) return @[];

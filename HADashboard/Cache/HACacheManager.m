@@ -1,4 +1,5 @@
 #import "HACacheManager.h"
+#import "HALog.h"
 #import <CommonCrypto/CommonDigest.h>
 
 @interface HACacheManager ()
@@ -81,7 +82,7 @@
     NSError *error = nil;
     id json = [NSJSONSerialization JSONObjectWithData:data options:0 error:&error];
     if (error) {
-        NSLog(@"[HACache] Failed to parse %@: %@", filename, error.localizedDescription);
+        HALogE(@"cache", @"Failed to parse %@: %@", filename, error.localizedDescription);
         // Corrupt cache — delete it
         [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
         return nil;
@@ -99,7 +100,7 @@
     NSError *error = nil;
     NSData *data = [NSJSONSerialization dataWithJSONObject:object options:0 error:&error];
     if (error || !data) {
-        NSLog(@"[HACache] Failed to serialize %@: %@", filename, error.localizedDescription);
+        HALogE(@"cache", @"Failed to serialize %@: %@", filename, error.localizedDescription);
         if (completion) dispatch_async(dispatch_get_main_queue(), ^{ completion(NO); });
         return;
     }
@@ -107,7 +108,7 @@
     dispatch_async(self.writeQueue, ^{
         BOOL ok = [data writeToFile:path atomically:YES];
         if (!ok) {
-            NSLog(@"[HACache] Failed to write %@", path);
+            HALogE(@"cache", @"Failed to write %@", path);
         }
         if (completion) {
             dispatch_async(dispatch_get_main_queue(), ^{ completion(ok); });
@@ -122,7 +123,7 @@
     NSError *error = nil;
     NSData *data = [NSJSONSerialization dataWithJSONObject:object options:0 error:&error];
     if (error || !data) {
-        NSLog(@"[HACache] Failed to serialize %@ (sync): %@", filename, error.localizedDescription);
+        HALogE(@"cache", @"Failed to serialize %@ (sync): %@", filename, error.localizedDescription);
         return NO;
     }
     return [data writeToFile:path atomically:YES];

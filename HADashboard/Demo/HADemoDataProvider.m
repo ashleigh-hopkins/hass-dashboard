@@ -1,4 +1,5 @@
 #import "HADemoDataProvider.h"
+#import "HALog.h"
 #import "HAEntity.h"
 #import "HALovelaceParser.h"
 #import "HAConnectionManager.h"
@@ -1446,7 +1447,7 @@
     dashMap[@"demo-entities"]   = [self createEntityShowcaseDashboard];
 
     _dashboards = [dashMap copy];
-    NSLog(@"[HADemo] Created %lu demo dashboards", (unsigned long)_dashboards.count);
+    HALogI(@"demo", @"Created %lu demo dashboards", (unsigned long)_dashboards.count);
 }
 
 - (HALovelaceDashboard *)dashboardForPath:(NSString *)urlPath {
@@ -2150,7 +2151,7 @@
                                                       userInfo:nil
                                                        repeats:YES];
 
-    NSLog(@"[HADemo] Started state simulation");
+    HALogI(@"demo", @"Started state simulation");
 }
 
 - (void)stopSimulation {
@@ -2160,7 +2161,7 @@
     _simulationTimer = nil;
     _simulating = NO;
 
-    NSLog(@"[HADemo] Stopped state simulation");
+    HALogI(@"demo", @"Stopped state simulation");
 }
 
 - (void)simulationTimerFired:(NSTimer *)timer {

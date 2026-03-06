@@ -1,4 +1,5 @@
 #import "HAWebSocketClient.h"
+#import "HALog.h"
 #import "HAAuthManager.h"
 #import "SRWebSocket.h"
 
@@ -113,7 +114,7 @@
 
 - (NSInteger)sendCommand:(NSDictionary *)command {
     if (!self.authenticated) {
-        NSLog(@"[HAWebSocket] Cannot send command — not authenticated");
+        HALogW(@"conn", @"Cannot send command — not authenticated");
         return -1;
     }
 
@@ -131,7 +132,7 @@
     NSError *error = nil;
     NSData *data = [NSJSONSerialization dataWithJSONObject:dict options:0 error:&error];
     if (error) {
-        NSLog(@"[HAWebSocket] JSON serialization error: %@", error);
+        HALogE(@"conn", @"JSON serialization error: %@", error);
         return;
     }
 
@@ -160,16 +161,16 @@
     }
 
     if ([type isEqualToString:@"auth_invalid"]) {
-        NSLog(@"[HAWebSocket] auth_invalid — attempting token refresh");
+        HALogW(@"conn", @"auth_invalid — attempting token refresh");
         [self disconnect];
         [[HAAuthManager sharedManager] handleAuthFailureWithCompletion:^(NSString *newToken, NSError *refreshError) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 if (newToken) {
-                    NSLog(@"[HAWebSocket] Token refreshed, reconnecting");
+                    HALogI(@"conn", @"Token refreshed, reconnecting");
                     self.token = newToken;
                     [self connect];
                 } else {
-                    NSLog(@"[HAWebSocket] Auth failed: %@", refreshError.localizedDescription);
+                    HALogE(@"conn", @"Auth failed: %@", refreshError.localizedDescription);
                     [self.delegate webSocketClient:self didDisconnectWithError:refreshError];
                 }
             });
@@ -205,7 +206,7 @@
     NSError *error = nil;
     NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:data options:0 error:&error];
     if (error || ![dict isKindOfClass:[NSDictionary class]]) {
-        NSLog(@"[HAWebSocket] Failed to parse message: %@", error);
+        HALogE(@"conn", @"Failed to parse message: %@", error);
         return;
     }
 

@@ -9,6 +9,7 @@
 #import "HALoginViewController.h"
 #import "HATheme.h"
 #import "HASwitch.h"
+#import "HALog.h"
 
 
 // NSUserDefaults keys for device integration
@@ -368,7 +369,23 @@ static NSString *const kDeviceNameOverride    = @"ha_device_name_override";
         streamRow.spacing = 6;
         streamRow.translatesAutoresizingMaskIntoConstraints = NO;
 
-        UIStackView *devStack = [[UIStackView alloc] initWithArrangedSubviews:@[blurRow, perfRow, streamRow]];
+        // Verbose logging toggle
+        UISwitch *verboseSw;
+        UIView *verboseRow = [self createToggleSection:@"Verbose Logging"
+            helpText:@"Log debug-level messages (camera frames, polling, data sizes). Useful for diagnosing issues."
+            isOn:([HALog minLevel] == HALogLevelDebug)
+            target:self action:@selector(verboseLoggingToggled:)
+            switchOut:&verboseSw];
+
+        // Export logs button
+        UIButton *exportBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+        [exportBtn setTitle:@"Export Logs" forState:UIControlStateNormal];
+        exportBtn.titleLabel.font = [UIFont systemFontOfSize:16];
+        exportBtn.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
+        exportBtn.translatesAutoresizingMaskIntoConstraints = NO;
+        [exportBtn addTarget:self action:@selector(exportLogsTapped) forControlEvents:UIControlEventTouchUpInside];
+
+        UIStackView *devStack = [[UIStackView alloc] initWithArrangedSubviews:@[blurRow, perfRow, streamRow, verboseRow, exportBtn]];
         devStack.axis = UILayoutConstraintAxisVertical;
         devStack.spacing = 12;
         devStack.translatesAutoresizingMaskIntoConstraints = NO;
@@ -846,7 +863,32 @@ static NSString *const kDeviceNameOverride    = @"ha_device_name_override";
     NSArray *modes = @[@"auto", @"mjpeg", @"hls", @"snapshot"];
     NSString *mode = modes[seg.selectedSegmentIndex];
     [[NSUserDefaults standardUserDefaults] setObject:mode forKey:@"HADevStreamMode"];
-    NSLog(@"[HASettings] Camera stream mode: %@", mode);
+    HALogI(@"settings", @"Camera stream mode: %@", mode);
+}
+
+- (void)verboseLoggingToggled:(UISwitch *)sender {
+    [HALog setMinLevel:sender.isOn ? HALogLevelDebug : HALogLevelInfo];
+}
+
+- (void)exportLogsTapped {
+    [HALog flush];
+
+    NSMutableArray *items = [NSMutableArray array];
+    NSString *current = [HALog currentLogFilePath];
+    if (current && [[NSFileManager defaultManager] fileExistsAtPath:current]) {
+        [items addObject:[NSURL fileURLWithPath:current]];
+    }
+    NSString *previous = [HALog previousLogFilePath];
+    if (previous && [[NSFileManager defaultManager] fileExistsAtPath:previous]) {
+        [items addObject:[NSURL fileURLWithPath:previous]];
+    }
+
+    if (items.count == 0) return;
+
+    UIActivityViewController *avc = [[UIActivityViewController alloc] initWithActivityItems:items applicationActivities:nil];
+    avc.popoverPresentationController.sourceView = self.view;
+    avc.popoverPresentationController.sourceRect = CGRectMake(CGRectGetMidX(self.view.bounds), CGRectGetMidY(self.view.bounds), 0, 0);
+    [self presentViewController:avc animated:YES completion:nil];
 }
 
 - (void)demoSwitchToggled:(UISwitch *)sender {

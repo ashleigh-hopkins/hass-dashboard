@@ -1,4 +1,5 @@
 #import "HATileFeatureFactory.h"
+#import "HALog.h"
 #import "HATileFeatureView.h"
 #import "HASliderFeatureView.h"
 #import "HAButtonRowFeatureView.h"
@@ -57,7 +58,7 @@ static NSSet *_modeTypes;
         view = [[HAModeFeatureView alloc] init];
     } else {
         // Unsupported feature type — skip silently
-        NSLog(@"[TileFeature] Unsupported feature type: %@", type);
+        HALogW(@"tile", @"Unsupported feature type: %@", type);
         return nil;
     }
 

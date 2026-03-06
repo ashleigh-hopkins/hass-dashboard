@@ -1,4 +1,5 @@
 #import "HAPerfMonitor.h"
+#import "HALog.h"
 #import <QuartzCore/QuartzCore.h>
 #import <mach/mach.h>
 #import <sys/utsname.h>
@@ -123,7 +124,7 @@ static const NSTimeInterval kFlushInterval = 10.0;
                                                     userInfo:nil
                                                      repeats:YES];
 
-    NSLog(@"[Perf] Started — device=%@ lightweight=%d log=%@",
+    HALogI(@"perf", @"Started — device=%@ lightweight=%d log=%@",
           self.deviceModel, self.isLightweight, self.logPath);
 }
 
@@ -168,7 +169,7 @@ static const NSTimeInterval kFlushInterval = 10.0;
     _cellMaxMs = 0;
     _cellMaxType = nil;
 
-    NSLog(@"[Perf] Stopped — log at %@", self.logPath);
+    HALogI(@"perf", @"Stopped — log at %@", self.logPath);
 }
 
 #pragma mark - Header

@@ -6,7 +6,7 @@
 #import "HAConnectionManager.h"
 #import "HATheme.h"
 #import "HASwitch.h"
-#import "HAStartupLog.h"
+#import "HALog.h"
 
 @interface HALoginViewController () <HAConnectionFormDelegate>
 @property (nonatomic, strong) HAConnectionFormView *connectionForm;
@@ -19,38 +19,38 @@
 @implementation HALoginViewController
 
 - (void)viewDidLoad {
-    [HAStartupLog log:@"HALoginVC viewDidLoad BEGIN"];
+    HALogD(@"auth", @"HALoginVC viewDidLoad BEGIN");
     [super viewDidLoad];
     self.title = @"HA Dashboard";
     self.view.backgroundColor = [HATheme backgroundColor];
     self.navigationController.navigationBarHidden = YES;
 
-    [HAStartupLog log:@"HALoginVC setupUI BEGIN"];
+    HALogD(@"auth", @"HALoginVC setupUI BEGIN");
     [self setupUI];
-    [HAStartupLog log:@"HALoginVC setupUI END"];
-    [HAStartupLog log:@"HALoginVC viewDidLoad END"];
+    HALogD(@"auth", @"HALoginVC setupUI END");
+    HALogD(@"auth", @"HALoginVC viewDidLoad END");
 }
 
 - (void)viewWillAppear:(BOOL)animated {
-    [HAStartupLog log:@"HALoginVC viewWillAppear BEGIN"];
+    HALogD(@"auth", @"HALoginVC viewWillAppear BEGIN");
     [super viewWillAppear:animated];
     self.navigationController.navigationBarHidden = YES;
-    [HAStartupLog log:@"  loadExistingCredentials BEGIN"];
+    HALogD(@"auth", @"  loadExistingCredentials BEGIN");
     [self.connectionForm loadExistingCredentials];
-    [HAStartupLog log:@"  loadExistingCredentials END"];
-    [HAStartupLog log:@"  startDiscovery BEGIN"];
+    HALogD(@"auth", @"  loadExistingCredentials END");
+    HALogD(@"auth", @"  startDiscovery BEGIN");
     [self.connectionForm startDiscovery];
-    [HAStartupLog log:@"  startDiscovery END"];
-    [HAStartupLog log:@"  constellation startAnimating BEGIN"];
+    HALogD(@"auth", @"  startDiscovery END");
+    HALogD(@"auth", @"  constellation startAnimating BEGIN");
     [self.constellationView startAnimating];
-    [HAStartupLog log:@"  constellation startAnimating END"];
+    HALogD(@"auth", @"  constellation startAnimating END");
 
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardWillShow:)
         name:UIKeyboardWillShowNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardWillHide:)
         name:UIKeyboardWillHideNotification object:nil];
 
-    [HAStartupLog log:@"HALoginVC viewWillAppear END"];
+    HALogD(@"auth", @"HALoginVC viewWillAppear END");
 }
 
 - (void)viewWillDisappear:(BOOL)animated {

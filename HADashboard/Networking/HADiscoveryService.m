@@ -1,4 +1,5 @@
 #import "HADiscoveryService.h"
+#import "HALog.h"
 #import "HADiscoveredServer.h"
 
 static NSString *const kServiceType = @"_home-assistant._tcp.";
@@ -31,7 +32,7 @@ static NSString *const kServiceDomain = @"local.";
 - (void)startSearching {
     if (self.searching) return;
 
-    NSLog(@"[HADiscovery] Starting mDNS search for %@", kServiceType);
+    HALogI(@"discovery", @"Starting mDNS search for %@", kServiceType);
     self.searching = YES;
 
     [self.mutableServers removeAllObjects];
@@ -45,7 +46,7 @@ static NSString *const kServiceDomain = @"local.";
 - (void)stopSearching {
     if (!self.searching) return;
 
-    NSLog(@"[HADiscovery] Stopping search");
+    HALogI(@"discovery", @"Stopping search");
     self.searching = NO;
 
     [self.browser stop];
@@ -68,7 +69,7 @@ static NSString *const kServiceDomain = @"local.";
 - (void)netServiceBrowser:(NSNetServiceBrowser *)browser
            didFindService:(NSNetService *)service
                moreComing:(BOOL)moreComing {
-    NSLog(@"[HADiscovery] Found service: %@ on %@:%ld", service.name, service.hostName, (long)service.port);
+    HALogI(@"discovery", @"Found service: %@ on %@:%ld", service.name, service.hostName, (long)service.port);
 
     // Resolve to get TXT record and address
     service.delegate = self;
@@ -79,7 +80,7 @@ static NSString *const kServiceDomain = @"local.";
 - (void)netServiceBrowser:(NSNetServiceBrowser *)browser
          didRemoveService:(NSNetService *)service
                moreComing:(BOOL)moreComing {
-    NSLog(@"[HADiscovery] Removed service: %@", service.name);
+    HALogI(@"discovery", @"Removed service: %@", service.name);
 
     // Find and remove matching server
     HADiscoveredServer *toRemove = nil;
@@ -100,7 +101,7 @@ static NSString *const kServiceDomain = @"local.";
 
 - (void)netServiceBrowser:(NSNetServiceBrowser *)browser
              didNotSearch:(NSDictionary<NSString *,NSNumber *> *)errorDict {
-    NSLog(@"[HADiscovery] Search failed: %@", errorDict);
+    HALogE(@"discovery", @"Search failed: %@", errorDict);
     self.searching = NO;
 }
 
@@ -111,7 +112,7 @@ static NSString *const kServiceDomain = @"local.";
 #pragma mark - NSNetServiceDelegate (for resolving)
 
 - (void)netServiceDidResolveAddress:(NSNetService *)sender {
-    NSLog(@"[HADiscovery] Resolved: %@ → %@:%ld", sender.name, sender.hostName, (long)sender.port);
+    HALogI(@"discovery", @"Resolved: %@ → %@:%ld", sender.name, sender.hostName, (long)sender.port);
 
     [self.resolvingServices removeObject:sender];
     sender.delegate = nil;
@@ -125,12 +126,12 @@ static NSString *const kServiceDomain = @"local.";
     }
 
     if (!server.baseURL) {
-        NSLog(@"[HADiscovery] Skipping server with no URL: %@", server.name);
+        HALogW(@"discovery", @"Skipping server with no URL: %@", server.name);
         return;
     }
 
     [self.mutableServers addObject:server];
-    NSLog(@"[HADiscovery] Added server: %@", server);
+    HALogI(@"discovery", @"Added server: %@", server);
 
     dispatch_async(dispatch_get_main_queue(), ^{
         [self.delegate discoveryService:self didDiscoverServer:server];
@@ -138,7 +139,7 @@ static NSString *const kServiceDomain = @"local.";
 }
 
 - (void)netService:(NSNetService *)sender didNotResolve:(NSDictionary<NSString *,NSNumber *> *)errorDict {
-    NSLog(@"[HADiscovery] Failed to resolve %@: %@", sender.name, errorDict);
+    HALogE(@"discovery", @"Failed to resolve %@: %@", sender.name, errorDict);
     [self.resolvingServices removeObject:sender];
     sender.delegate = nil;
 }

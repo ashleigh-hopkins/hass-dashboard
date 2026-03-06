@@ -8,7 +8,7 @@
 #import "HATheme.h"
 #import "HAIconMapper.h"
 #import "HAPerfMonitor.h"
-#import "HAStartupLog.h"
+#import "HALog.h"
 #import "HAEntityStateCache.h"
 #import "HADeviceIntegrationManager.h"
 #import "HADeviceRegistration.h"
@@ -54,7 +54,7 @@
 @implementation HAAppDelegate
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
-    [HAStartupLog log:@"didFinishLaunching START"];
+    [HALog logStartup:@"didFinishLaunching START"];
 
     // Performance monitor — opt-in via developer settings toggle or launch arg.
     // Default OFF to avoid CADisplayLink + timer overhead on production devices.
@@ -65,36 +65,36 @@
 
     // Preload fonts before any UI is created — shifts ~350ms of first-cell
     // font loading cost out of the render path on iPad 2.
-    [HAStartupLog log:@"warmFonts BEGIN"];
+    [HALog logStartup:@"warmFonts BEGIN"];
     [HAIconMapper warmFonts];
-    [HAStartupLog log:@"warmFonts END"];
+    [HALog logStartup:@"warmFonts END"];
 
-    [HAStartupLog log:@"UIWindow alloc BEGIN"];
+    [HALog logStartup:@"UIWindow alloc BEGIN"];
     self.window = [[HAThemeAwareWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
     self.window.backgroundColor = [UIColor whiteColor];
-    [HAStartupLog log:@"UIWindow alloc END"];
+    [HALog logStartup:@"UIWindow alloc END"];
 
     // Bootstrap credentials from launch arguments (for simulator/testing):
     //   -HAServerURL http://... -HAAccessToken eyJ... -HADashboard office
     //   -HAClearCredentials YES — wipe keychain + prefs (force login screen)
-    [HAStartupLog log:@"NSUserDefaults read BEGIN"];
+    [HALog logStartup:@"NSUserDefaults read BEGIN"];
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
 
     if ([defaults boolForKey:@"HAClearCredentials"]) {
-        [HAStartupLog log:@"HAClearCredentials=YES — wiping keychain"];
+        [HALog logStartup:@"HAClearCredentials=YES — wiping keychain"];
         [[HAAuthManager sharedManager] clearCredentials];
     }
 
     NSString *bootURL = [defaults stringForKey:@"HAServerURL"];
     NSString *bootToken = [defaults stringForKey:@"HAAccessToken"];
-    [HAStartupLog log:[NSString stringWithFormat:@"NSUserDefaults read END (url=%@, token=%@)",
+    HALogI(@"startup", @"NSUserDefaults read END (url=%@, token=%@)",
         bootURL.length > 0 ? @"YES" : @"NO",
-        bootToken.length > 0 ? @"YES" : @"NO"]];
+        bootToken.length > 0 ? @"YES" : @"NO");
 
     if (bootURL.length > 0 && bootToken.length > 0) {
-        [HAStartupLog log:@"saveServerURL BEGIN"];
+        [HALog logStartup:@"saveServerURL BEGIN"];
         [[HAAuthManager sharedManager] saveServerURL:bootURL token:bootToken];
-        [HAStartupLog log:@"saveServerURL END"];
+        [HALog logStartup:@"saveServerURL END"];
     }
     NSString *bootDashboard = [defaults stringForKey:@"HADashboard"];
     if (bootDashboard) {
@@ -121,39 +121,39 @@
     if ([defaults boolForKey:@"HAAutoRegister"]) {
         [HADeviceIntegrationManager sharedManager].enabled = YES;
         if (![[HADeviceRegistration sharedManager] isRegistered]) {
-            NSLog(@"[AppDelegate] HAAutoRegister: triggering device registration");
+            HALogI(@"startup", @"HAAutoRegister: triggering device registration");
             [[HADeviceRegistration sharedManager] registerWithCompletion:^(BOOL success, NSError *error) {
                 if (success) {
-                    NSLog(@"[AppDelegate] HAAutoRegister: registration succeeded");
+                    HALogI(@"startup", @"HAAutoRegister: registration succeeded");
                 } else {
-                    NSLog(@"[AppDelegate] HAAutoRegister: registration failed: %@", error.localizedDescription);
+                    HALogE(@"startup", @"HAAutoRegister: registration failed: %@", error.localizedDescription);
                 }
             }];
         } else {
-            NSLog(@"[AppDelegate] HAAutoRegister: already registered");
+            HALogI(@"startup", @"HAAutoRegister: already registered");
         }
     }
 
-    [HAStartupLog log:@"isConfigured check BEGIN"];
+    [HALog logStartup:@"isConfigured check BEGIN"];
     BOOL configured = [[HAAuthManager sharedManager] isConfigured];
-    [HAStartupLog log:[NSString stringWithFormat:@"isConfigured=%@", configured ? @"YES" : @"NO"]];
+    HALogI(@"startup", @"isConfigured=%@", configured ? @"YES" : @"NO");
 
     UIViewController *rootVC;
     if (configured) {
-        [HAStartupLog log:@"Creating HADashboardViewController"];
+        [HALog logStartup:@"Creating HADashboardViewController"];
         rootVC = [[HADashboardViewController alloc] init];
     } else {
-        [HAStartupLog log:@"Creating HALoginViewController"];
+        [HALog logStartup:@"Creating HALoginViewController"];
         rootVC = [[HALoginViewController alloc] init];
     }
-    [HAStartupLog log:@"Root VC created"];
+    [HALog logStartup:@"Root VC created"];
 
-    [HAStartupLog log:@"NavController + setRoot BEGIN"];
+    [HALog logStartup:@"NavController + setRoot BEGIN"];
     HAStatusBarNavigationController *navController = [[HAStatusBarNavigationController alloc] initWithRootViewController:rootVC];
     self.window.rootViewController = navController;
-    [HAStartupLog log:@"makeKeyAndVisible BEGIN"];
+    [HALog logStartup:@"makeKeyAndVisible BEGIN"];
     [self.window makeKeyAndVisible];
-    [HAStartupLog log:@"makeKeyAndVisible END"];
+    [HALog logStartup:@"makeKeyAndVisible END"];
 
     // Apply the saved theme's interface style to the window so the nav bar,
     // status bar, and all dynamic colors match the selected theme from launch.
@@ -161,7 +161,7 @@
 
     [[HAPerfMonitor sharedMonitor] start];
 
-    [HAStartupLog log:@"didFinishLaunching END"];
+    [HALog logStartup:@"didFinishLaunching END"];
     return YES;
 }
 
@@ -180,7 +180,7 @@
         if ([[HAAuthManager sharedManager] isKioskMode] && !UIAccessibilityIsGuidedAccessEnabled()) {
             UIAccessibilityRequestGuidedAccessSession(YES, ^(BOOL didSucceed) {
                 if (didSucceed) {
-                    NSLog(@"[HAApp] Guided Access enabled for kiosk mode");
+                    HALogI(@"startup", @"Guided Access enabled for kiosk mode");
                 }
             });
         }
@@ -199,7 +199,7 @@
         if (UIAccessibilityIsGuidedAccessEnabled()) {
             UIAccessibilityRequestGuidedAccessSession(NO, ^(BOOL didSucceed) {
                 if (didSucceed) {
-                    NSLog(@"[HAApp] Guided Access disabled");
+                    HALogI(@"startup", @"Guided Access disabled");
                 }
             });
         }

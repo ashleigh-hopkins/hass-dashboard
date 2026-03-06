@@ -1,7 +1,7 @@
 #import "HAAuthManager.h"
 #import "HAKeychainHelper.h"
 #import "HAOAuthClient.h"
-#import "HAStartupLog.h"
+#import "HALog.h"
 
 NSString *const HAAuthManagerDidUpdateNotification = @"HAAuthManagerDidUpdateNotification";
 
@@ -45,13 +45,13 @@ static NSString *const kCameraGlobalMuteKey = @"HACameraGlobalMute";
 - (instancetype)init {
     self = [super init];
     if (self) {
-        [HAStartupLog log:@"HAAuthManager init BEGIN — keychain reads"];
+        HALogD(@"auth", @"HAAuthManager init BEGIN — keychain reads");
         _serverURL = [HAKeychainHelper stringForKey:kServerURLKey];
-        [HAStartupLog log:@"  keychain: serverURL done"];
+        HALogD(@"auth", @"  keychain: serverURL done");
         _accessToken = [HAKeychainHelper stringForKey:kAccessTokenKey];
-        [HAStartupLog log:@"  keychain: accessToken done"];
+        HALogD(@"auth", @"  keychain: accessToken done");
         _refreshToken = [HAKeychainHelper stringForKey:kRefreshTokenKey];
-        [HAStartupLog log:@"  keychain: refreshToken done"];
+        HALogD(@"auth", @"  keychain: refreshToken done");
         _selectedDashboardPath = [[NSUserDefaults standardUserDefaults] stringForKey:kSelectedDashboardKey];
         _kioskMode = [[NSUserDefaults standardUserDefaults] boolForKey:kKioskModeKey];
         _demoMode = [[NSUserDefaults standardUserDefaults] boolForKey:kDemoModeKey];
@@ -70,17 +70,17 @@ static NSString *const kCameraGlobalMuteKey = @"HACameraGlobalMute";
 
         // Restore auth mode
         NSString *modeStr = [HAKeychainHelper stringForKey:kAuthModeKey];
-        [HAStartupLog log:@"  keychain: authMode done"];
+        HALogD(@"auth", @"  keychain: authMode done");
         _authMode = [modeStr integerValue]; // 0 (token) if nil
 
         // Restore token expiry
         NSString *expiryStr = [HAKeychainHelper stringForKey:kTokenExpiryKey];
-        [HAStartupLog log:@"  keychain: tokenExpiry done"];
+        HALogD(@"auth", @"  keychain: tokenExpiry done");
         if (expiryStr) {
             _tokenExpiresAt = [NSDate dateWithTimeIntervalSince1970:[expiryStr doubleValue]];
         }
 
-        [HAStartupLog log:@"HAAuthManager init END"];
+        HALogD(@"auth", @"HAAuthManager init END");
 
         // Schedule refresh if needed
         if (_authMode == HAAuthModeOAuth && _refreshToken.length > 0) {
@@ -191,12 +191,12 @@ static NSString *const kCameraGlobalMuteKey = @"HACameraGlobalMute";
 }
 
 - (void)proactiveRefresh {
-    NSLog(@"[HAAuth] Proactive token refresh triggered");
+    HALogD(@"auth", @"Proactive token refresh triggered");
     [self refreshAccessTokenWithCompletion:^(BOOL success, NSError *error) {
         if (success) {
-            NSLog(@"[HAAuth] Proactive refresh succeeded");
+            HALogI(@"auth", @"Proactive refresh succeeded");
         } else {
-            NSLog(@"[HAAuth] Proactive refresh failed: %@", error.localizedDescription);
+            HALogE(@"auth", @"Proactive refresh failed: %@", error.localizedDescription);
         }
     }];
 }
@@ -240,7 +240,7 @@ static NSString *const kCameraGlobalMuteKey = @"HACameraGlobalMute";
         self.isRefreshing = NO;
 
         if (error || !tokenResponse[@"access_token"]) {
-            NSLog(@"[HAAuth] Token refresh failed: %@", error.localizedDescription);
+            HALogE(@"auth", @"Token refresh failed: %@", error.localizedDescription);
             if (completion) completion(NO, error);
             return;
         }
@@ -250,7 +250,7 @@ static NSString *const kCameraGlobalMuteKey = @"HACameraGlobalMute";
         if (expiresIn <= 0) expiresIn = 1800; // Default 30 min
 
         [self updateAccessToken:newToken expiresIn:expiresIn];
-        NSLog(@"[HAAuth] Token refreshed, expires in %.0fs", expiresIn);
+        HALogI(@"auth", @"Token refreshed, expires in %.0fs", expiresIn);
 
         if (completion) completion(YES, nil);
     }];

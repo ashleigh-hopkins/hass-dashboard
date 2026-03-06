@@ -1,6 +1,7 @@
 #import "HAEntityStateCache.h"
 #import "HACacheManager.h"
 #import "HAEntity.h"
+#import "HALog.h"
 
 static NSString *const kEntityStatesFile = @"entity-states.json";
 static const NSTimeInterval kDebounceInterval = 5.0;
@@ -35,7 +36,7 @@ static const NSTimeInterval kDebounceInterval = 5.0;
             validated[key] = value;
         }
     }
-    NSLog(@"[HACache] Loaded %lu cached entity states", (unsigned long)validated.count);
+    HALogI(@"cache", @"Loaded %lu cached entity states", (unsigned long)validated.count);
     return validated.count > 0 ? validated : nil;
 }
 
@@ -82,7 +83,7 @@ static const NSTimeInterval kDebounceInterval = 5.0;
         NSDictionary *serialized = [self serializeEntities:entities];
         [[HACacheManager sharedManager] writeJSON:serialized toFile:kEntityStatesFile completion:^(BOOL success) {
             if (success) {
-                NSLog(@"[HACache] Wrote %lu entity states to disk", (unsigned long)serialized.count);
+                HALogD(@"cache", @"Wrote %lu entity states to disk", (unsigned long)serialized.count);
             }
         }];
     });
@@ -97,7 +98,7 @@ static const NSTimeInterval kDebounceInterval = 5.0;
     NSDictionary *serialized = [self serializeEntities:entities];
     BOOL ok = [[HACacheManager sharedManager] writeJSONSync:serialized toFile:kEntityStatesFile];
     if (ok) {
-        NSLog(@"[HACache] Flushed %lu entity states to disk (sync)", (unsigned long)serialized.count);
+        HALogD(@"cache", @"Flushed %lu entity states to disk (sync)", (unsigned long)serialized.count);
     }
 }
 

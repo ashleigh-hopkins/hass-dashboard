@@ -1,4 +1,5 @@
 #import "HASunBasedTheme.h"
+#import "HALog.h"
 #import "HATheme.h"
 #import "HAConnectionManager.h"
 #import "HAEntity.h"
@@ -71,7 +72,7 @@ static NSString *const kSunEntityId = @"sun.sun";
     self.isSunBelowHorizon = belowHorizon;
 
     if (changed) {
-        NSLog(@"[HASunBasedTheme] Sun is now %@ — switching to %@ mode",
+        HALogI(@"theme", @"Sun is now %@ — switching to %@ mode",
               belowHorizon ? @"below horizon" : @"above horizon",
               belowHorizon ? @"dark" : @"light");
         // Update the window's overrideUserInterfaceStyle so dynamic colors
@@ -102,7 +103,7 @@ static NSString *const kSunEntityId = @"sun.sun";
         delay = 30.0;
     }
 
-    NSLog(@"[HASunBasedTheme] Next %@ in %.0f seconds", key, delay);
+    HALogD(@"theme", @"Next %@ in %.0f seconds", key, delay);
 
     __weak typeof(self) weakSelf = self;
     self.transitionTimer = [NSTimer scheduledTimerWithTimeInterval:delay

@@ -10,6 +10,7 @@
 #import "HACacheManager.h"
 #import "HAEntityStateCache.h"
 #import "HADashboardConfigCache.h"
+#import "HALog.h"
 
 NSString *const HAConnectionManagerDidConnectNotification           = @"HAConnectionManagerDidConnect";
 NSString *const HAConnectionManagerDidDisconnectNotification        = @"HAConnectionManagerDidDisconnect";
@@ -90,7 +91,7 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
     }
 
     if (!auth.isConfigured) {
-        NSLog(@"[HAConnection] Cannot connect — not configured");
+        HALogW(@"conn", @"Cannot connect — not configured");
         return;
     }
 
@@ -99,7 +100,7 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
     if (serverURL) {
         // If server URL changed, clear in-memory entity store (stale entities from old server)
         if (self.lastConnectedServerURL && ![self.lastConnectedServerURL isEqualToString:serverURL]) {
-            NSLog(@"[HAConnection] Server URL changed, clearing stale entity store");
+            HALogI(@"conn", @"Server URL changed, clearing stale entity store");
             @synchronized(self.entityStore) {
                 [self.entityStore removeAllObjects];
             }
@@ -141,7 +142,7 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
                 self.entityStore[entityId] = entity;
             }
         }
-        NSLog(@"[HAConnection] Loaded %lu cached entities for instant launch", (unsigned long)cachedStates.count);
+        HALogI(@"conn", @"Loaded %lu cached entities for instant launch", (unsigned long)cachedStates.count);
         loaded = YES;
     }
 
@@ -151,7 +152,7 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
     if (cachedConfig) {
         self.lovelaceDashboard = [HALovelaceParser parseDashboardFromDictionary:cachedConfig];
         if (self.lovelaceDashboard) {
-            NSLog(@"[HAConnection] Loaded cached dashboard config for instant launch");
+            HALogI(@"conn", @"Loaded cached dashboard config for instant launch");
             loaded = YES;
         }
     }
@@ -163,7 +164,7 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
 }
 
 - (void)loadDemoData {
-    NSLog(@"[HAConnection] Loading demo data");
+    HALogI(@"conn", @"Loading demo data");
 
     HADemoDataProvider *demo = [HADemoDataProvider sharedProvider];
 
@@ -292,7 +293,7 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
 
     [self.apiClient getStatesWithCompletion:^(id response, NSError *error) {
         if (error) {
-            NSLog(@"[HAConnection] Failed to fetch states: %@", error);
+            HALogE(@"conn", @"Failed to fetch states: %@", error);
             return;
         }
 
@@ -319,7 +320,7 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
 
         // Re-resolve pending strategy dashboard now that entities are available
         if (self.pendingStrategyConfig && snapshot.count > 0) {
-            NSLog(@"[HAConnection] Re-resolving strategy dashboard with %lu entities", (unsigned long)snapshot.count);
+            HALogD(@"conn", @"Re-resolving strategy dashboard with %lu entities", (unsigned long)snapshot.count);
             HALovelaceDashboard *resolved =
                 [HAStrategyResolver resolveDashboardWithStrategy:self.pendingStrategyConfig
                                                        entities:snapshot
@@ -364,7 +365,7 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
     if (self.wsClient.isAuthenticated) {
         self.dashboardListMessageId = [self.wsClient fetchDashboardList];
     } else {
-        NSLog(@"[HAConnection] Cannot fetch dashboard list — WebSocket not authenticated");
+        HALogW(@"conn", @"Cannot fetch dashboard list — WebSocket not authenticated");
     }
 }
 
@@ -386,7 +387,7 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
     if (self.wsClient.isAuthenticated) {
         self.lovelaceMessageId = [self.wsClient fetchLovelaceConfigForDashboard:urlPath];
     } else {
-        NSLog(@"[HAConnection] Cannot fetch Lovelace — WebSocket not authenticated");
+        HALogW(@"conn", @"Cannot fetch Lovelace — WebSocket not authenticated");
     }
 }
 
@@ -396,7 +397,7 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
     entityId:(NSString *)entityId {
 
     if (!service || !domain) {
-        NSLog(@"[HAConnection] callService: missing service (%@) or domain (%@), ignoring", service, domain);
+        HALogW(@"conn", @"callService: missing service (%@) or domain (%@), ignoring", service, domain);
         return;
     }
 
@@ -410,7 +411,7 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
 
     // In demo mode, just log and return (no actual service call)
     if ([[HAAuthManager sharedManager] isDemoMode]) {
-        NSLog(@"[HAConnection] Demo mode: simulated %@.%@ for %@", domain, service, entityId);
+        HALogD(@"conn", @"Demo mode: simulated %@.%@ for %@", domain, service, entityId);
         return;
     }
 
@@ -420,7 +421,7 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
     } else if (self.apiClient) {
         [self.apiClient callService:service inDomain:domain withData:serviceData completion:^(id response, NSError *error) {
             if (error) {
-                NSLog(@"[HAConnection] Service call failed: %@", error);
+                HALogE(@"conn", @"Service call failed: %@", error);
             }
         }];
     }
@@ -630,7 +631,7 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
         }
     }
     self.areaNames = [map copy];
-    NSLog(@"[HAConnection] Loaded %lu areas", (unsigned long)map.count);
+    HALogD(@"conn", @"Loaded %lu areas", (unsigned long)map.count);
 }
 
 - (void)processDeviceRegistry:(id)result {
@@ -645,7 +646,7 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
         }
     }
     self.deviceAreaMap = [map copy];
-    NSLog(@"[HAConnection] Loaded %lu device->area mappings", (unsigned long)map.count);
+    HALogD(@"conn", @"Loaded %lu device->area mappings", (unsigned long)map.count);
 }
 
 - (void)processEntityRegistry:(id)result {
@@ -744,7 +745,7 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
     }
 
     self.entityAreaMap = [map copy];
-    NSLog(@"[HAConnection] Built %lu entity->area mappings", (unsigned long)map.count);
+    HALogD(@"conn", @"Built %lu entity->area mappings", (unsigned long)map.count);
 }
 
 - (void)checkRegistriesComplete {
@@ -754,13 +755,13 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
     [self buildEntityAreaMap];
 
     self.registriesLoaded = YES;
-    NSLog(@"[HAConnection] All registries loaded (floors: %@)", self.floorsLoaded ? @"yes" : @"pending");
+    HALogI(@"conn", @"All registries loaded (floors: %@)", self.floorsLoaded ? @"yes" : @"pending");
 
     // Re-resolve pending strategy dashboard with updated area/entity maps
     if (self.pendingStrategyConfig) {
         NSDictionary *currentEntities = [self allEntities];
         if (currentEntities.count > 0) {
-            NSLog(@"[HAConnection] Re-resolving strategy dashboard with registries (%lu areas)",
+            HALogD(@"conn", @"Re-resolving strategy dashboard with registries (%lu areas)",
                   (unsigned long)self.areaNames.count);
             HALovelaceDashboard *resolved =
                 [HAStrategyResolver resolveDashboardWithStrategy:self.pendingStrategyConfig
@@ -790,7 +791,7 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
 
 - (void)processFloorRegistry:(id)result {
     if (![result isKindOfClass:[NSArray class]]) {
-        NSLog(@"[HAConnection] Floor registry not available (older HA version)");
+        HALogW(@"conn", @"Floor registry not available (older HA version)");
         return;
     }
 
@@ -839,7 +840,7 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
 
     self.floors = [floorList copy];
     self.floorByAreaId = [areaLookup copy];
-    NSLog(@"[HAConnection] Loaded %lu floors with %lu area mappings",
+    HALogD(@"conn", @"Loaded %lu floors with %lu area mappings",
           (unsigned long)floorList.count, (unsigned long)areaLookup.count);
 }
 
@@ -883,7 +884,7 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
     self.reconnectAttempt++;
     NSTimeInterval delay = MIN(kReconnectBaseInterval * pow(2.0, self.reconnectAttempt - 1), kReconnectMaxInterval);
 
-    NSLog(@"[HAConnection] Reconnecting in %.0fs (attempt %ld)", delay, (long)self.reconnectAttempt);
+    HALogI(@"conn", @"Reconnecting in %.0fs (attempt %ld)", delay, (long)self.reconnectAttempt);
 
     self.reconnectTimer = [NSTimer scheduledTimerWithTimeInterval:delay
                                                           target:self
@@ -904,11 +905,11 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
 #pragma mark - HAWebSocketClientDelegate
 
 - (void)webSocketClientDidConnect:(HAWebSocketClient *)client {
-    NSLog(@"[HAConnection] WebSocket connected, awaiting auth...");
+    HALogI(@"conn", @"WebSocket connected, awaiting auth...");
 }
 
 - (void)webSocketClientDidAuthenticate:(HAWebSocketClient *)client {
-    NSLog(@"[HAConnection] WebSocket authenticated");
+    HALogI(@"conn", @"WebSocket authenticated");
 
     self.connected = YES;
     self.reconnectAttempt = 0;
@@ -1005,7 +1006,7 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
             }
             self.dashboardListMessageId = 0;
         } else if (msgId == self.dashboardListMessageId && !success) {
-            NSLog(@"[HAConnection] Dashboard list fetch failed: %@", message[@"error"]);
+            HALogE(@"conn", @"Dashboard list fetch failed: %@", message[@"error"]);
             self.dashboardListMessageId = 0;
         } else if (msgId == self.lovelaceMessageId && success) {
             NSDictionary *result = message[@"result"];
@@ -1018,7 +1019,7 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
                 NSDictionary *strategy = result[@"strategy"];
                 if ([strategy isKindOfClass:[NSDictionary class]]) {
                     NSString *strategyType = strategy[@"type"];
-                    NSLog(@"[HAConnection] Strategy dashboard detected: %@", strategyType);
+                    HALogI(@"conn", @"Strategy dashboard detected: %@", strategyType);
 
                     // Store strategy config for re-resolution after states/registries load
                     self.pendingStrategyConfig = strategy;
@@ -1026,7 +1027,7 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
                     NSDictionary *currentEntities = [self allEntities];
                     if (currentEntities.count == 0) {
                         // Entities not loaded yet — defer resolution until didReceiveAllStates
-                        NSLog(@"[HAConnection] Deferring strategy resolution (0 entities loaded)");
+                        HALogD(@"conn", @"Deferring strategy resolution (0 entities loaded)");
                         self.lovelaceMessageId = 0;
                         return;
                     }
@@ -1042,7 +1043,7 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
                     if (resolved) {
                         self.lovelaceDashboard = resolved;
                     } else {
-                        NSLog(@"[HAConnection] Unknown strategy '%@', falling back to parser", strategyType);
+                        HALogW(@"conn", @"Unknown strategy '%@', falling back to parser", strategyType);
                         self.lovelaceDashboard = [HALovelaceParser parseDashboardFromDictionary:result];
                     }
                 } else {
@@ -1061,19 +1062,19 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
         } else if (msgId == self.lovelaceMessageId && !success) {
             NSDictionary *error = message[@"error"];
             NSString *errorCode = [error isKindOfClass:[NSDictionary class]] ? error[@"code"] : nil;
-            NSLog(@"[HAConnection] Lovelace config fetch failed: %@", error);
+            HALogE(@"conn", @"Lovelace config fetch failed: %@", error);
             self.lovelaceMessageId = 0;
 
             if ([errorCode isEqualToString:@"config_not_found"]) {
                 // Server uses the auto-generated default overview (no custom Lovelace config).
                 // Treat this as an implicit "original-states" strategy dashboard.
-                NSLog(@"[HAConnection] No Lovelace config — using original-states strategy");
+                HALogI(@"conn", @"No Lovelace config — using original-states strategy");
                 NSDictionary *implicitStrategy = @{@"type": @"original-states"};
                 self.pendingStrategyConfig = implicitStrategy;
 
                 NSDictionary *currentEntities = [self allEntities];
                 if (currentEntities.count == 0) {
-                    NSLog(@"[HAConnection] Deferring strategy resolution (0 entities loaded)");
+                    HALogD(@"conn", @"Deferring strategy resolution (0 entities loaded)");
                     return;
                 }
 
@@ -1096,7 +1097,7 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
                                     userInfo:@{@"dashboard": self.lovelaceDashboard}];
                 } else {
                     // Strategy resolver couldn't produce a dashboard yet — will retry after states/registries
-                    NSLog(@"[HAConnection] Strategy resolution deferred until registries load");
+                    HALogD(@"conn", @"Strategy resolution deferred until registries load");
                 }
             } else {
                 if ([self.delegate respondsToSelector:@selector(connectionManagerDidFailToLoadLovelaceDashboard:)]) {
@@ -1129,7 +1130,7 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
             if (success) {
                 [self processFloorRegistry:message[@"result"]];
             } else {
-                NSLog(@"[HAConnection] Floor registry fetch failed (may not be supported): %@", message[@"error"]);
+                HALogW(@"conn", @"Floor registry fetch failed (may not be supported): %@", message[@"error"]);
             }
             self.floorsLoaded = YES;
         }
@@ -1193,7 +1194,7 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
             BOOL matchesSelected = (updatedUrlPath != nil && [updatedUrlPath isEqualToString:selectedDashboard]);
 
             if (matchesSelected || (viewingDefault && updatedIsDefault)) {
-                NSLog(@"[HAConnection] Lovelace config updated for active dashboard, re-fetching");
+                HALogI(@"conn", @"Lovelace config updated for active dashboard, re-fetching");
                 [self fetchLovelaceConfig:selectedDashboard];
             }
         }
@@ -1201,7 +1202,7 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
 }
 
 - (void)webSocketClient:(HAWebSocketClient *)client didDisconnectWithError:(NSError *)error {
-    NSLog(@"[HAConnection] WebSocket disconnected: %@", error);
+    HALogW(@"conn", @"WebSocket disconnected: %@", error);
 
     self.connected = NO;
 

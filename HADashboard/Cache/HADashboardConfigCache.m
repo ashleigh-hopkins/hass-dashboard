@@ -1,4 +1,5 @@
 #import "HADashboardConfigCache.h"
+#import "HALog.h"
 #import "HACacheManager.h"
 #import <CommonCrypto/CommonDigest.h>
 
@@ -47,7 +48,7 @@
     NSString *filename = [self filenameForDashboard:dashboardPath];
     id json = [[HACacheManager sharedManager] readJSONFromFile:filename];
     if (![json isKindOfClass:[NSDictionary class]]) return nil;
-    NSLog(@"[HACache] Loaded cached dashboard config for '%@'", dashboardPath ?: @"default");
+    HALogI(@"cache", @"Loaded cached dashboard config for '%@'", dashboardPath ?: @"default");
     return json;
 }
 
@@ -70,7 +71,7 @@
                                                       options:NSJSONWritingSortedKeys
                                                         error:&error];
     if (!jsonData) {
-        NSLog(@"[HACache] Failed to serialize dashboard config: %@", error.localizedDescription);
+        HALogE(@"cache", @"Failed to serialize dashboard config: %@", error.localizedDescription);
         return YES; // Assume changed if we can't serialize
     }
 
@@ -91,13 +92,13 @@
         NSString *configFile = [self filenameForDashboard:dashboardPath];
         [[HACacheManager sharedManager] writeJSON:config toFile:configFile completion:^(BOOL success) {
             if (success) {
-                NSLog(@"[HACache] Cached dashboard config for '%@'", dashboardPath ?: @"default");
+                HALogI(@"cache", @"Cached dashboard config for '%@'", dashboardPath ?: @"default");
             }
         }];
         [self writeHash:newHash forDashboard:dashboardPath];
         self.cachedHashes[cacheKey] = newHash;
     } else {
-        NSLog(@"[HACache] Dashboard config unchanged for '%@', skipping write", dashboardPath ?: @"default");
+        HALogD(@"cache", @"Dashboard config unchanged for '%@', skipping write", dashboardPath ?: @"default");
     }
 
     return changed;

@@ -1,4 +1,5 @@
 #import "HAStrategyResolver.h"
+#import "HALog.h"
 #import "HALovelaceParser.h"
 #import "HAEntity.h"
 
@@ -42,7 +43,7 @@
                                     floors:floors];
     }
 
-    NSLog(@"[HAStrategy] Unknown strategy type: %@", type);
+    HALogW(@"strategy", @"Unknown strategy type: %@", type);
     return nil;
 }
 
@@ -53,7 +54,7 @@
                                                areaNames:(NSDictionary<NSString *, NSString *> *)areaNames
                                            entityAreaMap:(NSDictionary<NSString *, NSString *> *)entityAreaMap
                                           deviceAreaMap:(NSDictionary<NSString *, NSString *> *)deviceAreaMap {
-    NSLog(@"[HAStrategy] Resolving original-states strategy");
+    HALogI(@"strategy", @"Resolving original-states strategy");
 
     // 1. Filter entities using shouldShowInDefaultView
     NSMutableArray<HAEntity *> *filtered = [NSMutableArray array];
@@ -156,7 +157,7 @@
                                  entityAreaMap:(NSDictionary<NSString *, NSString *> *)entityAreaMap
                                 deviceAreaMap:(NSDictionary<NSString *, NSString *> *)deviceAreaMap
                                         floors:(NSArray *)floors {
-    NSLog(@"[HAStrategy] Resolving home strategy");
+    HALogI(@"strategy", @"Resolving home strategy");
 
     // 1. Filter entities
     NSMutableArray<HAEntity *> *filtered = [NSMutableArray array];

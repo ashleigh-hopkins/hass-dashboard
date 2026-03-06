@@ -1,4 +1,5 @@
 #import "HASensorReporter.h"
+#import "HALog.h"
 #import <UIKit/UIKit.h>
 #import <SystemConfiguration/CaptiveNetwork.h>
 #import <SystemConfiguration/SCNetworkReachability.h>
@@ -78,7 +79,7 @@ static NSArray *allSensorIds(void) {
                                                          data:data
                                                    completion:^(id response, NSError *error) {
         if (error) {
-            NSLog(@"[HASensorReporter] Failed to register sensor %@: %@", uniqueId, error.localizedDescription);
+            HALogE(@"sensor", @"Failed to register sensor %@: %@", uniqueId, error.localizedDescription);
         }
     }];
 }
@@ -168,7 +169,7 @@ static NSArray *allSensorIds(void) {
                                                          data:batch
                                                    completion:^(id response, NSError *error) {
         if (error) {
-            NSLog(@"[HASensorReporter] Batch update error: %@", error.localizedDescription);
+            HALogE(@"sensor", @"Batch update error: %@", error.localizedDescription);
         }
     }];
 }
@@ -187,7 +188,7 @@ static NSArray *allSensorIds(void) {
                                                          data:@[entry]
                                                    completion:^(id response, NSError *error) {
         if (error) {
-            NSLog(@"[HASensorReporter] Update %@ error: %@", sensorId, error.localizedDescription);
+            HALogE(@"sensor", @"Update %@ error: %@", sensorId, error.localizedDescription);
         }
     }];
 }

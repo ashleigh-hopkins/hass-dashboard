@@ -6,7 +6,7 @@
 #import "HAEntityDisplayHelper.h"
 #import "HAIconMapper.h"
 #import "HAMJPEGStreamParser.h"
-#import "HAStartupLog.h"
+#import "HALog.h"
 #import <AVFoundation/AVFoundation.h>
 #import <objc/runtime.h>
 
@@ -312,9 +312,7 @@ static HACameraStreamMode currentStreamMode(void) {
 
     // If entity changed, reset image and restart refresh cycle
     BOOL entityChanged = ![self.currentEntityId isEqualToString:entity.entityId];
-    [HAStartupLog log:[NSString stringWithFormat:@"[CAM] configure %p: %@ → %@ (changed=%d)", self,
-          self.currentEntityId, entity.entityId, entityChanged]];
-    NSLog(@"[HACameraEntityCell] configure %p: %@ → %@ (changed=%d)", self,
+    HALogD(@"cam", @"configure %p: %@ → %@ (changed=%d)", self,
           self.currentEntityId, entity.entityId, entityChanged);
     self.currentEntityId = entity.entityId;
 
@@ -410,7 +408,7 @@ static HACameraStreamMode currentStreamMode(void) {
 }
 
 - (void)cameraFullscreenTapped {
-    NSLog(@"[HACameraEntityCell] FULLSCREEN TAPPED for %@", self.currentEntityId);
+    HALogD(@"cam", @"Fullscreen tapped for %@", self.currentEntityId);
     if (!self.entity) return;
 
     UIResponder *responder = self;
@@ -444,7 +442,7 @@ static HACameraStreamMode currentStreamMode(void) {
 
     // MJPEG/snapshot: mirror frames
     self.fullscreenImageView = imageView;
-    NSLog(@"[HACameraEntityCell] Fullscreen opened for %@ — imageView=%p weak=%p streaming=%d hlsPlayer=%@",
+    HALogD(@"cam", @"Fullscreen opened for %@ — imageView=%p weak=%p streaming=%d hlsPlayer=%@",
           self.currentEntityId, imageView, self.fullscreenImageView,
           self.streamParser.isStreaming, self.hlsPlayer ? @"YES" : @"NO");
 
@@ -857,18 +855,18 @@ static HACameraStreamMode currentStreamMode(void) {
 
     HAAuthManager *auth = [HAAuthManager sharedManager];
     if (!auth.isConfigured) {
-        NSLog(@"[HACameraEntityCell] fetchSnapshot: auth not configured for %@", self.currentEntityId);
+        HALogW(@"cam", @"fetchSnapshot: auth not configured for %@", self.currentEntityId);
         return;
     }
 
     NSString *proxyPath = [self.entity cameraProxyPath];
     NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"%@%@", auth.serverURL, proxyPath]];
     if (!url) {
-        NSLog(@"[HACameraEntityCell] fetchSnapshot: invalid URL for %@", self.currentEntityId);
+        HALogW(@"cam", @"fetchSnapshot: invalid URL for %@", self.currentEntityId);
         return;
     }
 
-    NSLog(@"[HACameraEntityCell] fetchSnapshot: %@ token=%@...", url,
+    HALogD(@"cam", @"fetchSnapshot: %@ token=%@...", url,
           [auth.accessToken substringToIndex:MIN(10, auth.accessToken.length)]);
 
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
@@ -894,7 +892,7 @@ static HACameraStreamMode currentStreamMode(void) {
             BOOL fetchFailed = (error != nil) || (httpResponse.statusCode != 200) || !data;
 
             if (fetchFailed) {
-                NSLog(@"[HACameraEntityCell] fetchSnapshot FAILED for %@: HTTP %ld, error=%@, dataLen=%lu",
+                HALogE(@"cam", @"fetchSnapshot FAILED for %@: HTTP %ld, error=%@, dataLen=%lu",
                       expectedEntityId, (long)httpResponse.statusCode,
                       error.localizedDescription ?: @"(none)", (unsigned long)data.length);
                 dispatch_async(dispatch_get_main_queue(), ^{
@@ -952,7 +950,7 @@ static HACameraStreamMode currentStreamMode(void) {
 - (void)startMJPEGStream {
     HAAuthManager *auth = [HAAuthManager sharedManager];
     if (!auth.isConfigured || !self.entity) return;
-    [HAStartupLog log:[NSString stringWithFormat:@"[CAM] startMJPEG %@ (cell %p)", self.currentEntityId, self]];
+    HALogD(@"cam", @"startMJPEG %@ (cell %p)", self.currentEntityId, self);
 
     NSString *streamPath = [self.entity cameraStreamPath];
     if (!streamPath) {
@@ -968,7 +966,7 @@ static HACameraStreamMode currentStreamMode(void) {
         return;
     }
 
-    NSLog(@"[HACameraEntityCell] Starting MJPEG stream: %@ (cell %p)", url, self);
+    HALogI(@"cam", @"Starting MJPEG stream: %@ (cell %p)", url, self);
     [self.loadingSpinner startAnimating];
 
     self.streamParser = [[HAMJPEGStreamParser alloc] init];
@@ -982,13 +980,13 @@ static HACameraStreamMode currentStreamMode(void) {
         // Guard: reject frames from a stale parser (cell was reused for a different entity)
         if (strongSelf.streamParser != expectedParser) return;
         if (![strongSelf.currentEntityId isEqualToString:expectedEntityId]) {
-            NSLog(@"[HACameraEntityCell] Rejecting stale frame: expected %@ but cell is now %@ (cell %p)",
+            HALogD(@"cam", @"Rejecting stale frame: expected %@ but cell is now %@ (cell %p)",
                   expectedEntityId, strongSelf.currentEntityId, strongSelf);
             return;
         }
         strongSelf.frameCount++;
         if (strongSelf.frameCount == 1 || strongSelf.frameCount % 30 == 0) {
-            [HAStartupLog log:[NSString stringWithFormat:@"[CAM] MJPEG frame %lu for %@", (unsigned long)strongSelf.frameCount, expectedEntityId]];
+            HALogD(@"cam", @"MJPEG frame %lu for %@", (unsigned long)strongSelf.frameCount, expectedEntityId);
         }
         strongSelf.snapshotView.image = frame;
         // Mirror to fullscreen view if presented
@@ -998,7 +996,7 @@ static HACameraStreamMode currentStreamMode(void) {
         }
         // Log every frame during fullscreen, every 30th otherwise
         if (fsIV || strongSelf.frameCount % 30 == 1) {
-            NSLog(@"[HACameraEntityCell] Frame %lu for %@ — fs=%p card=%p streaming=%d",
+            HALogD(@"cam", @"Frame %lu for %@ — fs=%p card=%p streaming=%d",
                   (unsigned long)strongSelf.frameCount, expectedEntityId,
                   fsIV, strongSelf.snapshotView, strongSelf.streamParser.isStreaming);
         }
@@ -1022,7 +1020,7 @@ static HACameraStreamMode currentStreamMode(void) {
             if (isLiveRate && !strongSelf.receivingFrames) {
                 strongSelf.receivingFrames = YES;
                 [strongSelf startHealthCheckTimer];
-                NSLog(@"[HACameraEntityCell] MJPEG stream confirmed live for %@ (%lu frames in %.1fs)",
+                HALogI(@"cam", @"MJPEG stream confirmed live for %@ (%lu frames in %.1fs)",
                       expectedEntityId, (unsigned long)strongSelf.recentFrameCount, windowAge);
             } else if (!isLiveRate && strongSelf.receivingFrames) {
                 strongSelf.receivingFrames = NO;
@@ -1038,8 +1036,7 @@ static HACameraStreamMode currentStreamMode(void) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
         if (strongSelf.streamParser != expectedParser) return;
-        [HAStartupLog log:[NSString stringWithFormat:@"[CAM] MJPEG FAILED %@: %@", expectedEntityId, error.localizedDescription]];
-        NSLog(@"[HACameraEntityCell] MJPEG stream failed: %@ — attempting reconnect (cell %p)", error.localizedDescription, strongSelf);
+        HALogW(@"cam", @"MJPEG stream failed: %@ — attempting reconnect (cell %p)", error.localizedDescription, strongSelf);
         strongSelf.streamParser = nil;
         strongSelf.receivingFrames = NO;
         [strongSelf updateLiveBadge];
@@ -1061,7 +1058,7 @@ static HACameraStreamMode currentStreamMode(void) {
     // HA's ffmpeg transcoder output is incompatible with iOS 9's AVFoundation.
     // MJPEG works fine on these devices.
     if ([[[UIDevice currentDevice] systemVersion] compare:@"10.0" options:NSNumericSearch] == NSOrderedAscending) {
-        NSLog(@"[HACameraEntityCell] Skipping HLS on iOS %@ — using MJPEG only",
+        HALogI(@"cam", @"Skipping HLS on iOS %@ — using MJPEG only",
               [[UIDevice currentDevice] systemVersion]);
         self.hlsFailed = YES;
         self.needsSnapshotLoad = YES;
@@ -1071,7 +1068,7 @@ static HACameraStreamMode currentStreamMode(void) {
     if (self.hlsRequestInFlight) return; // Already requesting
 
     self.hlsRequestInFlight = YES;
-    NSLog(@"[HACameraEntityCell] Requesting HLS stream for %@ (cell %p)", self.entity.entityId, self);
+    HALogI(@"cam", @"Requesting HLS stream for %@ (cell %p)", self.entity.entityId, self);
     [self.loadingSpinner startAnimating];
 
     NSDictionary *command = @{
@@ -1087,7 +1084,7 @@ static HACameraStreamMode currentStreamMode(void) {
         if (![strongSelf.currentEntityId isEqualToString:expectedEntityId]) return;
 
         if (error || ![result isKindOfClass:[NSDictionary class]]) {
-            NSLog(@"[HACameraEntityCell] HLS stream request failed: %@ — falling back to MJPEG",
+            HALogW(@"cam", @"HLS stream request failed: %@ — falling back to MJPEG",
                   error.localizedDescription ?: @"unexpected response");
             strongSelf.hlsFailed = YES;
             strongSelf.needsSnapshotLoad = YES;
@@ -1097,7 +1094,7 @@ static HACameraStreamMode currentStreamMode(void) {
 
         NSString *hlsURL = result[@"url"];
         if (![hlsURL isKindOfClass:[NSString class]] || hlsURL.length == 0) {
-            NSLog(@"[HACameraEntityCell] HLS stream: no URL in response");
+            HALogW(@"cam", @"HLS stream: no URL in response");
             strongSelf.hlsFailed = YES;
             strongSelf.needsSnapshotLoad = YES;
             [strongSelf beginLoading];
@@ -1118,7 +1115,7 @@ static HACameraStreamMode currentStreamMode(void) {
             return;
         }
 
-        NSLog(@"[HACameraEntityCell] Starting HLS playback: %@", streamURL);
+        HALogI(@"cam", @"Starting HLS playback: %@", streamURL);
         [strongSelf playHLSURL:streamURL];
     }];
 }
@@ -1178,20 +1175,20 @@ static HACameraStreamMode currentStreamMode(void) {
     if ([keyPath isEqualToString:@"status"] && [object isKindOfClass:[AVPlayerItem class]]) {
         AVPlayerItem *item = (AVPlayerItem *)object;
         if (item.status == AVPlayerItemStatusFailed) {
-            NSLog(@"[HACameraEntityCell] HLS playback error: %@", item.error.localizedDescription);
+            HALogE(@"cam", @"HLS playback error: %@", item.error.localizedDescription);
             dispatch_async(dispatch_get_main_queue(), ^{
                 [self stopHLSPlayer];
                 self.hlsFailed = YES;
                 // If MJPEG is still running in parallel, let it continue
                 if (self.streamParser.isStreaming) {
-                    NSLog(@"[HACameraEntityCell] HLS failed but MJPEG still active — keeping MJPEG");
+                    HALogI(@"cam", @"HLS failed but MJPEG still active — keeping MJPEG");
                     return;
                 }
                 self.needsSnapshotLoad = YES;
                 [self beginLoading]; // Fallback to MJPEG
             });
         } else if (item.status == AVPlayerItemStatusReadyToPlay) {
-            NSLog(@"[HACameraEntityCell] HLS ready to play for %@", self.currentEntityId);
+            HALogI(@"cam", @"HLS ready to play for %@", self.currentEntityId);
             dispatch_async(dispatch_get_main_queue(), ^{
                 [self startHealthCheckTimer];
                 // readyForDisplay KVO may have already fired (or missed) — poll briefly
@@ -1203,7 +1200,7 @@ static HACameraStreamMode currentStreamMode(void) {
     } else if ([keyPath isEqualToString:@"readyForDisplay"] && [object isKindOfClass:[AVPlayerLayer class]]) {
         BOOL ready = [change[NSKeyValueChangeNewKey] boolValue];
         if (ready) {
-            NSLog(@"[HACameraEntityCell] HLS rendering video for %@", self.currentEntityId);
+            HALogI(@"cam", @"HLS rendering video for %@", self.currentEntityId);
             dispatch_async(dispatch_get_main_queue(), ^{
                 // HLS is confirmed rendering — NOW insert the layer into the view
                 if (self.hlsPlayerLayer && !self.hlsPlayerLayer.superlayer) {
@@ -1212,7 +1209,7 @@ static HACameraStreamMode currentStreamMode(void) {
                 }
                 // Stop MJPEG if it was running in parallel
                 if (self.streamParser) {
-                    NSLog(@"[HACameraEntityCell] HLS confirmed — stopping parallel MJPEG for %@", self.currentEntityId);
+                    HALogI(@"cam", @"HLS confirmed — stopping parallel MJPEG for %@", self.currentEntityId);
                     [self.streamParser stop];
                     self.streamParser = nil;
                 }
@@ -1229,12 +1226,12 @@ static HACameraStreamMode currentStreamMode(void) {
 }
 
 - (void)hlsPlaybackFailed:(NSNotification *)note {
-    NSLog(@"[HACameraEntityCell] HLS playback failed to end time for %@", self.currentEntityId);
+    HALogE(@"cam", @"HLS playback failed to end time for %@", self.currentEntityId);
     [self stopHLSPlayer];
     self.hlsFailed = YES;
     // If MJPEG is still running in parallel, let it continue — don't reconnect
     if (self.streamParser.isStreaming) {
-        NSLog(@"[HACameraEntityCell] HLS failed but MJPEG still active for %@ — keeping MJPEG", self.currentEntityId);
+        HALogI(@"cam", @"HLS failed but MJPEG still active for %@ — keeping MJPEG", self.currentEntityId);
         return;
     }
     self.receivingFrames = NO;
@@ -1244,7 +1241,7 @@ static HACameraStreamMode currentStreamMode(void) {
 }
 
 - (void)hlsPlaybackStalled:(NSNotification *)note {
-    NSLog(@"[HACameraEntityCell] HLS playback stalled for %@ — will auto-resume on buffer refill",
+    HALogW(@"cam", @"HLS playback stalled for %@ — will auto-resume on buffer refill",
           self.currentEntityId);
     // AVPlayer auto-resumes when buffer refills (isPlaybackLikelyToKeepUp becomes YES).
     // Mark as not receiving frames so LIVE badge reflects reality.
@@ -1315,7 +1312,7 @@ static HACameraStreamMode currentStreamMode(void) {
 - (void)pollReadyForDisplay:(NSInteger)remaining {
     if (remaining <= 0 || !self.hlsPlayerLayer || self.receivingFrames) return;
     if (self.hlsPlayerLayer.readyForDisplay) {
-        NSLog(@"[HACameraEntityCell] HLS readyForDisplay confirmed via poll for %@", self.currentEntityId);
+        HALogI(@"cam", @"HLS readyForDisplay confirmed via poll for %@", self.currentEntityId);
         if (self.hlsPlayerLayer && !self.hlsPlayerLayer.superlayer) {
             self.hlsPlayerLayer.frame = self.snapshotView.bounds;
             [self.snapshotView.layer insertSublayer:self.hlsPlayerLayer atIndex:0];
@@ -1360,11 +1357,11 @@ static HACameraStreamMode currentStreamMode(void) {
         AVPlayerItem *item = self.hlsPlayer.currentItem;
         BOOL stalled = (self.hlsPlayer.rate == 0 && item && item.status == AVPlayerItemStatusReadyToPlay);
         if (stalled && self.receivingFrames) {
-            NSLog(@"[HACameraEntityCell] Health check: HLS stalled for %@ — attempting resume", self.currentEntityId);
+            HALogW(@"cam", @"Health check: HLS stalled for %@ — attempting resume", self.currentEntityId);
             [self.hlsPlayer play];
             // If still stalled after next health check, reconnect
         } else if (stalled && !self.receivingFrames) {
-            NSLog(@"[HACameraEntityCell] Health check: HLS dead for %@ — reconnecting", self.currentEntityId);
+            HALogW(@"cam", @"Health check: HLS dead for %@ — reconnecting", self.currentEntityId);
             [self attemptStreamReconnect];
         }
         return;
@@ -1374,7 +1371,7 @@ static HACameraStreamMode currentStreamMode(void) {
     if (self.streamParser.isStreaming && self.lastFrameTime) {
         NSTimeInterval age = -[self.lastFrameTime timeIntervalSinceNow];
         if (age > 30.0) {
-            NSLog(@"[HACameraEntityCell] Health check: MJPEG stale for %@ (%.0fs since last frame) — reconnecting",
+            HALogW(@"cam", @"Health check: MJPEG stale for %@ (%.0fs since last frame) — reconnecting",
                   self.currentEntityId, age);
             [self attemptStreamReconnect];
         }
@@ -1392,8 +1389,7 @@ static HACameraStreamMode currentStreamMode(void) {
     NSInteger maxAttempts = 3;
 
     if (self.reconnectAttempts > maxAttempts) {
-        [HAStartupLog log:[NSString stringWithFormat:@"[CAM] MAX RECONNECT %@ — snapshot fallback", self.currentEntityId]];
-        NSLog(@"[HACameraEntityCell] Max reconnect attempts (%ld) for %@ — falling back to snapshot polling",
+        HALogW(@"cam", @"Max reconnect attempts (%ld) for %@ — falling back to snapshot polling",
               (long)maxAttempts, self.currentEntityId);
         [self stopHLSPlayer];
         [self.streamParser stop];
@@ -1409,7 +1405,7 @@ static HACameraStreamMode currentStreamMode(void) {
     }
 
     NSTimeInterval delay = delays[MIN(self.reconnectAttempts - 1, 2)];
-    NSLog(@"[HACameraEntityCell] Reconnect attempt %ld for %@ (delay=%.0fs)",
+    HALogI(@"cam", @"Reconnect attempt %ld for %@ (delay=%.0fs)",
           (long)self.reconnectAttempts, self.currentEntityId, delay);
 
     __weak typeof(self) weakSelf = self;
@@ -1483,9 +1479,9 @@ static HACameraStreamMode currentStreamMode(void) {
 - (void)beginLoading {
     if (!self.currentEntityId) return;
 
-    [HAStartupLog log:[NSString stringWithFormat:@"[CAM] beginLoading %@ hlsPlayer=%d hlsReq=%d mjpeg=%d hlsFail=%d streamFail=%d",
+    HALogD(@"cam", @"beginLoading %@ hlsPlayer=%d hlsReq=%d mjpeg=%d hlsFail=%d streamFail=%d",
               self.currentEntityId, self.hlsPlayer != nil, self.hlsRequestInFlight,
-              self.streamParser.isStreaming, self.hlsFailed, self.streamFailed]];
+              self.streamParser.isStreaming, self.hlsFailed, self.streamFailed);
 
     // Already have HLS or requesting — don't restart anything
     if (self.hlsPlayer || self.hlsRequestInFlight) return;
@@ -1568,8 +1564,7 @@ static HACameraStreamMode currentStreamMode(void) {
                         (mode == HACameraStreamModeAuto && entitySupportsStream);
     if (!shouldTryHLS) return;
 
-    [HAStartupLog log:[NSString stringWithFormat:@"[CAM] wsDidConnect HLS upgrade %@ mjpeg=%d", self.currentEntityId, self.streamParser.isStreaming]];
-    NSLog(@"[HACameraEntityCell] WS connected — attempting HLS upgrade for %@ (MJPEG streaming=%d)",
+    HALogI(@"cam", @"WS connected — attempting HLS upgrade for %@ (MJPEG streaming=%d)",
           self.currentEntityId, self.streamParser.isStreaming);
     // Don't stop MJPEG yet — let HLS start in parallel. Once HLS confirms
     // readyForDisplay, we'll stop MJPEG. If HLS fails, MJPEG continues uninterrupted.
@@ -1583,7 +1578,7 @@ static HACameraStreamMode currentStreamMode(void) {
         // window during modal presentation but the stream must continue to deliver
         // frames to fullscreenImageView.
         if (self.fullscreenImageView) {
-            NSLog(@"[HACameraEntityCell] Cell lost window but fullscreen is active — keeping stream alive for %@", self.currentEntityId);
+            HALogD(@"cam", @"Cell lost window but fullscreen is active — keeping stream alive for %@", self.currentEntityId);
             return;
         }
         [self stopRefresh];
