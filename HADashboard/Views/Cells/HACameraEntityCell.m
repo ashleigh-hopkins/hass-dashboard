@@ -1473,6 +1473,13 @@ static HACameraStreamMode currentStreamMode(void) {
 }
 
 - (void)refreshTimerFired {
+    // Self-invalidate when removed from window (matches healthCheckFired pattern).
+    // Breaks the NSTimer → self retain cycle on section removal.
+    if (!self.currentEntityId || !self.window) {
+        [self.refreshTimer invalidate];
+        self.refreshTimer = nil;
+        return;
+    }
     [self fetchSnapshot];
 }
 

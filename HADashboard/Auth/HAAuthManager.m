@@ -28,7 +28,7 @@ static NSString *const kCameraGlobalMuteKey = @"HACameraGlobalMute";
 @property (nonatomic, assign, readwrite) BOOL autoReloadDashboard;
 @property (nonatomic, assign, readwrite) BOOL cameraGlobalMute;
 @property (nonatomic, strong) NSTimer *refreshTimer;
-@property (nonatomic, assign) BOOL isRefreshing;
+@property (nonatomic, strong) NSMutableArray<void (^)(BOOL, NSError *)> *pendingRefreshCompletions;
 @end
 
 @implementation HAAuthManager
@@ -228,31 +228,39 @@ static NSString *const kCameraGlobalMuteKey = @"HACameraGlobalMute";
         return;
     }
 
-    if (self.isRefreshing) {
-        // Already refreshing, skip duplicate
-        if (completion) completion(NO, nil);
-        return;
+    @synchronized(self) {
+        if (self.pendingRefreshCompletions) {
+            // Already refreshing — queue this caller so it gets the result
+            if (completion) [self.pendingRefreshCompletions addObject:[completion copy]];
+            return;
+        }
+        self.pendingRefreshCompletions = [NSMutableArray array];
+        if (completion) [self.pendingRefreshCompletions addObject:[completion copy]];
     }
-    self.isRefreshing = YES;
 
     HAOAuthClient *oauth = [[HAOAuthClient alloc] initWithServerURL:self.serverURL];
     [oauth refreshWithToken:self.refreshToken completion:^(NSDictionary *tokenResponse, NSError *error) {
-        self.isRefreshing = NO;
-
+        BOOL success = NO;
         if (error || !tokenResponse[@"access_token"]) {
             HALogE(@"auth", @"Token refresh failed: %@", error.localizedDescription);
-            if (completion) completion(NO, error);
-            return;
+        } else {
+            NSString *newToken = tokenResponse[@"access_token"];
+            NSTimeInterval expiresIn = [tokenResponse[@"expires_in"] doubleValue];
+            if (expiresIn <= 0) expiresIn = 1800; // Default 30 min
+
+            [self updateAccessToken:newToken expiresIn:expiresIn];
+            HALogI(@"auth", @"Token refreshed, expires in %.0fs", expiresIn);
+            success = YES;
         }
 
-        NSString *newToken = tokenResponse[@"access_token"];
-        NSTimeInterval expiresIn = [tokenResponse[@"expires_in"] doubleValue];
-        if (expiresIn <= 0) expiresIn = 1800; // Default 30 min
-
-        [self updateAccessToken:newToken expiresIn:expiresIn];
-        HALogI(@"auth", @"Token refreshed, expires in %.0fs", expiresIn);
-
-        if (completion) completion(YES, nil);
+        NSArray<void (^)(BOOL, NSError *)> *completions;
+        @synchronized(self) {
+            completions = [self.pendingRefreshCompletions copy];
+            self.pendingRefreshCompletions = nil;
+        }
+        for (void (^cb)(BOOL, NSError *) in completions) {
+            cb(success, error);
+        }
     }];
 }
 

@@ -390,6 +390,11 @@ static NSString *const kRedirectURI = @"https://hadashboard.local/";
 }
 
 - (NSString *)urlEncode:(NSString *)string {
+    // NOTE: URLQueryAllowedCharacterSet allows &, =, + which technically should
+    // be percent-encoded in individual form values per RFC 3986. This works in
+    // practice because HA auth codes and refresh tokens are hex strings (no
+    // special chars), and the client_id is a simple URL. If a future auth
+    // backend issues tokens with &/=/+, switch to an RFC 3986 unreserved charset.
     return [string stringByAddingPercentEncodingWithAllowedCharacters:
         [NSCharacterSet URLQueryAllowedCharacterSet]];
 }
