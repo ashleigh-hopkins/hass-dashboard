@@ -1,3 +1,4 @@
+#import "HAAutoLayout.h"
 #import "HACameraEntityCell.h"
 #import "HAEntity.h"
 #import "HAAuthManager.h"
@@ -151,12 +152,18 @@ static HACameraStreamMode currentStreamMode(void) {
     CGFloat padding = 10.0;
 
     // Image view: fills cell, with toggling top constraint for name visibility
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.snapshotView attribute:NSLayoutAttributeLeading
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeLeading multiplier:1 constant:0]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.snapshotView attribute:NSLayoutAttributeTrailing
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTrailing multiplier:1 constant:0]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.snapshotView attribute:NSLayoutAttributeBottom
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeBottom multiplier:1 constant:0]];
+    if (HAAutoLayoutAvailable()) {
+        [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.snapshotView attribute:NSLayoutAttributeLeading
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeLeading multiplier:1 constant:0]];
+    }
+    if (HAAutoLayoutAvailable()) {
+        [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.snapshotView attribute:NSLayoutAttributeTrailing
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTrailing multiplier:1 constant:0]];
+    }
+    if (HAAutoLayoutAvailable()) {
+        [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.snapshotView attribute:NSLayoutAttributeBottom
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeBottom multiplier:1 constant:0]];
+    }
 
     // Two top constraints: below nameLabel (with title) or at contentView top (no title)
     self.snapshotTopWithName = [NSLayoutConstraint constraintWithItem:self.snapshotView attribute:NSLayoutAttributeTop
@@ -168,18 +175,28 @@ static HACameraStreamMode currentStreamMode(void) {
     self.snapshotTopNoName.active = YES;
 
     // Spinner: centered in snapshot view
-    [self.snapshotView addConstraint:[NSLayoutConstraint constraintWithItem:self.loadingSpinner attribute:NSLayoutAttributeCenterX
-        relatedBy:NSLayoutRelationEqual toItem:self.snapshotView attribute:NSLayoutAttributeCenterX multiplier:1 constant:0]];
-    [self.snapshotView addConstraint:[NSLayoutConstraint constraintWithItem:self.loadingSpinner attribute:NSLayoutAttributeCenterY
-        relatedBy:NSLayoutRelationEqual toItem:self.snapshotView attribute:NSLayoutAttributeCenterY multiplier:1 constant:0]];
+    if (HAAutoLayoutAvailable()) {
+        [self.snapshotView addConstraint:[NSLayoutConstraint constraintWithItem:self.loadingSpinner attribute:NSLayoutAttributeCenterX
+            relatedBy:NSLayoutRelationEqual toItem:self.snapshotView attribute:NSLayoutAttributeCenterX multiplier:1 constant:0]];
+    }
+    if (HAAutoLayoutAvailable()) {
+        [self.snapshotView addConstraint:[NSLayoutConstraint constraintWithItem:self.loadingSpinner attribute:NSLayoutAttributeCenterY
+            relatedBy:NSLayoutRelationEqual toItem:self.snapshotView attribute:NSLayoutAttributeCenterY multiplier:1 constant:0]];
+    }
 
     // Error label: centered in snapshot view
-    [self.snapshotView addConstraint:[NSLayoutConstraint constraintWithItem:self.errorLabel attribute:NSLayoutAttributeCenterX
-        relatedBy:NSLayoutRelationEqual toItem:self.snapshotView attribute:NSLayoutAttributeCenterX multiplier:1 constant:0]];
-    [self.snapshotView addConstraint:[NSLayoutConstraint constraintWithItem:self.errorLabel attribute:NSLayoutAttributeCenterY
-        relatedBy:NSLayoutRelationEqual toItem:self.snapshotView attribute:NSLayoutAttributeCenterY multiplier:1 constant:0]];
-    [self.snapshotView addConstraint:[NSLayoutConstraint constraintWithItem:self.errorLabel attribute:NSLayoutAttributeLeading
-        relatedBy:NSLayoutRelationGreaterThanOrEqual toItem:self.snapshotView attribute:NSLayoutAttributeLeading multiplier:1 constant:padding]];
+    if (HAAutoLayoutAvailable()) {
+        [self.snapshotView addConstraint:[NSLayoutConstraint constraintWithItem:self.errorLabel attribute:NSLayoutAttributeCenterX
+            relatedBy:NSLayoutRelationEqual toItem:self.snapshotView attribute:NSLayoutAttributeCenterX multiplier:1 constant:0]];
+    }
+    if (HAAutoLayoutAvailable()) {
+        [self.snapshotView addConstraint:[NSLayoutConstraint constraintWithItem:self.errorLabel attribute:NSLayoutAttributeCenterY
+            relatedBy:NSLayoutRelationEqual toItem:self.snapshotView attribute:NSLayoutAttributeCenterY multiplier:1 constant:0]];
+    }
+    if (HAAutoLayoutAvailable()) {
+        [self.snapshotView addConstraint:[NSLayoutConstraint constraintWithItem:self.errorLabel attribute:NSLayoutAttributeLeading
+            relatedBy:NSLayoutRelationGreaterThanOrEqual toItem:self.snapshotView attribute:NSLayoutAttributeLeading multiplier:1 constant:padding]];
+    }
 
     // State badge (recording/streaming indicator, top-right corner)
     self.stateBadge = [[UILabel alloc] init];
@@ -193,12 +210,14 @@ static HACameraStreamMode currentStreamMode(void) {
     self.stateBadge.hidden = YES;
     [self.contentView addSubview:self.stateBadge];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.stateBadge.topAnchor constraintEqualToAnchor:self.snapshotView.topAnchor constant:6],
-        [self.stateBadge.trailingAnchor constraintEqualToAnchor:self.snapshotView.trailingAnchor constant:-38],
-        [self.stateBadge.heightAnchor constraintEqualToConstant:16],
-        [self.stateBadge.widthAnchor constraintGreaterThanOrEqualToConstant:40],
-    ]];
+    if (HAAutoLayoutAvailable()) {
+        [NSLayoutConstraint activateConstraints:@[
+            [self.stateBadge.topAnchor constraintEqualToAnchor:self.snapshotView.topAnchor constant:6],
+            [self.stateBadge.trailingAnchor constraintEqualToAnchor:self.snapshotView.trailingAnchor constant:-38],
+            [self.stateBadge.heightAnchor constraintEqualToConstant:16],
+            [self.stateBadge.widthAnchor constraintGreaterThanOrEqualToConstant:40],
+        ]];
+    }
 
     // Camera power toggle button (top-left of snapshot)
     self.cameraPowerButton = [UIButton buttonWithType:UIButtonTypeCustom];
@@ -256,34 +275,38 @@ static HACameraStreamMode currentStreamMode(void) {
 
     // Snapshot button leads from power button when visible, from snapshotView edge when hidden.
     // Use two constraints with different priorities — the active one wins.
-    NSLayoutConstraint *snapAfterPower = [self.cameraSnapshotButton.leadingAnchor constraintEqualToAnchor:self.cameraPowerButton.trailingAnchor constant:4];
-    snapAfterPower.priority = UILayoutPriorityDefaultHigh; // 750 — used when power visible
-    NSLayoutConstraint *snapAtEdge = [self.cameraSnapshotButton.leadingAnchor constraintEqualToAnchor:self.snapshotView.leadingAnchor constant:6];
-    snapAtEdge.priority = UILayoutPriorityDefaultLow; // 250 — used when power hidden
-    self.snapAfterPowerConstraint = snapAfterPower;
-    self.snapAtEdgeConstraint = snapAtEdge;
+    if (HAAutoLayoutAvailable()) {
+        NSLayoutConstraint *snapAfterPower = [self.cameraSnapshotButton.leadingAnchor constraintEqualToAnchor:self.cameraPowerButton.trailingAnchor constant:4];
+        snapAfterPower.priority = UILayoutPriorityDefaultHigh; // 750 — used when power visible
+        NSLayoutConstraint *snapAtEdge = [self.cameraSnapshotButton.leadingAnchor constraintEqualToAnchor:self.snapshotView.leadingAnchor constant:6];
+        snapAtEdge.priority = UILayoutPriorityDefaultLow; // 250 — used when power hidden
+        self.snapAfterPowerConstraint = snapAfterPower;
+        self.snapAtEdgeConstraint = snapAtEdge;
+    }
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.cameraPowerButton.topAnchor constraintEqualToAnchor:self.snapshotView.topAnchor constant:6],
-        [self.cameraPowerButton.leadingAnchor constraintEqualToAnchor:self.snapshotView.leadingAnchor constant:6],
-        [self.cameraPowerButton.widthAnchor constraintEqualToConstant:28],
-        [self.cameraPowerButton.heightAnchor constraintEqualToConstant:28],
-        [self.cameraSnapshotButton.topAnchor constraintEqualToAnchor:self.snapshotView.topAnchor constant:6],
-        snapAfterPower,
-        snapAtEdge,
-        [self.cameraSnapshotButton.widthAnchor constraintEqualToConstant:28],
-        [self.cameraSnapshotButton.heightAnchor constraintEqualToConstant:28],
-        // Fullscreen button — top-right corner
-        [self.cameraFullscreenButton.topAnchor constraintEqualToAnchor:self.snapshotView.topAnchor constant:6],
-        [self.cameraFullscreenButton.trailingAnchor constraintEqualToAnchor:self.snapshotView.trailingAnchor constant:-6],
-        [self.cameraFullscreenButton.widthAnchor constraintEqualToConstant:28],
-        [self.cameraFullscreenButton.heightAnchor constraintEqualToConstant:28],
-        // Volume button — bottom-right corner
-        [self.cameraVolumeButton.bottomAnchor constraintEqualToAnchor:self.snapshotView.bottomAnchor constant:-6],
-        [self.cameraVolumeButton.trailingAnchor constraintEqualToAnchor:self.snapshotView.trailingAnchor constant:-6],
-        [self.cameraVolumeButton.widthAnchor constraintEqualToConstant:28],
-        [self.cameraVolumeButton.heightAnchor constraintEqualToConstant:28],
-    ]];
+    if (HAAutoLayoutAvailable()) {
+        [NSLayoutConstraint activateConstraints:@[
+            [self.cameraPowerButton.topAnchor constraintEqualToAnchor:self.snapshotView.topAnchor constant:6],
+            [self.cameraPowerButton.leadingAnchor constraintEqualToAnchor:self.snapshotView.leadingAnchor constant:6],
+            [self.cameraPowerButton.widthAnchor constraintEqualToConstant:28],
+            [self.cameraPowerButton.heightAnchor constraintEqualToConstant:28],
+            [self.cameraSnapshotButton.topAnchor constraintEqualToAnchor:self.snapshotView.topAnchor constant:6],
+            self.snapAfterPowerConstraint,
+            self.snapAtEdgeConstraint,
+            [self.cameraSnapshotButton.widthAnchor constraintEqualToConstant:28],
+            [self.cameraSnapshotButton.heightAnchor constraintEqualToConstant:28],
+            // Fullscreen button — top-right corner
+            [self.cameraFullscreenButton.topAnchor constraintEqualToAnchor:self.snapshotView.topAnchor constant:6],
+            [self.cameraFullscreenButton.trailingAnchor constraintEqualToAnchor:self.snapshotView.trailingAnchor constant:-6],
+            [self.cameraFullscreenButton.widthAnchor constraintEqualToConstant:28],
+            [self.cameraFullscreenButton.heightAnchor constraintEqualToConstant:28],
+            // Volume button — bottom-right corner
+            [self.cameraVolumeButton.bottomAnchor constraintEqualToAnchor:self.snapshotView.bottomAnchor constant:-6],
+            [self.cameraVolumeButton.trailingAnchor constraintEqualToAnchor:self.snapshotView.trailingAnchor constant:-6],
+            [self.cameraVolumeButton.widthAnchor constraintEqualToConstant:28],
+            [self.cameraVolumeButton.heightAnchor constraintEqualToConstant:28],
+        ]];
+    }
 
     // Shared session for image fetches — no caching to always get fresh frames
     NSURLSessionConfiguration *config = [NSURLSessionConfiguration ephemeralSessionConfiguration];
@@ -823,6 +846,36 @@ static HACameraStreamMode currentStreamMode(void) {
 
 - (void)layoutSubviews {
     [super layoutSubviews];
+    if (!HAAutoLayoutAvailable()) {
+        CGFloat w = self.contentView.bounds.size.width;
+        CGFloat h = self.contentView.bounds.size.height;
+        CGFloat padding = 10.0;
+
+        // Snapshot view: full bleed or below name
+        CGFloat snapTop = self.nameLabel.hidden ? 0 : CGRectGetMaxY(self.nameLabel.frame) + 4;
+        self.snapshotView.frame = CGRectMake(0, snapTop, w, h - snapTop);
+
+        // Loading spinner: centered in snapshot
+        CGSize spinSize = [self.loadingSpinner sizeThatFits:CGSizeMake(50, 50)];
+        CGFloat snapMidX = w / 2.0;
+        CGFloat snapMidY = snapTop + (h - snapTop) / 2.0;
+        self.loadingSpinner.frame = CGRectMake(snapMidX - spinSize.width / 2.0, snapMidY - snapTop - spinSize.height / 2.0, spinSize.width, spinSize.height);
+
+        // Error label: centered in snapshot
+        CGSize errSize = [self.errorLabel sizeThatFits:CGSizeMake(w - padding * 2, CGFLOAT_MAX)];
+        self.errorLabel.frame = CGRectMake(padding, (h - snapTop) / 2.0 - errSize.height / 2.0, w - padding * 2, errSize.height);
+
+        // State badge: top-right of snapshot
+        CGSize badgeSize = [self.stateBadge sizeThatFits:CGSizeMake(80, 16)];
+        self.stateBadge.frame = CGRectMake(w - 38 - MAX(badgeSize.width, 40), snapTop + 6, MAX(badgeSize.width, 40), 16);
+
+        // Camera buttons
+        self.cameraPowerButton.frame = CGRectMake(6, snapTop + 6, 28, 28);
+        CGFloat snapBtnX = self.cameraPowerButton.hidden ? 6 : 38;
+        self.cameraSnapshotButton.frame = CGRectMake(snapBtnX, snapTop + 6, 28, 28);
+        self.cameraFullscreenButton.frame = CGRectMake(w - 34, snapTop + 6, 28, 28);
+        self.cameraVolumeButton.frame = CGRectMake(w - 34, h - 34, 28, 28);
+    }
     [self layoutOverlayBar];
     // Keep HLS player layer frame in sync with snapshot view
     if (self.hlsPlayerLayer) {

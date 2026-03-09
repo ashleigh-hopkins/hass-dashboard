@@ -1,7 +1,10 @@
+#import "HAAutoLayout.h"
+#import "HAStackView.h"
 #import "HATileEntityCell.h"
 #import "HAEntity.h"
 #import "HAConnectionManager.h"
 #import "HAAuthManager.h"
+#import "HAHTTPClient.h"
 #import "HADashboardConfig.h"
 #import "HATheme.h"
 #import "HAHaptics.h"
@@ -14,7 +17,7 @@
 @property (nonatomic, strong) UILabel *tileIconLabel;
 @property (nonatomic, strong) UILabel *tileNameLabel;
 @property (nonatomic, strong) UILabel *tileStateLabel;
-@property (nonatomic, strong) UIStackView *compactStack;
+@property (nonatomic, strong) HAStackView *compactStack;
 /// Normal (tile) layout constraints
 @property (nonatomic, strong) NSArray<NSLayoutConstraint *> *normalConstraints;
 /// Compact (pill) layout constraints for button cards in horizontal-stack
@@ -23,9 +26,9 @@
 @property (nonatomic, assign) BOOL isVertical;
 /// Entity picture image view (shown when show_entity_picture is true)
 @property (nonatomic, strong) UIImageView *entityPictureView;
-@property (nonatomic, strong) NSURLSessionDataTask *pictureTask;
+@property (nonatomic, strong) id pictureTask;
 /// Feature views below the tile area (brightness slider, cover buttons, etc.)
-@property (nonatomic, strong) UIStackView *featuresStack;
+@property (nonatomic, strong) HAStackView *featuresStack;
 @property (nonatomic, strong) NSArray<HATileFeatureView *> *featureViews;
 @property (nonatomic, strong) NSLayoutConstraint *featuresTopConstraint;
 @end
@@ -97,58 +100,59 @@
     self.tileStateLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:self.tileStateLabel];
 
-    // Normal layout: icon on the left, name + state stacked to the right (HA web style).
-    // Pin to a fixed 72px top area so features below don't shift the content.
-    CGFloat iconWidth = 32.0;
-    CGFloat tileAreaCenterY = 72.0 / 2.0; // Center of the 72px tile content area
-    self.normalConstraints = @[
-        [self.tileIconLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:12],
-        [self.tileIconLabel.centerYAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:tileAreaCenterY],
-        [self.tileIconLabel.widthAnchor constraintEqualToConstant:iconWidth],
-        [self.tileNameLabel.leadingAnchor constraintEqualToAnchor:self.tileIconLabel.trailingAnchor constant:10],
-        [self.tileNameLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-padding],
-        [self.tileNameLabel.bottomAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:tileAreaCenterY - 1],
-        [self.tileStateLabel.leadingAnchor constraintEqualToAnchor:self.tileNameLabel.leadingAnchor],
-        [self.tileStateLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-padding],
-        [self.tileStateLabel.topAnchor constraintEqualToAnchor:self.tileNameLabel.bottomAnchor constant:2],
-    ];
-
-    // Compact layout: vertically centered stack (icon above name above state).
-    // UIStackView automatically collapses hidden arranged subviews, so the
-    // group stays centered whether state is visible or not.
-    // Create stack empty — labels are moved in/out by applyCompactMode:
-    self.compactStack = [[UIStackView alloc] init];
-    self.compactStack.axis = UILayoutConstraintAxisVertical;
-    self.compactStack.alignment = UIStackViewAlignmentCenter;
+    // Compact layout stack (created unconditionally for addArrangedSubview)
+    self.compactStack = [[HAStackView alloc] init];
+    self.compactStack.axis = 1;
+    self.compactStack.alignment = 3;
     self.compactStack.spacing = 4;
     self.compactStack.translatesAutoresizingMaskIntoConstraints = NO;
     self.compactStack.hidden = YES; // start hidden, activated by applyCompactMode:
     [self.contentView addSubview:self.compactStack];
 
-    self.compactConstraints = @[
-        [self.compactStack.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor],
-        [self.compactStack.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
-        [self.compactStack.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.contentView.leadingAnchor constant:4],
-        [self.compactStack.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-4],
-    ];
+    if (HAAutoLayoutAvailable()) {
+        // Normal layout: icon on the left, name + state stacked to the right (HA web style).
+        // Pin to a fixed 72px top area so features below don't shift the content.
+        CGFloat iconWidth = 32.0;
+        CGFloat tileAreaCenterY = 72.0 / 2.0; // Center of the 72px tile content area
+        self.normalConstraints = @[
+            [self.tileIconLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:12],
+            [self.tileIconLabel.centerYAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:tileAreaCenterY],
+            [self.tileIconLabel.widthAnchor constraintEqualToConstant:iconWidth],
+            [self.tileNameLabel.leadingAnchor constraintEqualToAnchor:self.tileIconLabel.trailingAnchor constant:10],
+            [self.tileNameLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-padding],
+            [self.tileNameLabel.bottomAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:tileAreaCenterY - 1],
+            [self.tileStateLabel.leadingAnchor constraintEqualToAnchor:self.tileNameLabel.leadingAnchor],
+            [self.tileStateLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-padding],
+            [self.tileStateLabel.topAnchor constraintEqualToAnchor:self.tileNameLabel.bottomAnchor constant:2],
+        ];
 
-    // Start with normal layout
-    [NSLayoutConstraint activateConstraints:self.normalConstraints];
+        self.compactConstraints = @[
+            [self.compactStack.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor],
+            [self.compactStack.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
+            [self.compactStack.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.contentView.leadingAnchor constant:4],
+            [self.compactStack.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-4],
+        ];
+
+        // Start with normal layout
+        [NSLayoutConstraint activateConstraints:self.normalConstraints];
+    }
 
     // Features stack (brightness slider, cover buttons, etc.) — below main tile area
-    self.featuresStack = [[UIStackView alloc] init];
-    self.featuresStack.axis = UILayoutConstraintAxisVertical;
+    self.featuresStack = [[HAStackView alloc] init];
+    self.featuresStack.axis = 1;
     self.featuresStack.spacing = 4;
     self.featuresStack.translatesAutoresizingMaskIntoConstraints = NO;
     self.featuresStack.hidden = YES;
     [self.contentView addSubview:self.featuresStack];
 
-    self.featuresTopConstraint = [self.featuresStack.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:72];
-    [NSLayoutConstraint activateConstraints:@[
-        self.featuresTopConstraint,
-        [self.featuresStack.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
-        [self.featuresStack.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
-    ]];
+    if (HAAutoLayoutAvailable()) {
+        self.featuresTopConstraint = [self.featuresStack.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:72];
+        [NSLayoutConstraint activateConstraints:@[
+            self.featuresTopConstraint,
+            [self.featuresStack.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
+            [self.featuresStack.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
+        ]];
+    }
 
     // Icon tap gesture: separate from cell selection to support icon_tap_action.
     // When iconTapBlock is set, tapping the icon calls the block instead of
@@ -167,7 +171,9 @@
     self.isCompact = compact;
 
     if (compact) {
-        [NSLayoutConstraint deactivateConstraints:self.normalConstraints];
+        if (HAAutoLayoutAvailable()) {
+            [NSLayoutConstraint deactivateConstraints:self.normalConstraints];
+        }
         // Move labels into the centered stack
         if (self.tileIconLabel.superview != self.compactStack) {
             [self.compactStack addArrangedSubview:self.tileIconLabel];
@@ -175,20 +181,26 @@
             [self.compactStack addArrangedSubview:self.tileStateLabel];
         }
         self.compactStack.hidden = NO;
-        [NSLayoutConstraint activateConstraints:self.compactConstraints];
+        if (HAAutoLayoutAvailable()) {
+            [NSLayoutConstraint activateConstraints:self.compactConstraints];
+        }
         self.tileIconLabel.font = [HAIconMapper mdiFontOfSize:28];
         self.tileNameLabel.font = [UIFont systemFontOfSize:12 weight:UIFontWeightMedium];
         self.tileNameLabel.textAlignment = NSTextAlignmentCenter;
         self.tileNameLabel.numberOfLines = 1;
         self.contentView.layer.cornerRadius = 12.0;
     } else {
-        [NSLayoutConstraint deactivateConstraints:self.compactConstraints];
+        if (HAAutoLayoutAvailable()) {
+            [NSLayoutConstraint deactivateConstraints:self.compactConstraints];
+        }
         self.compactStack.hidden = YES;
         // Move labels back to contentView for normal layout
         [self.contentView addSubview:self.tileIconLabel];
         [self.contentView addSubview:self.tileNameLabel];
         [self.contentView addSubview:self.tileStateLabel];
-        [NSLayoutConstraint activateConstraints:self.normalConstraints];
+        if (HAAutoLayoutAvailable()) {
+            [NSLayoutConstraint activateConstraints:self.normalConstraints];
+        }
         self.tileIconLabel.font = [HAIconMapper mdiFontOfSize:28];
         self.tileNameLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
         self.tileNameLabel.textAlignment = NSTextAlignmentLeft;
@@ -202,14 +214,18 @@
     self.isVertical = vertical;
 
     if (vertical) {
-        [NSLayoutConstraint deactivateConstraints:self.normalConstraints];
+        if (HAAutoLayoutAvailable()) {
+            [NSLayoutConstraint deactivateConstraints:self.normalConstraints];
+        }
         if (self.tileIconLabel.superview != self.compactStack) {
             [self.compactStack addArrangedSubview:self.tileIconLabel];
             [self.compactStack addArrangedSubview:self.tileNameLabel];
             [self.compactStack addArrangedSubview:self.tileStateLabel];
         }
         self.compactStack.hidden = NO;
-        [NSLayoutConstraint activateConstraints:self.compactConstraints];
+        if (HAAutoLayoutAvailable()) {
+            [NSLayoutConstraint activateConstraints:self.compactConstraints];
+        }
         // Vertical keeps normal font sizes (unlike compact which shrinks)
         self.tileIconLabel.font = [HAIconMapper mdiFontOfSize:28];
         self.tileNameLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
@@ -217,17 +233,53 @@
         self.tileNameLabel.numberOfLines = 2;
         self.contentView.layer.cornerRadius = 14.0;
     } else {
-        [NSLayoutConstraint deactivateConstraints:self.compactConstraints];
+        if (HAAutoLayoutAvailable()) {
+            [NSLayoutConstraint deactivateConstraints:self.compactConstraints];
+        }
         self.compactStack.hidden = YES;
         [self.contentView addSubview:self.tileIconLabel];
         [self.contentView addSubview:self.tileNameLabel];
         [self.contentView addSubview:self.tileStateLabel];
-        [NSLayoutConstraint activateConstraints:self.normalConstraints];
+        if (HAAutoLayoutAvailable()) {
+            [NSLayoutConstraint activateConstraints:self.normalConstraints];
+        }
         self.tileIconLabel.font = [HAIconMapper mdiFontOfSize:28];
         self.tileNameLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
         self.tileNameLabel.textAlignment = NSTextAlignmentLeft;
         self.tileNameLabel.numberOfLines = 2;
         self.contentView.layer.cornerRadius = 14.0;
+    }
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    if (!HAAutoLayoutAvailable()) {
+        CGFloat w = self.contentView.bounds.size.width;
+        CGFloat padding = 10.0;
+
+        if (!self.compactStack.hidden) {
+            // Compact mode: centered stack
+            CGSize stackSize = [self.compactStack sizeThatFits:self.contentView.bounds.size];
+            self.compactStack.frame = CGRectMake((w - stackSize.width) / 2.0,
+                                                  (self.contentView.bounds.size.height - stackSize.height) / 2.0,
+                                                  stackSize.width, stackSize.height);
+        } else {
+            // Normal mode: icon left, name+state right
+            CGFloat iconWidth = 32.0;
+            CGFloat tileAreaCenterY = 72.0 / 2.0;
+            self.tileIconLabel.frame = CGRectMake(12, tileAreaCenterY - 14, iconWidth, 28);
+            CGFloat nameX = 12 + iconWidth + 10;
+            CGFloat nameW = w - nameX - padding;
+            CGSize nameSize = [self.tileNameLabel sizeThatFits:CGSizeMake(nameW, CGFLOAT_MAX)];
+            self.tileNameLabel.frame = CGRectMake(nameX, tileAreaCenterY - 1 - nameSize.height, nameW, nameSize.height);
+            CGSize stateSize = [self.tileStateLabel sizeThatFits:CGSizeMake(nameW, CGFLOAT_MAX)];
+            self.tileStateLabel.frame = CGRectMake(nameX, tileAreaCenterY + 1, nameW, stateSize.height);
+        }
+
+        // Features stack below tile area
+        if (!self.featuresStack.hidden) {
+            self.featuresStack.frame = CGRectMake(0, 72, w, self.contentView.bounds.size.height - 72);
+        }
     }
 }
 
@@ -394,7 +446,7 @@
     self.tileIconLabel.text = glyph ?: @"?";
 
     // Entity picture: show circular image instead of icon when configured
-    [self.pictureTask cancel];
+    [[HAHTTPClient sharedClient] cancelTask:self.pictureTask];
     BOOL showEntityPicture = [configItem.customProperties[@"show_entity_picture"] boolValue];
     NSString *entityPicture = entity.attributes[@"entity_picture"];
     if (showEntityPicture && entityPicture.length > 0) {
@@ -406,12 +458,14 @@
             self.entityPictureView.clipsToBounds = YES;
             self.entityPictureView.layer.cornerRadius = 16;
             [self.contentView addSubview:self.entityPictureView];
-            [NSLayoutConstraint activateConstraints:@[
-                [self.entityPictureView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:12],
-                [self.entityPictureView.centerYAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:36],
-                [self.entityPictureView.widthAnchor constraintEqualToConstant:32],
-                [self.entityPictureView.heightAnchor constraintEqualToConstant:32],
-            ]];
+            if (HAAutoLayoutAvailable()) {
+                [NSLayoutConstraint activateConstraints:@[
+                    [self.entityPictureView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:12],
+                    [self.entityPictureView.centerYAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:36],
+                    [self.entityPictureView.widthAnchor constraintEqualToConstant:32],
+                    [self.entityPictureView.heightAnchor constraintEqualToConstant:32],
+                ]];
+            }
         }
         self.entityPictureView.hidden = NO;
         self.entityPictureView.image = nil;
@@ -423,7 +477,7 @@
             NSString *token = [[HAAuthManager sharedManager] accessToken];
             if (token) [req setValue:[NSString stringWithFormat:@"Bearer %@", token] forHTTPHeaderField:@"Authorization"];
             __weak typeof(self) weakSelf = self;
-            self.pictureTask = [[NSURLSession sharedSession] dataTaskWithRequest:req completionHandler:^(NSData *data, NSURLResponse *resp, NSError *err) {
+            self.pictureTask = [[HAHTTPClient sharedClient] dataTaskWithRequest:req completionHandler:^(NSData *data, NSURLResponse *resp, NSError *err) {
                 if (!data) return;
                 UIImage *img = [UIImage imageWithData:data];
                 if (!img) return;
@@ -432,7 +486,6 @@
                     if (strongSelf) strongSelf.entityPictureView.image = img;
                 });
             }];
-            [self.pictureTask resume];
         }
     } else {
         self.entityPictureView.hidden = YES;
@@ -547,7 +600,7 @@
     self.tileNameLabel.textColor = [HATheme primaryTextColor];
 
     // Clear entity picture
-    [self.pictureTask cancel];
+    [[HAHTTPClient sharedClient] cancelTask:self.pictureTask];
     self.pictureTask = nil;
     self.entityPictureView.hidden = YES;
     self.entityPictureView.image = nil;

@@ -1,12 +1,14 @@
+#import "HAAutoLayout.h"
 #import "HAImageEntityCell.h"
 #import "HAEntity.h"
 #import "HAAuthManager.h"
+#import "HAHTTPClient.h"
 #import "HADashboardConfig.h"
 #import "HATheme.h"
 
 @interface HAImageEntityCell ()
 @property (nonatomic, strong) UIImageView *imageView;
-@property (nonatomic, strong) NSURLSessionDataTask *imageTask;
+@property (nonatomic, strong) id imageTask;
 @end
 
 @implementation HAImageEntityCell
@@ -24,19 +26,32 @@
     [self.contentView addSubview:self.imageView];
 
     CGFloat padding = 10.0;
-    [NSLayoutConstraint activateConstraints:@[
-        [self.imageView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding],
-        [self.imageView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-padding],
-        [self.imageView.topAnchor constraintEqualToAnchor:self.nameLabel.bottomAnchor constant:4],
-        [self.imageView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-padding],
-    ]];
+    if (HAAutoLayoutAvailable()) {
+        [NSLayoutConstraint activateConstraints:@[
+            [self.imageView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding],
+            [self.imageView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-padding],
+            [self.imageView.topAnchor constraintEqualToAnchor:self.nameLabel.bottomAnchor constant:4],
+            [self.imageView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-padding],
+        ]];
+    }
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    if (!HAAutoLayoutAvailable()) {
+        CGFloat padding = 10.0;
+        CGFloat w = self.contentView.bounds.size.width;
+        CGFloat h = self.contentView.bounds.size.height;
+        CGFloat top = CGRectGetMaxY(self.nameLabel.frame) + 4;
+        self.imageView.frame = CGRectMake(padding, top, w - padding * 2, h - padding - top);
+    }
 }
 
 - (void)configureWithEntity:(HAEntity *)entity configItem:(HADashboardConfigItem *)configItem {
     [super configureWithEntity:entity configItem:configItem];
     self.stateLabel.hidden = YES;
 
-    [self.imageTask cancel];
+    [[HAHTTPClient sharedClient] cancelTask:self.imageTask];
     self.imageView.image = nil;
 
     NSString *picturePath = entity.attributes[@"entity_picture"];
@@ -57,7 +72,7 @@
     if (token) [req setValue:[NSString stringWithFormat:@"Bearer %@", token] forHTTPHeaderField:@"Authorization"];
 
     __weak typeof(self) weakSelf = self;
-    self.imageTask = [[NSURLSession sharedSession] dataTaskWithRequest:req completionHandler:^(NSData *data, NSURLResponse *resp, NSError *err) {
+    self.imageTask = [[HAHTTPClient sharedClient] dataTaskWithRequest:req completionHandler:^(NSData *data, NSURLResponse *resp, NSError *err) {
         if (!data) return;
         UIImage *img = [UIImage imageWithData:data];
         if (!img) return;
@@ -66,12 +81,11 @@
             if (s) s.imageView.image = img;
         });
     }];
-    [self.imageTask resume];
 }
 
 - (void)prepareForReuse {
     [super prepareForReuse];
-    [self.imageTask cancel];
+    [[HAHTTPClient sharedClient] cancelTask:self.imageTask];
     self.imageTask = nil;
     self.imageView.image = nil;
     self.contentView.backgroundColor = [HATheme cellBackgroundColor];

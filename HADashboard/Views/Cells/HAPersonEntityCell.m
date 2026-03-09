@@ -1,8 +1,10 @@
+#import "HAAutoLayout.h"
 #import "HAPersonEntityCell.h"
 #import "HAEntity.h"
 #import "HADashboardConfig.h"
 #import "HATheme.h"
 #import "HAAuthManager.h"
+#import "HAHTTPClient.h"
 #import "NSMutableURLRequest+HAHelpers.h"
 
 static const CGFloat kAvatarSize = 40.0;
@@ -11,7 +13,7 @@ static const CGFloat kAvatarSize = 40.0;
 @property (nonatomic, strong) UILabel *locationLabel;
 @property (nonatomic, strong) UILabel *gpsLabel;
 @property (nonatomic, strong) UIImageView *avatarView;
-@property (nonatomic, strong) NSURLSessionDataTask *imageTask;
+@property (nonatomic, strong) id imageTask;
 @property (nonatomic, copy) NSString *currentPictureURL;
 @end
 
@@ -37,12 +39,14 @@ static const CGFloat kAvatarSize = 40.0;
     self.locationLabel = [self labelWithFont:[UIFont boldSystemFontOfSize:18] color:[HATheme primaryTextColor] lines:1];
 
     // Avatar: top-right
-    [NSLayoutConstraint activateConstraints:@[
-        [self.avatarView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-padding],
-        [self.avatarView.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
-        [self.avatarView.widthAnchor constraintEqualToConstant:kAvatarSize],
-        [self.avatarView.heightAnchor constraintEqualToConstant:kAvatarSize],
-    ]];
+    if (HAAutoLayoutAvailable()) {
+        [NSLayoutConstraint activateConstraints:@[
+            [self.avatarView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-padding],
+            [self.avatarView.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
+            [self.avatarView.widthAnchor constraintEqualToConstant:kAvatarSize],
+            [self.avatarView.heightAnchor constraintEqualToConstant:kAvatarSize],
+        ]];
+    }
 
     // GPS coordinates label (secondary, below location)
     self.gpsLabel = [self labelWithFont:[UIFont monospacedDigitSystemFontOfSize:10 weight:UIFontWeightRegular]
@@ -50,14 +54,37 @@ static const CGFloat kAvatarSize = 40.0;
     self.gpsLabel.hidden = YES;
 
     // Location label: below name, constrained before avatar
-    [NSLayoutConstraint activateConstraints:@[
-        [self.locationLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding],
-        [self.locationLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.avatarView.leadingAnchor constant:-8],
-        [self.locationLabel.topAnchor constraintEqualToAnchor:self.nameLabel.bottomAnchor constant:4],
-        [self.gpsLabel.leadingAnchor constraintEqualToAnchor:self.locationLabel.leadingAnchor],
-        [self.gpsLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.avatarView.leadingAnchor constant:-8],
-        [self.gpsLabel.topAnchor constraintEqualToAnchor:self.locationLabel.bottomAnchor constant:1],
-    ]];
+    if (HAAutoLayoutAvailable()) {
+        [NSLayoutConstraint activateConstraints:@[
+            [self.locationLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding],
+            [self.locationLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.avatarView.leadingAnchor constant:-8],
+            [self.locationLabel.topAnchor constraintEqualToAnchor:self.nameLabel.bottomAnchor constant:4],
+            [self.gpsLabel.leadingAnchor constraintEqualToAnchor:self.locationLabel.leadingAnchor],
+            [self.gpsLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.avatarView.leadingAnchor constant:-8],
+            [self.gpsLabel.topAnchor constraintEqualToAnchor:self.locationLabel.bottomAnchor constant:1],
+        ]];
+    }
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    if (!HAAutoLayoutAvailable()) {
+        CGFloat padding = 10.0;
+        CGFloat w = self.contentView.bounds.size.width;
+        CGFloat h = self.contentView.bounds.size.height;
+        CGFloat midY = h / 2.0;
+
+        self.avatarView.frame = CGRectMake(w - padding - kAvatarSize, midY - kAvatarSize / 2.0, kAvatarSize, kAvatarSize);
+
+        CGFloat labelMaxW = CGRectGetMinX(self.avatarView.frame) - 8 - padding;
+        CGSize locSize = [self.locationLabel sizeThatFits:CGSizeMake(labelMaxW, CGFLOAT_MAX)];
+        self.locationLabel.frame = CGRectMake(padding, CGRectGetMaxY(self.nameLabel.frame) + 4,
+                                               MIN(locSize.width, labelMaxW), locSize.height);
+
+        CGSize gpsSize = [self.gpsLabel sizeThatFits:CGSizeMake(labelMaxW, CGFLOAT_MAX)];
+        self.gpsLabel.frame = CGRectMake(padding, CGRectGetMaxY(self.locationLabel.frame) + 1,
+                                          MIN(gpsSize.width, labelMaxW), gpsSize.height);
+    }
 }
 
 - (void)configureWithEntity:(HAEntity *)entity configItem:(HADashboardConfigItem *)configItem {
@@ -110,7 +137,7 @@ static const CGFloat kAvatarSize = 40.0;
     self.currentPictureURL = path;
 
     // Cancel previous request
-    [self.imageTask cancel];
+    [[HAHTTPClient sharedClient] cancelTask:self.imageTask];
 
     HAAuthManager *auth = [HAAuthManager sharedManager];
     NSString *serverURL = auth.serverURL;
@@ -125,7 +152,7 @@ static const CGFloat kAvatarSize = 40.0;
 
     __weak typeof(self) weakSelf = self;
     NSString *capturedPath = [path copy];
-    self.imageTask = [[NSURLSession sharedSession] dataTaskWithRequest:request
+    self.imageTask = [[HAHTTPClient sharedClient] dataTaskWithRequest:request
         completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
             if (error || !data) return;
             UIImage *image = [UIImage imageWithData:data];
@@ -139,12 +166,11 @@ static const CGFloat kAvatarSize = 40.0;
                 }
             });
         }];
-    [self.imageTask resume];
 }
 
 - (void)prepareForReuse {
     [super prepareForReuse];
-    [self.imageTask cancel];
+    [[HAHTTPClient sharedClient] cancelTask:self.imageTask];
     self.imageTask = nil;
     self.currentPictureURL = nil;
     self.avatarView.image = nil;

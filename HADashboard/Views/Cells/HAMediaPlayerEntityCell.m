@@ -1,13 +1,16 @@
+#import "HAAutoLayout.h"
 #import "HAMediaPlayerEntityCell.h"
 #import "HAEntity.h"
 #import "HAConnectionManager.h"
 #import "HAAuthManager.h"
+#import "HAHTTPClient.h"
 #import "HADashboardConfig.h"
 #import "HATheme.h"
 #import "HAHaptics.h"
 #import "HAIconMapper.h"
 #import "HAEntityDisplayHelper.h"
 #import "UIView+HAUtilities.h"
+#import "UIViewController+HAAlert.h"
 
 static const CGFloat kIconCircleSize = 36.0;
 static const CGFloat kIconFontSize   = 20.0;
@@ -29,7 +32,7 @@ static const CGFloat kPadding        = 12.0;
 @property (nonatomic, strong) UISlider *volumeSlider;
 @property (nonatomic, strong) UILabel *volumeLabel;
 @property (nonatomic, strong) UIImageView *albumArtView;
-@property (nonatomic, strong) NSURLSessionDataTask *artLoadTask;
+@property (nonatomic, strong) id artLoadTask;
 @property (nonatomic, strong) UIButton *sourceButton;
 @property (nonatomic, strong) UIButton *shuffleButton;
 @property (nonatomic, strong) UIButton *repeatButton;
@@ -68,12 +71,14 @@ static const CGFloat kPadding        = 12.0;
     self.albumArtView.hidden = YES;
     [self.contentView addSubview:self.albumArtView];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.albumArtView.centerXAnchor constraintEqualToAnchor:self.iconCircle.centerXAnchor],
-        [self.albumArtView.centerYAnchor constraintEqualToAnchor:self.iconCircle.centerYAnchor],
-        [self.albumArtView.widthAnchor constraintEqualToConstant:kIconCircleSize],
-        [self.albumArtView.heightAnchor constraintEqualToConstant:kIconCircleSize],
-    ]];
+    if (HAAutoLayoutAvailable()) {
+        [NSLayoutConstraint activateConstraints:@[
+            [self.albumArtView.centerXAnchor constraintEqualToAnchor:self.iconCircle.centerXAnchor],
+            [self.albumArtView.centerYAnchor constraintEqualToAnchor:self.iconCircle.centerYAnchor],
+            [self.albumArtView.widthAnchor constraintEqualToConstant:kIconCircleSize],
+            [self.albumArtView.heightAnchor constraintEqualToConstant:kIconCircleSize],
+        ]];
+    }
 
     // ── Name label (right of icon) ──
     self.mpNameLabel = [self labelWithFont:[UIFont systemFontOfSize:13 weight:UIFontWeightMedium] color:[HATheme primaryTextColor] lines:1];
@@ -94,56 +99,66 @@ static const CGFloat kPadding        = 12.0;
     // ── Constraints ──
 
     // Icon circle: top-left
-    [NSLayoutConstraint activateConstraints:@[
-        [self.iconCircle.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kPadding],
-        [self.iconCircle.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:kPadding],
-        [self.iconCircle.widthAnchor constraintEqualToConstant:kIconCircleSize],
-        [self.iconCircle.heightAnchor constraintEqualToConstant:kIconCircleSize],
-        [self.iconLabel.centerXAnchor constraintEqualToAnchor:self.iconCircle.centerXAnchor],
-        [self.iconLabel.centerYAnchor constraintEqualToAnchor:self.iconCircle.centerYAnchor],
-    ]];
+    if (HAAutoLayoutAvailable()) {
+        [NSLayoutConstraint activateConstraints:@[
+            [self.iconCircle.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kPadding],
+            [self.iconCircle.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:kPadding],
+            [self.iconCircle.widthAnchor constraintEqualToConstant:kIconCircleSize],
+            [self.iconCircle.heightAnchor constraintEqualToConstant:kIconCircleSize],
+            [self.iconLabel.centerXAnchor constraintEqualToAnchor:self.iconCircle.centerXAnchor],
+            [self.iconLabel.centerYAnchor constraintEqualToAnchor:self.iconCircle.centerYAnchor],
+        ]];
+    }
 
     // Name: right of icon, vertically centered in top section
-    [NSLayoutConstraint activateConstraints:@[
-        [self.mpNameLabel.leadingAnchor constraintEqualToAnchor:self.iconCircle.trailingAnchor constant:10],
-        [self.mpNameLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kPadding],
-        [self.mpNameLabel.topAnchor constraintEqualToAnchor:self.iconCircle.topAnchor constant:1],
-    ]];
+    if (HAAutoLayoutAvailable()) {
+        [NSLayoutConstraint activateConstraints:@[
+            [self.mpNameLabel.leadingAnchor constraintEqualToAnchor:self.iconCircle.trailingAnchor constant:10],
+            [self.mpNameLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kPadding],
+            [self.mpNameLabel.topAnchor constraintEqualToAnchor:self.iconCircle.topAnchor constant:1],
+        ]];
+    }
 
     // State: below name
-    [NSLayoutConstraint activateConstraints:@[
-        [self.mpStateLabel.leadingAnchor constraintEqualToAnchor:self.mpNameLabel.leadingAnchor],
-        [self.mpStateLabel.trailingAnchor constraintEqualToAnchor:self.mpNameLabel.trailingAnchor],
-        [self.mpStateLabel.topAnchor constraintEqualToAnchor:self.mpNameLabel.bottomAnchor constant:1],
-    ]];
+    if (HAAutoLayoutAvailable()) {
+        [NSLayoutConstraint activateConstraints:@[
+            [self.mpStateLabel.leadingAnchor constraintEqualToAnchor:self.mpNameLabel.leadingAnchor],
+            [self.mpStateLabel.trailingAnchor constraintEqualToAnchor:self.mpNameLabel.trailingAnchor],
+            [self.mpStateLabel.topAnchor constraintEqualToAnchor:self.mpNameLabel.bottomAnchor constant:1],
+        ]];
+    }
 
     // Media info: below the icon/name row
-    [NSLayoutConstraint activateConstraints:@[
-        [self.mediaInfoLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kPadding],
-        [self.mediaInfoLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kPadding],
-        [self.mediaInfoLabel.topAnchor constraintEqualToAnchor:self.iconCircle.bottomAnchor constant:8],
-    ]];
+    if (HAAutoLayoutAvailable()) {
+        [NSLayoutConstraint activateConstraints:@[
+            [self.mediaInfoLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kPadding],
+            [self.mediaInfoLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kPadding],
+            [self.mediaInfoLabel.topAnchor constraintEqualToAnchor:self.iconCircle.bottomAnchor constant:8],
+        ]];
+    }
 
     // Transport buttons: centered horizontal row below media info
-    [NSLayoutConstraint activateConstraints:@[
-        // Play/pause centered
-        [self.playPauseButton.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor],
-        [self.playPauseButton.topAnchor constraintEqualToAnchor:self.mediaInfoLabel.bottomAnchor constant:8],
-        [self.playPauseButton.widthAnchor constraintEqualToConstant:kBtnSize],
-        [self.playPauseButton.heightAnchor constraintEqualToConstant:kBtnSize],
-
-        // Prev: left of play/pause
-        [self.prevButton.trailingAnchor constraintEqualToAnchor:self.playPauseButton.leadingAnchor constant:-kBtnSpacing],
-        [self.prevButton.centerYAnchor constraintEqualToAnchor:self.playPauseButton.centerYAnchor],
-        [self.prevButton.widthAnchor constraintEqualToConstant:kBtnSize],
-        [self.prevButton.heightAnchor constraintEqualToConstant:kBtnSize],
-
-        // Next: right of play/pause
-        [self.nextButton.leadingAnchor constraintEqualToAnchor:self.playPauseButton.trailingAnchor constant:kBtnSpacing],
-        [self.nextButton.centerYAnchor constraintEqualToAnchor:self.playPauseButton.centerYAnchor],
-        [self.nextButton.widthAnchor constraintEqualToConstant:kBtnSize],
-        [self.nextButton.heightAnchor constraintEqualToConstant:kBtnSize],
-    ]];
+    if (HAAutoLayoutAvailable()) {
+        [NSLayoutConstraint activateConstraints:@[
+            // Play/pause centered
+            [self.playPauseButton.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor],
+            [self.playPauseButton.topAnchor constraintEqualToAnchor:self.mediaInfoLabel.bottomAnchor constant:8],
+            [self.playPauseButton.widthAnchor constraintEqualToConstant:kBtnSize],
+            [self.playPauseButton.heightAnchor constraintEqualToConstant:kBtnSize],
+    
+            // Prev: left of play/pause
+            [self.prevButton.trailingAnchor constraintEqualToAnchor:self.playPauseButton.leadingAnchor constant:-kBtnSpacing],
+            [self.prevButton.centerYAnchor constraintEqualToAnchor:self.playPauseButton.centerYAnchor],
+            [self.prevButton.widthAnchor constraintEqualToConstant:kBtnSize],
+            [self.prevButton.heightAnchor constraintEqualToConstant:kBtnSize],
+    
+            // Next: right of play/pause
+            [self.nextButton.leadingAnchor constraintEqualToAnchor:self.playPauseButton.trailingAnchor constant:kBtnSpacing],
+            [self.nextButton.centerYAnchor constraintEqualToAnchor:self.playPauseButton.centerYAnchor],
+            [self.nextButton.widthAnchor constraintEqualToConstant:kBtnSize],
+            [self.nextButton.heightAnchor constraintEqualToConstant:kBtnSize],
+        ]];
+    }
 
     // ── Volume row: mute button + slider + percentage label ──
     self.muteButton = [UIButton buttonWithType:UIButtonTypeCustom];
@@ -166,20 +181,22 @@ static const CGFloat kPadding        = 12.0;
     self.volumeLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:self.volumeLabel];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.muteButton.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kPadding],
-        [self.muteButton.topAnchor constraintEqualToAnchor:self.playPauseButton.bottomAnchor constant:8],
-        [self.muteButton.widthAnchor constraintEqualToConstant:28],
-        [self.muteButton.heightAnchor constraintEqualToConstant:28],
-
-        [self.volumeLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kPadding],
-        [self.volumeLabel.centerYAnchor constraintEqualToAnchor:self.muteButton.centerYAnchor],
-        [self.volumeLabel.widthAnchor constraintEqualToConstant:36],
-
-        [self.volumeSlider.leadingAnchor constraintEqualToAnchor:self.muteButton.trailingAnchor constant:6],
-        [self.volumeSlider.trailingAnchor constraintEqualToAnchor:self.volumeLabel.leadingAnchor constant:-6],
-        [self.volumeSlider.centerYAnchor constraintEqualToAnchor:self.muteButton.centerYAnchor],
-    ]];
+    if (HAAutoLayoutAvailable()) {
+        [NSLayoutConstraint activateConstraints:@[
+            [self.muteButton.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kPadding],
+            [self.muteButton.topAnchor constraintEqualToAnchor:self.playPauseButton.bottomAnchor constant:8],
+            [self.muteButton.widthAnchor constraintEqualToConstant:28],
+            [self.muteButton.heightAnchor constraintEqualToConstant:28],
+    
+            [self.volumeLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kPadding],
+            [self.volumeLabel.centerYAnchor constraintEqualToAnchor:self.muteButton.centerYAnchor],
+            [self.volumeLabel.widthAnchor constraintEqualToConstant:36],
+    
+            [self.volumeSlider.leadingAnchor constraintEqualToAnchor:self.muteButton.trailingAnchor constant:6],
+            [self.volumeSlider.trailingAnchor constraintEqualToAnchor:self.volumeLabel.leadingAnchor constant:-6],
+            [self.volumeSlider.centerYAnchor constraintEqualToAnchor:self.muteButton.centerYAnchor],
+        ]];
+    }
 
     // ── Progress bar (below volume) ──
     self.progressSlider = [[UISlider alloc] init];
@@ -200,11 +217,13 @@ static const CGFloat kPadding        = 12.0;
     [self.progressSlider addTarget:self action:@selector(progressSliderChanged:) forControlEvents:UIControlEventValueChanged];
     [self.contentView addSubview:self.progressSlider];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.progressSlider.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kPadding],
-        [self.progressSlider.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kPadding],
-        [self.progressSlider.topAnchor constraintEqualToAnchor:self.muteButton.bottomAnchor constant:6],
-    ]];
+    if (HAAutoLayoutAvailable()) {
+        [NSLayoutConstraint activateConstraints:@[
+            [self.progressSlider.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kPadding],
+            [self.progressSlider.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kPadding],
+            [self.progressSlider.topAnchor constraintEqualToAnchor:self.muteButton.bottomAnchor constant:6],
+        ]];
+    }
 
     // ── Source + shuffle + repeat row (below progress) ──
     self.sourceButton = [UIButton buttonWithType:UIButtonTypeSystem];
@@ -225,21 +244,23 @@ static const CGFloat kPadding        = 12.0;
     [self.repeatButton addTarget:self action:@selector(repeatTapped) forControlEvents:UIControlEventTouchUpInside];
     [self.contentView addSubview:self.repeatButton];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.sourceButton.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kPadding],
-        [self.sourceButton.topAnchor constraintEqualToAnchor:self.progressSlider.bottomAnchor constant:6],
-        [self.sourceButton.trailingAnchor constraintLessThanOrEqualToAnchor:self.shuffleButton.leadingAnchor constant:-8],
-
-        [self.repeatButton.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kPadding],
-        [self.repeatButton.centerYAnchor constraintEqualToAnchor:self.sourceButton.centerYAnchor],
-        [self.repeatButton.widthAnchor constraintEqualToConstant:24],
-        [self.repeatButton.heightAnchor constraintEqualToConstant:24],
-
-        [self.shuffleButton.trailingAnchor constraintEqualToAnchor:self.repeatButton.leadingAnchor constant:-8],
-        [self.shuffleButton.centerYAnchor constraintEqualToAnchor:self.sourceButton.centerYAnchor],
-        [self.shuffleButton.widthAnchor constraintEqualToConstant:24],
-        [self.shuffleButton.heightAnchor constraintEqualToConstant:24],
-    ]];
+    if (HAAutoLayoutAvailable()) {
+        [NSLayoutConstraint activateConstraints:@[
+            [self.sourceButton.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kPadding],
+            [self.sourceButton.topAnchor constraintEqualToAnchor:self.progressSlider.bottomAnchor constant:6],
+            [self.sourceButton.trailingAnchor constraintLessThanOrEqualToAnchor:self.shuffleButton.leadingAnchor constant:-8],
+    
+            [self.repeatButton.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kPadding],
+            [self.repeatButton.centerYAnchor constraintEqualToAnchor:self.sourceButton.centerYAnchor],
+            [self.repeatButton.widthAnchor constraintEqualToConstant:24],
+            [self.repeatButton.heightAnchor constraintEqualToConstant:24],
+    
+            [self.shuffleButton.trailingAnchor constraintEqualToAnchor:self.repeatButton.leadingAnchor constant:-8],
+            [self.shuffleButton.centerYAnchor constraintEqualToAnchor:self.sourceButton.centerYAnchor],
+            [self.shuffleButton.widthAnchor constraintEqualToConstant:24],
+            [self.shuffleButton.heightAnchor constraintEqualToConstant:24],
+        ]];
+    }
 }
 
 - (UIButton *)makeTransportButtonWithIconName:(NSString *)iconName action:(SEL)action {
@@ -312,7 +333,7 @@ static const CGFloat kPadding        = 12.0;
     self.iconCircle.backgroundColor = [iconColor colorWithAlphaComponent:0.12];
 
     // ── Album art (entity_picture) ──
-    [self.artLoadTask cancel];
+    [[HAHTTPClient sharedClient] cancelTask:self.artLoadTask];
     NSString *picturePath = HAAttrString(entity.attributes, @"entity_picture");
     if ([picturePath hasPrefix:@"demo://"]) {
         // Demo mode placeholder: generate a colored gradient image
@@ -467,7 +488,7 @@ static const CGFloat kPadding        = 12.0;
     [request setValue:[NSString stringWithFormat:@"Bearer %@", auth.accessToken] forHTTPHeaderField:@"Authorization"];
 
     __weak typeof(self) weakSelf = self;
-    self.artLoadTask = [[NSURLSession sharedSession] dataTaskWithRequest:request
+    self.artLoadTask = [[HAHTTPClient sharedClient] dataTaskWithRequest:request
         completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
             if (error || !data) return;
             UIImage *image = [UIImage imageWithData:data];
@@ -479,7 +500,6 @@ static const CGFloat kPadding        = 12.0;
                 strongSelf.albumArtView.hidden = NO;
             });
         }];
-    [self.artLoadTask resume];
 }
 
 - (void)prevTapped {
@@ -526,25 +546,25 @@ static const CGFloat kPadding        = 12.0;
     [HAHaptics selectionChanged];
     NSString *current = [self.entity mediaSource];
 
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Source"
-                                                                  message:nil
-                                                           preferredStyle:UIAlertControllerStyleActionSheet];
+    NSMutableArray *titles = [NSMutableArray arrayWithCapacity:sources.count];
     for (NSString *source in sources) {
         BOOL isSelected = [source isEqualToString:current];
-        NSString *title = isSelected ? [NSString stringWithFormat:@"\u2713 %@", source] : source;
-        [alert addAction:[UIAlertAction actionWithTitle:title style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
-            [[HAConnectionManager sharedManager] callService:@"select_source"
-                                                    inDomain:@"media_player"
-                                                    withData:@{@"source": source}
-                                                    entityId:self.entity.entityId];
-        }]];
+        [titles addObject:isSelected ? [NSString stringWithFormat:@"\u2713 %@", source] : source];
     }
-    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
-    alert.popoverPresentationController.sourceView = self.sourceButton;
-    alert.popoverPresentationController.sourceRect = self.sourceButton.bounds;
 
     UIViewController *vc = [self ha_parentViewController];
-    if (vc) [vc presentViewController:alert animated:YES completion:nil];
+    if (vc) {
+        [vc ha_showActionSheetWithTitle:@"Source"
+                            cancelTitle:@"Cancel"
+                           actionTitles:titles
+                             sourceView:self.sourceButton
+                                handler:^(NSInteger index) {
+            [[HAConnectionManager sharedManager] callService:@"select_source"
+                                                    inDomain:@"media_player"
+                                                    withData:@{@"source": sources[(NSUInteger)index]}
+                                                    entityId:self.entity.entityId];
+        }];
+    }
 }
 
 - (void)shuffleTapped {
@@ -582,6 +602,59 @@ static const CGFloat kPadding        = 12.0;
                                             entityId:self.entity.entityId];
 }
 
+#pragma mark - Layout
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    if (!HAAutoLayoutAvailable()) {
+        CGFloat w = self.contentView.bounds.size.width;
+        CGFloat midX = w / 2.0;
+
+        // Icon circle: top-left
+        self.iconCircle.frame = CGRectMake(kPadding, kPadding, kIconCircleSize, kIconCircleSize);
+        self.iconLabel.frame = CGRectMake(0, 0, kIconCircleSize, kIconCircleSize);
+        self.albumArtView.frame = self.iconCircle.frame;
+
+        // Name: right of icon
+        CGFloat nameX = kPadding + kIconCircleSize + 10;
+        CGFloat nameW = w - nameX - kPadding;
+        CGSize nameSize = [self.mpNameLabel sizeThatFits:CGSizeMake(nameW, CGFLOAT_MAX)];
+        self.mpNameLabel.frame = CGRectMake(nameX, kPadding + 1, nameW, nameSize.height);
+
+        // State: below name
+        CGSize stateSize = [self.mpStateLabel sizeThatFits:CGSizeMake(nameW, CGFLOAT_MAX)];
+        self.mpStateLabel.frame = CGRectMake(nameX, CGRectGetMaxY(self.mpNameLabel.frame) + 1, nameW, stateSize.height);
+
+        // Media info: below icon row
+        CGFloat mediaY = kPadding + kIconCircleSize + 8;
+        CGSize mediaSize = [self.mediaInfoLabel sizeThatFits:CGSizeMake(w - kPadding * 2, CGFLOAT_MAX)];
+        self.mediaInfoLabel.frame = CGRectMake(kPadding, mediaY, w - kPadding * 2, mediaSize.height);
+
+        // Transport buttons: centered row below media info
+        CGFloat btnY = CGRectGetMaxY(self.mediaInfoLabel.frame) + 8;
+        self.playPauseButton.frame = CGRectMake(midX - kBtnSize / 2.0, btnY, kBtnSize, kBtnSize);
+        self.prevButton.frame = CGRectMake(midX - kBtnSize / 2.0 - kBtnSpacing - kBtnSize, btnY, kBtnSize, kBtnSize);
+        self.nextButton.frame = CGRectMake(midX + kBtnSize / 2.0 + kBtnSpacing, btnY, kBtnSize, kBtnSize);
+
+        // Volume row: below transport
+        CGFloat volY = btnY + kBtnSize + 8;
+        self.muteButton.frame = CGRectMake(kPadding, volY, 28, 28);
+        self.volumeLabel.frame = CGRectMake(w - kPadding - 36, volY, 36, 28);
+        self.volumeSlider.frame = CGRectMake(kPadding + 34, volY, w - kPadding * 2 - 34 - 42, 28);
+
+        // Progress slider: below volume
+        CGFloat progY = volY + 28 + 6;
+        self.progressSlider.frame = CGRectMake(kPadding, progY, w - kPadding * 2, 20);
+
+        // Source + shuffle + repeat row
+        CGFloat srcY = progY + 20 + 6;
+        CGSize srcSize = [self.sourceButton sizeThatFits:CGSizeMake(w / 2.0, CGFLOAT_MAX)];
+        self.sourceButton.frame = CGRectMake(kPadding, srcY, srcSize.width, srcSize.height);
+        self.repeatButton.frame = CGRectMake(w - kPadding - 24, srcY, 24, 24);
+        self.shuffleButton.frame = CGRectMake(CGRectGetMinX(self.repeatButton.frame) - 32, srcY, 24, 24);
+    }
+}
+
 #pragma mark - Reuse
 
 - (void)prepareForReuse {
@@ -604,7 +677,7 @@ static const CGFloat kPadding        = 12.0;
     self.volumeSlider.value = 0;
     self.volumeLabel.text = nil;
     self.volumeLabel.textColor = [HATheme secondaryTextColor];
-    [self.artLoadTask cancel];
+    [[HAHTTPClient sharedClient] cancelTask:self.artLoadTask];
     self.artLoadTask = nil;
     self.albumArtView.image = nil;
     self.albumArtView.hidden = YES;

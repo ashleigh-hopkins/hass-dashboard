@@ -2,6 +2,7 @@
 #import "HALog.h"
 #import "HAAuthManager.h"
 #import "HADemoDataProvider.h"
+#import "HAHTTPClient.h"
 #import "NSMutableURLRequest+HAHelpers.h"
 
 @interface HAHistoryManager ()
@@ -90,7 +91,7 @@
     }
 
     NSUInteger capturedMax = effectiveMax;
-    NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+    [[HAHTTPClient sharedClient] dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
         if (error || !data) {
             ha_dispatchMainCompletion(completion, nil, error);
             return;
@@ -103,7 +104,6 @@
 
         ha_dispatchMainCompletion(completion, points, nil);
     }];
-    [task resume];
 }
 
 - (void)fetchTimelineForEntityId:(NSString *)entityId
@@ -137,7 +137,7 @@
         return;
     }
 
-    NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+    [[HAHTTPClient sharedClient] dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
         if (error || !data) {
             ha_dispatchMainCompletion(completion, nil, error);
             return;
@@ -150,7 +150,6 @@
 
         ha_dispatchMainCompletion(completion, segments, nil);
     }];
-    [task resume];
 }
 
 - (void)clearCache {
