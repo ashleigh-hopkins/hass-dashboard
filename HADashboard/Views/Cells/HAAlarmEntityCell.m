@@ -494,18 +494,22 @@ static const NSInteger kKeypadTagEnter = 11;
         CGSize alarmSize = [self.alarmStateLabel sizeThatFits:CGSizeMake(w - padding * 2, CGFLOAT_MAX)];
         self.alarmStateLabel.frame = CGRectMake(padding, CGRectGetMaxY(self.nameLabel.frame) + 4, alarmSize.width + 4, 24);
 
-        // Action buttons: row below alarm state, centered
-        NSMutableArray *visibleBtns = [NSMutableArray array];
-        for (UIButton *btn in @[self.armAwayButton, self.armHomeButton, self.armNightButton,
-                                 self.armVacationButton, self.armBypassButton, self.disarmButton]) {
-            if (!btn.hidden) [visibleBtns addObject:btn];
-        }
+        // Action buttons: find the HAStackView containing them and set its frame
         CGFloat btnY = CGRectGetMaxY(self.alarmStateLabel.frame) + 8;
-        CGFloat totalBtnW = visibleBtns.count * kActionButtonWidth + MAX(0, (CGFloat)visibleBtns.count - 1) * kActionButtonSpacing;
-        CGFloat btnX = (w - totalBtnW) / 2.0;
-        for (UIButton *btn in visibleBtns) {
-            btn.frame = CGRectMake(btnX, btnY, kActionButtonWidth, kActionButtonHeight);
-            btnX += kActionButtonWidth + kActionButtonSpacing;
+        UIView *cv = self.contentView;
+        for (UIView *sub in cv.subviews) {
+            if ([sub isKindOfClass:[HAStackView class]] && sub != self.nameLabel.superview) {
+                // This is the button stack
+                NSMutableArray *visibleBtns = [NSMutableArray array];
+                for (UIButton *btn in @[self.armAwayButton, self.armHomeButton, self.armNightButton,
+                                         self.armVacationButton, self.armBypassButton, self.disarmButton]) {
+                    if (!btn.hidden) [visibleBtns addObject:btn];
+                }
+                CGFloat totalBtnW = visibleBtns.count * kActionButtonWidth + MAX(0, (CGFloat)visibleBtns.count - 1) * kActionButtonSpacing;
+                CGFloat stackX = (w - totalBtnW) / 2.0;
+                sub.frame = CGRectMake(stackX, btnY, totalBtnW, kActionButtonHeight);
+                break;
+            }
         }
 
         // Code text field: centered below buttons

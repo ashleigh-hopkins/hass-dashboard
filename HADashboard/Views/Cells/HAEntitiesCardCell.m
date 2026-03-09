@@ -195,8 +195,20 @@ static const CGFloat kSceneChipRowHeight = 44.0; // chip height + padding
             self.headerToggle.frame = CGRectMake(w - 8 - toggleSize.width, 6, toggleSize.width, toggleSize.height);
             if (y == 0) y = 36;
         }
-        // Stack
-        self.stackView.frame = CGRectMake(0, y, w, self.contentView.bounds.size.height - y);
+        // Scene chip scroll view: below stack
+        CGFloat chipH = 0;
+        if (!self.sceneChipScrollView.hidden) {
+            chipH = kSceneChipRowHeight;
+        }
+
+        // Stack: fill remaining space minus chips
+        CGFloat stackH = self.contentView.bounds.size.height - y - chipH;
+        self.stackView.frame = CGRectMake(0, y, w, stackH);
+
+        // Scene chips
+        if (chipH > 0) {
+            self.sceneChipScrollView.frame = CGRectMake(0, y + stackH, w, chipH);
+        }
     }
 }
 
