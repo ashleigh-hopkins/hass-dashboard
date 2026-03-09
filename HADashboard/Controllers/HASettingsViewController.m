@@ -1080,6 +1080,160 @@ static NSString *const kDeviceNameOverride    = @"ha_device_name_override";
     });
 }
 
+#pragma mark - Frame Layout Helpers (iOS 5 fallback)
+
+/// Lay out a toggle section's subviews: UISwitch right-aligned, main UILabel left, help UILabel below.
+- (void)layoutToggleSection:(UIView *)container {
+    CGFloat w = container.bounds.size.width;
+    UISwitch *sw = nil;
+    UILabel *mainLabel = nil;
+    UILabel *helpLabel = nil;
+    for (UIView *sub in container.subviews) {
+        if ([sub isKindOfClass:[UISwitch class]]) {
+            sw = (UISwitch *)sub;
+        } else if ([sub isKindOfClass:[UILabel class]]) {
+            UILabel *lbl = (UILabel *)sub;
+            if (lbl.font.pointSize >= 14) {
+                mainLabel = lbl;
+            } else {
+                helpLabel = lbl;
+            }
+        }
+    }
+    CGSize swSize = sw ? [sw sizeThatFits:CGSizeZero] : CGSizeZero;
+    CGFloat labelWidth = w - swSize.width - 12;
+    CGSize mainSize = mainLabel ? [mainLabel sizeThatFits:CGSizeMake(labelWidth, CGFLOAT_MAX)] : CGSizeZero;
+    if (mainLabel) mainLabel.frame = CGRectMake(0, 0, labelWidth, mainSize.height);
+    if (sw) sw.frame = CGRectMake(w - swSize.width, (mainSize.height - swSize.height) / 2, swSize.width, swSize.height);
+    CGFloat y = mainSize.height + 8;
+    if (helpLabel) {
+        CGSize helpSize = [helpLabel sizeThatFits:CGSizeMake(w, CGFLOAT_MAX)];
+        helpLabel.frame = CGRectMake(0, y, w, helpSize.height);
+        y = CGRectGetMaxY(helpLabel.frame);
+    }
+    container.frame = CGRectMake(container.frame.origin.x, container.frame.origin.y, w, y);
+}
+
+/// Lay out a row with a left label and a right-aligned value label (about rows).
+- (void)layoutAboutRow:(UIView *)row {
+    CGFloat w = row.bounds.size.width;
+    UILabel *leftLabel = nil;
+    UILabel *rightLabel = nil;
+    for (UIView *sub in row.subviews) {
+        if ([sub isKindOfClass:[UILabel class]]) {
+            UILabel *lbl = (UILabel *)sub;
+            if (lbl.textAlignment == NSTextAlignmentRight) {
+                rightLabel = lbl;
+            } else {
+                leftLabel = lbl;
+            }
+        }
+    }
+    CGFloat h = 20;
+    if (leftLabel) {
+        CGSize sz = [leftLabel sizeThatFits:CGSizeMake(w / 2, CGFLOAT_MAX)];
+        leftLabel.frame = CGRectMake(0, 0, sz.width, sz.height);
+        h = MAX(h, sz.height);
+    }
+    if (rightLabel) {
+        CGFloat leftW = leftLabel ? CGRectGetMaxX(leftLabel.frame) + 12 : 0;
+        CGSize sz = [rightLabel sizeThatFits:CGSizeMake(w - leftW, CGFLOAT_MAX)];
+        rightLabel.frame = CGRectMake(leftW, 0, w - leftW, sz.height);
+        h = MAX(h, sz.height);
+    }
+    row.frame = CGRectMake(row.frame.origin.x, row.frame.origin.y, w, h);
+}
+
+/// Lay out the connection row subviews: icon, server label, mode label, chevron.
+- (void)layoutConnectionRow:(UIView *)row {
+    CGFloat w = row.bounds.size.width;
+    CGFloat h = 56;
+    UIImageView *icon = nil;
+    UIImageView *chevron = nil;
+    for (UIView *sub in row.subviews) {
+        if ([sub isKindOfClass:[UIImageView class]]) {
+            UIImageView *iv = (UIImageView *)sub;
+            // icon is first, chevron second (by add order)
+            if (!icon) icon = iv; else chevron = iv;
+        }
+    }
+    if (icon) icon.frame = CGRectMake(14, (h - 24) / 2, 24, 24);
+    if (chevron) chevron.frame = CGRectMake(w - 14 - 12, (h - 16) / 2, 12, 16);
+    CGFloat labelX = 14 + 24 + 12; // after icon
+    CGFloat labelMaxX = chevron ? chevron.frame.origin.x - 8 : w - 14;
+    CGFloat labelW = labelMaxX - labelX;
+    if (self.connectionServerLabel) {
+        CGSize sz = [self.connectionServerLabel sizeThatFits:CGSizeMake(labelW, CGFLOAT_MAX)];
+        self.connectionServerLabel.frame = CGRectMake(labelX, 10, labelW, sz.height);
+    }
+    if (self.connectionModeLabel) {
+        CGFloat modeY = CGRectGetMaxY(self.connectionServerLabel.frame) + 2;
+        CGSize sz = [self.connectionModeLabel sizeThatFits:CGSizeMake(labelW, CGFLOAT_MAX)];
+        self.connectionModeLabel.frame = CGRectMake(labelX, modeY, labelW, sz.height);
+    }
+}
+
+/// Lay out the gradient options container: preset label, segment, custom hex, preview.
+- (void)layoutGradientOptionsContainer:(UIView *)container {
+    CGFloat w = container.bounds.size.width;
+    CGFloat y = 0;
+    // Find subviews by class
+    UILabel *presetLabel = nil;
+    for (UIView *sub in container.subviews) {
+        if ([sub isKindOfClass:[UILabel class]]) { presetLabel = (UILabel *)sub; break; }
+    }
+    if (presetLabel) {
+        CGSize sz = [presetLabel sizeThatFits:CGSizeMake(w, CGFLOAT_MAX)];
+        presetLabel.frame = CGRectMake(0, y, w, sz.height);
+        y = CGRectGetMaxY(presetLabel.frame) + 8;
+    }
+    if (self.gradientPresetSegment) {
+        CGSize sz = [self.gradientPresetSegment sizeThatFits:CGSizeMake(w, CGFLOAT_MAX)];
+        self.gradientPresetSegment.frame = CGRectMake(0, y, w, sz.height);
+        y = CGRectGetMaxY(self.gradientPresetSegment.frame) + 8;
+    }
+    if (self.customHexContainer && !self.customHexContainer.hidden) {
+        CGFloat fieldH = 36;
+        CGFloat arrowW = 20;
+        CGFloat gap = 8;
+        CGFloat fieldW = (w - arrowW - gap * 2) / 2;
+        self.hex1Field.frame = CGRectMake(0, 0, fieldW, fieldH);
+        // Find arrow label
+        for (UIView *sub in self.customHexContainer.subviews) {
+            if ([sub isKindOfClass:[UILabel class]]) {
+                sub.frame = CGRectMake(fieldW + gap, (fieldH - 20) / 2, arrowW, 20);
+                break;
+            }
+        }
+        self.hex2Field.frame = CGRectMake(fieldW + gap + arrowW + gap, 0, fieldW, fieldH);
+        self.customHexContainer.frame = CGRectMake(0, y, w, fieldH);
+        y = CGRectGetMaxY(self.customHexContainer.frame) + 8;
+    }
+    if (self.gradientPreview) {
+        self.gradientPreview.frame = CGRectMake(0, y, w, 60);
+        y = CGRectGetMaxY(self.gradientPreview.frame);
+    }
+    container.frame = CGRectMake(container.frame.origin.x, container.frame.origin.y, w, y);
+}
+
+/// Lay out the gradient toggle row (label + switch, no help text).
+- (void)layoutSwitchRow:(UIView *)row {
+    CGFloat w = row.bounds.size.width;
+    UISwitch *sw = nil;
+    UILabel *label = nil;
+    for (UIView *sub in row.subviews) {
+        if ([sub isKindOfClass:[UISwitch class]]) sw = (UISwitch *)sub;
+        else if ([sub isKindOfClass:[UILabel class]]) label = (UILabel *)sub;
+    }
+    CGSize swSize = sw ? [sw sizeThatFits:CGSizeZero] : CGSizeZero;
+    CGFloat labelW = w - swSize.width - 12;
+    CGSize labelSize = label ? [label sizeThatFits:CGSizeMake(labelW, CGFLOAT_MAX)] : CGSizeZero;
+    CGFloat h = MAX(labelSize.height, swSize.height);
+    if (label) label.frame = CGRectMake(0, (h - labelSize.height) / 2, labelW, labelSize.height);
+    if (sw) sw.frame = CGRectMake(w - swSize.width, (h - swSize.height) / 2, swSize.width, swSize.height);
+    row.frame = CGRectMake(row.frame.origin.x, row.frame.origin.y, w, h);
+}
+
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     self.previewGradientLayer.frame = self.gradientPreview.bounds;
@@ -1119,6 +1273,76 @@ static NSString *const kDeviceNameOverride    = @"ha_device_name_override";
             }
             if (i > 0) y += gaps[i - 1];
             CGSize sz = [section sizeThatFits:CGSizeMake(containerWidth, CGFLOAT_MAX)];
+            if ([section isEqual:self.logoutButton]) sz.height = 44;
+            if ([section isEqual:self.connectionRow]) sz.height = 56;
+            section.frame = CGRectMake(0, y, containerWidth, sz.height);
+            y = CGRectGetMaxY(section.frame);
+        }
+
+        // Layout internal subviews of each section
+        [self layoutConnectionRow:self.connectionRow];
+
+        // Gradient toggle row (label + switch, no help)
+        [self layoutSwitchRow:self.gradientToggleRow];
+
+        // Gradient options (preset segment, hex fields, preview)
+        if (!self.gradientOptionsContainer.hidden) {
+            [self layoutGradientOptionsContainer:self.gradientOptionsContainer];
+        }
+
+        // Toggle sections (label + switch + help text)
+        NSArray *toggleSections = @[
+            self.sunEntityToggleRow,
+            self.kioskSection, self.demoSection,
+            self.autoReloadSection, self.cameraMuteSection,
+        ];
+        for (UIView *ts in toggleSections) {
+            if (!ts.hidden) [self layoutToggleSection:ts];
+        }
+
+        // Device integration: registration row is the first arranged subview
+        if ([self.integrationSection isKindOfClass:[HAStackView class]]) {
+            HAStackView *intStack = (HAStackView *)self.integrationSection;
+            for (UIView *sub in intStack.arrangedSubviews) {
+                // Registration toggle row has a UISwitch inside
+                BOOL hasSwitch = NO;
+                for (UIView *child in sub.subviews) {
+                    if ([child isKindOfClass:[UISwitch class]]) { hasSwitch = YES; break; }
+                }
+                if (hasSwitch) [self layoutSwitchRow:sub];
+            }
+        }
+
+        // About section: layout each aboutRow inside the stack
+        if ([self.aboutSection isKindOfClass:[HAStackView class]]) {
+            HAStackView *aboutStack = (HAStackView *)self.aboutSection;
+            for (UIView *sub in aboutStack.arrangedSubviews) {
+                [self layoutAboutRow:sub];
+            }
+        }
+
+        // Developer section toggle rows
+        if (!self.developerSection.hidden && [self.developerSection isKindOfClass:[HAStackView class]]) {
+            HAStackView *devStack = (HAStackView *)self.developerSection;
+            for (UIView *sub in devStack.arrangedSubviews) {
+                BOOL hasSwitch = NO;
+                UILabel *helpLabel = nil;
+                for (UIView *child in sub.subviews) {
+                    if ([child isKindOfClass:[UISwitch class]]) hasSwitch = YES;
+                    if ([child isKindOfClass:[UILabel class]] && ((UILabel *)child).font.pointSize < 14) helpLabel = (UILabel *)child;
+                }
+                if (hasSwitch && helpLabel) [self layoutToggleSection:sub];
+                else if (hasSwitch) [self layoutSwitchRow:sub];
+            }
+        }
+
+        // Re-run vertical pass since internal layouts may have changed section heights
+        y = 0;
+        for (NSUInteger i = 0; i < sections.count; i++) {
+            UIView *section = sections[i];
+            if (section.hidden) continue;
+            if (i > 0) y += gaps[i - 1];
+            CGSize sz = CGSizeMake(containerWidth, section.frame.size.height);
             if ([section isEqual:self.logoutButton]) sz.height = 44;
             if ([section isEqual:self.connectionRow]) sz.height = 56;
             section.frame = CGRectMake(0, y, containerWidth, sz.height);
