@@ -49,6 +49,18 @@
     }
 }
 
+- (CGSize)sizeThatFits:(CGSize)size {
+    if (!HAAutoLayoutAvailable()) {
+        CGFloat w = size.width > 0 ? size.width : self.bounds.size.width;
+        CGFloat valW = w * 0.6;
+        CGSize keySize = [self.keyLabel sizeThatFits:CGSizeMake(w - valW - 8, CGFLOAT_MAX)];
+        CGSize valSize = [self.valueLabel sizeThatFits:CGSizeMake(valW, CGFLOAT_MAX)];
+        CGFloat h = MAX(28, MAX(keySize.height, valSize.height) + 8);
+        return CGSizeMake(w, h);
+    }
+    return [super sizeThatFits:size];
+}
+
 - (void)layoutSubviews {
     [super layoutSubviews];
     if (!HAAutoLayoutAvailable()) {

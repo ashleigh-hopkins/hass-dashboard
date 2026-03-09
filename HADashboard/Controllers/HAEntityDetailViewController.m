@@ -981,11 +981,198 @@ static const CGFloat kGraphHeight = 160.0;
         CGFloat headerBottom = 8 + kGrabberHeight + 12 + kIconSize + 4 + 20 + 12;
         self.scrollView.frame = CGRectMake(0, headerBottom, bounds.size.width, bounds.size.height - headerBottom);
 
-        // Content stack: inset within scroll view
+        // Pre-set bounds on container views so HAStackView can measure them via sizeThatFits:
         CGFloat stackWidth = bounds.size.width - 2 * kHeaderPadding;
+
+        if (self.domainSectionView && self.domainSection) {
+            CGFloat dsH = [self.domainSection preferredHeight];
+            self.domainSectionView.bounds = CGRectMake(0, 0, stackWidth, dsH);
+        }
+
+        CGFloat segmentH = 28;
+        CGFloat histH = segmentH + 8 + kGraphHeight;
+        self.historyContainer.bounds = CGRectMake(0, 0, stackWidth, histH);
+
+        // Content stack: inset within scroll view
         CGSize stackSize = [self.contentStack sizeThatFits:CGSizeMake(stackWidth, CGFLOAT_MAX)];
         self.contentStack.frame = CGRectMake(kHeaderPadding, 8, stackWidth, stackSize.height);
         self.scrollView.contentSize = CGSizeMake(bounds.size.width, 8 + stackSize.height + 16);
+
+        // Layout history container internals
+        [self layoutHistoryContainerManual:stackWidth];
+
+        // Layout domain section internals
+        if (self.domainSectionView) {
+            [self layoutDomainSectionManual:stackWidth];
+        }
+    }
+}
+
+/// Position the history container's subviews (segment control, graph, spinner) manually.
+- (void)layoutHistoryContainerManual:(CGFloat)width {
+    CGFloat segmentH = 28;
+    self.historySegment.frame = CGRectMake(0, 0, width, segmentH);
+    self.graphView.frame = CGRectMake(0, segmentH + 8, width, kGraphHeight);
+    self.graphSpinner.frame = CGRectMake((width - 20) / 2,
+                                          segmentH + 8 + (kGraphHeight - 20) / 2,
+                                          20, 20);
+}
+
+/// Walk the domain section container's subviews and position them using a layout
+/// that approximates the vertical constraint chaining used when Auto Layout is available.
+/// Handles common patterns: side-by-side slider+label, overlay containers, color wheels.
+- (void)layoutDomainSectionManual:(CGFloat)width {
+    UIView *container = self.domainSectionView;
+    NSArray *subs = container.subviews;
+    NSInteger count = (NSInteger)subs.count;
+    CGFloat y = 0;
+    CGFloat spacing = 12;
+    NSInteger i = 0;
+
+    while (i < count) {
+        UIView *sub = subs[(NSUInteger)i];
+        if (sub.hidden) { i++; continue; }
+
+        // Skip right-aligned labels that will be positioned alongside a following UISlider
+        if ([sub isKindOfClass:[UILabel class]] && ((UILabel *)sub).textAlignment == NSTextAlignmentRight) {
+            if (i + 1 < count && [subs[(NSUInteger)(i + 1)] isKindOfClass:[UISlider class]]) {
+                // Will be positioned by the slider handler below
+                i++;
+                continue;
+            }
+            // Also skip if followed by a track container + slider
+            if (i + 2 < count
+                && ![subs[(NSUInteger)(i + 1)] isKindOfClass:[UISlider class]]
+                && ![subs[(NSUInteger)(i + 1)] isKindOfClass:[UILabel class]]
+                && ![subs[(NSUInteger)(i + 1)] isKindOfClass:[UIButton class]]
+                && [subs[(NSUInteger)(i + 2)] isKindOfClass:[UISlider class]]) {
+                i++;
+                continue;
+            }
+        }
+
+        // Pattern: UISlider — look for a right-aligned value label before or after it
+        if ([sub isKindOfClass:[UISlider class]]) {
+            // Find the associated right-aligned value label
+            UILabel *valueLabel = nil;
+            NSInteger valueLabelIndex = -1;
+            // Check preceding sibling
+            if (i > 0) {
+                UIView *prev = subs[(NSUInteger)(i - 1)];
+                if ([prev isKindOfClass:[UILabel class]] && ((UILabel *)prev).textAlignment == NSTextAlignmentRight) {
+                    valueLabel = (UILabel *)prev;
+                    valueLabelIndex = i - 1;
+                }
+            }
+            // Check following sibling
+            if (!valueLabel && i + 1 < count) {
+                UIView *next = subs[(NSUInteger)(i + 1)];
+                if ([next isKindOfClass:[UILabel class]] && ((UILabel *)next).textAlignment == NSTextAlignmentRight) {
+                    valueLabel = (UILabel *)next;
+                    valueLabelIndex = i + 1;
+                }
+            }
+
+            CGFloat sliderH = 31;
+            if (valueLabel) {
+                CGFloat labelW = 52;
+                CGSize labelFit = [valueLabel sizeThatFits:CGSizeMake(labelW, CGFLOAT_MAX)];
+                sub.frame = CGRectMake(0, y, width - labelW - 8, sliderH);
+                valueLabel.frame = CGRectMake(width - labelW, y + (sliderH - labelFit.height) / 2, labelW, labelFit.height);
+            } else {
+                sub.frame = CGRectMake(0, y, width, sliderH);
+            }
+            y += sliderH + spacing;
+            // Skip the value label in the next iteration if it follows the slider
+            if (valueLabelIndex == i + 1) i += 2; else i++;
+            continue;
+        }
+
+        // Pattern: UILabel followed by UISlider+UILabel — label is a section header
+        // (already handled by normal flow since label gets its own row)
+
+        // Pattern: gradient track container — look ahead for a UISlider following it
+        // The track should be overlaid on the slider, not stacked
+        if (![sub isKindOfClass:[UISlider class]] && ![sub isKindOfClass:[UILabel class]]
+            && ![sub isKindOfClass:[UIButton class]] && ![sub isKindOfClass:[UISegmentedControl class]]
+            && ![sub isKindOfClass:[UIScrollView class]]
+            && sub.layer.cornerRadius > 0 && i + 1 < count) {
+            UIView *next = subs[(NSUInteger)(i + 1)];
+            if ([next isKindOfClass:[UISlider class]]) {
+                CGFloat sliderH = 31;
+                CGFloat labelW = 52;
+                // Find the right-aligned value label: check after slider and before track container
+                UILabel *valueLabel = nil;
+                NSInteger skipExtra = 0;
+                if (i + 2 < count && [subs[(NSUInteger)(i + 2)] isKindOfClass:[UILabel class]]
+                    && ((UILabel *)subs[(NSUInteger)(i + 2)]).textAlignment == NSTextAlignmentRight) {
+                    valueLabel = (UILabel *)subs[(NSUInteger)(i + 2)];
+                    skipExtra = 1;
+                }
+                // Also check preceding sibling (skipped earlier by the label-skip logic)
+                if (!valueLabel && i > 0 && [subs[(NSUInteger)(i - 1)] isKindOfClass:[UILabel class]]
+                    && ((UILabel *)subs[(NSUInteger)(i - 1)]).textAlignment == NSTextAlignmentRight) {
+                    valueLabel = (UILabel *)subs[(NSUInteger)(i - 1)];
+                }
+
+                CGFloat sliderW = width;
+                if (valueLabel) {
+                    sliderW = width - labelW - 8;
+                    CGSize vFit = [valueLabel sizeThatFits:CGSizeMake(labelW, CGFLOAT_MAX)];
+                    valueLabel.frame = CGRectMake(width - labelW, y + (sliderH - vFit.height) / 2, labelW, vFit.height);
+                }
+                next.frame = CGRectMake(0, y, sliderW, sliderH);
+                // Overlay the track container behind the slider
+                sub.frame = CGRectMake(2, y + (sliderH - 6) / 2, sliderW - 4, 6);
+                for (CALayer *layer in sub.layer.sublayers) {
+                    if ([layer isKindOfClass:[CAGradientLayer class]]) {
+                        layer.frame = sub.bounds;
+                    }
+                }
+                y += sliderH + spacing;
+                i += 2 + skipExtra;
+                continue;
+            }
+        }
+
+        // Determine subview height
+        CGFloat subH = 0;
+        CGFloat subW = width;
+        CGFloat subX = 0;
+
+        if ([sub isKindOfClass:[UISlider class]]) {
+            subH = 31;
+        } else if ([sub isKindOfClass:[UIButton class]]) {
+            subH = 36;
+            CGSize btnFit = [sub sizeThatFits:CGSizeMake(width, subH)];
+            if (btnFit.width > 0 && btnFit.width < width * 0.6) {
+                subW = MAX(btnFit.width, 80);
+            }
+        } else if ([sub isKindOfClass:[UISegmentedControl class]]) {
+            subH = 28;
+        } else if ([sub isKindOfClass:[UILabel class]]) {
+            CGSize labelFit = [sub sizeThatFits:CGSizeMake(width, CGFLOAT_MAX)];
+            subH = MAX(labelFit.height, 18);
+        } else if ([sub isKindOfClass:[UIScrollView class]]) {
+            subH = 36;
+        } else {
+            // Custom views (color wheel, etc.) — check for known square views
+            CGSize fit = [sub sizeThatFits:CGSizeMake(width, CGFLOAT_MAX)];
+            if (fit.height > 0 && fit.width > 0) {
+                subH = fit.height;
+            } else {
+                // Color wheel or similar: use a reasonable default
+                subH = MIN(200, width * 0.6);
+                subW = subH;
+                subX = (width - subW) / 2;
+            }
+        }
+
+        sub.frame = CGRectMake(subX, y, subW, subH);
+        [sub setNeedsLayout];
+        [sub layoutIfNeeded];
+        y += subH + spacing;
+        i++;
     }
 }
 
