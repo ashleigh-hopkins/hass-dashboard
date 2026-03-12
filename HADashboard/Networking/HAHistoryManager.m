@@ -94,11 +94,17 @@
     NSUInteger capturedMax = effectiveMax;
     [[HAHTTPClient sharedClient] dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
         if (error || !data) {
+            HALogD(@"history", @"fetchHistory FAILED: error=%@ dataLen=%lu", error, (unsigned long)data.length);
             ha_dispatchMainCompletion(completion, nil, error);
             return;
         }
 
+        HALogD(@"history", @"fetchHistory response: %lu bytes, HTTP %ld, first200=%@",
+               (unsigned long)data.length, (long)((NSHTTPURLResponse *)response).statusCode,
+               [[NSString alloc] initWithData:[data subdataWithRange:NSMakeRange(0, MIN(200, data.length))]
+                                     encoding:NSUTF8StringEncoding]);
         NSArray *points = [HAHistoryManager parseHistoryData:data maxPoints:capturedMax];
+        HALogD(@"history", @"fetchHistory parsed: %lu points", (unsigned long)points.count);
         if (points.count > 0) {
             [self.cache setObject:points forKey:cacheKey];
         }
@@ -222,8 +228,10 @@
 
     NSMutableArray *points = [NSMutableArray arrayWithCapacity:states.count];
     static NSDateFormatter *parseFmt6, *parseFmt3, *parseFmtNone;
+    static NSDateFormatter *parseFmt6Z, *parseFmt3Z, *parseFmtNoneZ; // iOS 5 fallbacks
     static dispatch_once_t parseFmtOnce;
     dispatch_once(&parseFmtOnce, ^{
+        // ZZZZZ matches ISO 8601 timezone offsets like "+00:00" (iOS 6+)
         parseFmt6 = [[NSDateFormatter alloc] init];
         parseFmt6.dateFormat = @"yyyy-MM-dd'T'HH:mm:ss.SSSSSSZZZZZ";
         parseFmt6.locale = [[NSLocale alloc] initWithLocaleIdentifier:@"en_US_POSIX"];
@@ -235,6 +243,19 @@
         parseFmtNone = [[NSDateFormatter alloc] init];
         parseFmtNone.dateFormat = @"yyyy-MM-dd'T'HH:mm:ssZZZZZ";
         parseFmtNone.locale = [[NSLocale alloc] initWithLocaleIdentifier:@"en_US_POSIX"];
+
+        // iOS 5 fallback: ZZZ matches "+00:00", Z matches "+0000"
+        parseFmt6Z = [[NSDateFormatter alloc] init];
+        parseFmt6Z.dateFormat = @"yyyy-MM-dd'T'HH:mm:ss.SSSSSSZZZ";
+        parseFmt6Z.locale = [[NSLocale alloc] initWithLocaleIdentifier:@"en_US_POSIX"];
+
+        parseFmt3Z = [[NSDateFormatter alloc] init];
+        parseFmt3Z.dateFormat = @"yyyy-MM-dd'T'HH:mm:ss.SSSZZZ";
+        parseFmt3Z.locale = [[NSLocale alloc] initWithLocaleIdentifier:@"en_US_POSIX"];
+
+        parseFmtNoneZ = [[NSDateFormatter alloc] init];
+        parseFmtNoneZ.dateFormat = @"yyyy-MM-dd'T'HH:mm:ssZZZ";
+        parseFmtNoneZ.locale = [[NSLocale alloc] initWithLocaleIdentifier:@"en_US_POSIX"];
     });
 
     for (NSDictionary *entry in states) {
@@ -250,9 +271,29 @@
         NSString *timeStr = [rawTime isKindOfClass:[NSString class]] ? rawTime : nil;
         if (!timeStr) continue;
 
+        static BOOL _loggedFirst = NO;
+        if (!_loggedFirst) {
+            _loggedFirst = YES;
+            HALogD(@"history", @"first timestamp: '%@' len=%lu", timeStr, (unsigned long)timeStr.length);
+        }
         NSDate *date = [parseFmt6 dateFromString:timeStr];
         if (!date) date = [parseFmt3 dateFromString:timeStr];
         if (!date) date = [parseFmtNone dateFromString:timeStr];
+        // iOS 5 fallback: ZZZZZ ("+00:00") not supported. Convert to "+0000"
+        // format and parse with ZZZ.
+        if (!date) {
+            // Strip colon from timezone: "+00:00" → "+0000"
+            NSString *compat = timeStr;
+            NSUInteger len = compat.length;
+            if (len >= 6 && [compat characterAtIndex:len - 3] == ':') {
+                compat = [NSString stringWithFormat:@"%@%@",
+                    [compat substringToIndex:len - 3],
+                    [compat substringFromIndex:len - 2]];
+            }
+            date = [parseFmt6Z dateFromString:compat];
+            if (!date) date = [parseFmt3Z dateFromString:compat];
+            if (!date) date = [parseFmtNoneZ dateFromString:compat];
+        }
         if (!date) continue;
 
         [points addObject:@{
