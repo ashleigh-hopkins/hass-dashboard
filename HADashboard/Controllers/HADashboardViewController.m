@@ -97,19 +97,15 @@ static NSString * const kSectionHeaderReuseId = @"HASectionHeader";
 #pragma mark - Rotation (iOS 5)
 
 - (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation {
-    HALogI(@"rotate", @"shouldAutorotate: orientation=%ld → YES", (long)toInterfaceOrientation);
     return YES;
 }
 
 - (void)willRotateToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation duration:(NSTimeInterval)duration {
     [super willRotateToInterfaceOrientation:toInterfaceOrientation duration:duration];
-    HALogI(@"rotate", @"willRotateTo: %ld", (long)toInterfaceOrientation);
 }
 
 - (void)didRotateFromInterfaceOrientation:(UIInterfaceOrientation)fromInterfaceOrientation {
     [super didRotateFromInterfaceOrientation:fromInterfaceOrientation];
-    HALogI(@"rotate", @"didRotateFrom: %ld, view bounds=%@",
-           (long)fromInterfaceOrientation, NSStringFromCGRect(self.view.bounds));
     [self.collectionView.collectionViewLayout invalidateLayout];
     [self.collectionView reloadData];
 }
@@ -370,10 +366,6 @@ static NSString * const kSectionHeaderReuseId = @"HASectionHeader";
             cvTop = pickerY;
         }
         self.collectionView.frame = CGRectMake(0, cvTop, bounds.size.width, bounds.size.height - cvTop);
-        HALogI(@"layout", @"CV frame: %@ bounds: %@ sections: %ld",
-               NSStringFromCGRect(self.collectionView.frame),
-               NSStringFromCGRect(self.collectionView.bounds),
-               (long)[self.collectionView numberOfSections]);
 
         // Status label + spinner: centered in view
         CGSize statusSize = [self.statusLabel sizeThatFits:CGSizeMake(bounds.size.width - 40, CGFLOAT_MAX)];
@@ -555,29 +547,12 @@ static NSString * const kSectionHeaderReuseId = @"HASectionHeader";
 
 - (void)setupCollectionView {
     // Start with flow layout; will switch to columnar when sections view is detected
-    Class flowClass = NSClassFromString(@"UICollectionViewFlowLayout");
-    HALogI(@"cv", @"UICollectionView=%p FlowLayout=%p PSTCollectionView=%p PSTFlowLayout=%p",
-           NSClassFromString(@"UICollectionView"), flowClass,
-           NSClassFromString(@"PSTCollectionView"),
-           NSClassFromString(@"PSTCollectionViewFlowLayout"));
+    UICollectionViewFlowLayout *layout = [[UICollectionViewFlowLayout alloc] init];
+    layout.minimumInteritemSpacing = 6;
+    layout.minimumLineSpacing = 6;
+    layout.sectionInset = UIEdgeInsetsMake(4, 16, 16, 16);
 
-    id flowAlloc = [flowClass alloc];
-    HALogI(@"cv", @"flow alloc=%p class=%@", flowAlloc, NSStringFromClass([flowAlloc class]));
-    UICollectionViewFlowLayout *layout = [flowAlloc init];
-    HALogI(@"cv", @"flow init=%p class=%@", layout, NSStringFromClass([layout class]));
-
-    if (layout) {
-        layout.minimumInteritemSpacing = 6;
-        layout.minimumLineSpacing = 6;
-        layout.sectionInset = UIEdgeInsetsMake(4, 16, 16, 16);
-    }
-
-    Class cvClass = NSClassFromString(@"UICollectionView");
-    id cvAlloc = [cvClass alloc];
-    HALogI(@"cv", @"cv alloc=%p class=%@", cvAlloc, NSStringFromClass([cvAlloc class]));
-    self.collectionView = [cvAlloc initWithFrame:CGRectZero collectionViewLayout:layout];
-    HALogI(@"cv", @"cv init=%p class=%@",
-           self.collectionView, NSStringFromClass([self.collectionView class]));
+    self.collectionView = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
     self.collectionView.backgroundColor = [UIColor clearColor];
     self.collectionView.dataSource = self;
     self.collectionView.delegate = self;
@@ -1111,14 +1086,6 @@ static const CGFloat kRowUnitHeight = 56.0;
     [self showConnectionBar:NO message:nil];
     [self.refreshControl endRefreshing];
 
-    HALogI(@"dash", @"reloadData: sections=%ld cv=%p cvClass=%@ cvFrame=%@ cvHidden=%d cvAlpha=%.1f cvSuperview=%@",
-           (long)self.dashboardConfig.sections.count,
-           self.collectionView,
-           NSStringFromClass([self.collectionView class]),
-           NSStringFromCGRect(self.collectionView.frame),
-           self.collectionView.hidden,
-           self.collectionView.alpha,
-           self.collectionView.superview);
     [self.collectionView reloadData];
     [[HAPerfMonitor sharedMonitor] markRebuildEnd];
 
@@ -1607,16 +1574,12 @@ static const CGFloat kRowUnitHeight = 56.0;
 #pragma mark - UICollectionViewDataSource
 
 - (NSInteger)numberOfSectionsInCollectionView:(UICollectionView *)collectionView {
-    NSInteger count = self.dashboardConfig ? (NSInteger)self.dashboardConfig.sections.count : 0;
-    HALogI(@"ds", @"numberOfSections: %ld", (long)count);
-    return count;
+    return self.dashboardConfig ? (NSInteger)self.dashboardConfig.sections.count : 0;
 }
 
 - (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section {
     HADashboardConfigSection *configSection = [self sectionAtIndex:section];
-    NSInteger count = configSection ? (NSInteger)configSection.items.count : 0;
-    HALogI(@"ds", @"section %ld items: %ld", (long)section, (long)count);
-    return count;
+    return configSection ? (NSInteger)configSection.items.count : 0;
 }
 
 - (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView
@@ -1629,8 +1592,6 @@ static const CGFloat kRowUnitHeight = 56.0;
     NSDictionary *allEntities = [conn allEntities];
 
     NSString *reuseId = [HAEntityCellFactory reuseIdentifierForEntity:entity cardType:item.cardType];
-    HALogI(@"ds", @"cellForItem [%ld,%ld] reuseId=%@ entity=%@",
-           (long)indexPath.section, (long)indexPath.item, reuseId, item.entityId);
     UICollectionViewCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:reuseId forIndexPath:indexPath];
     [[HAPerfMonitor sharedMonitor] markCellStart:reuseId];
 
@@ -2457,7 +2418,16 @@ heightForHeaderInSection:(NSInteger)section {
     if (getScreenImage && HASystemMajorVersion() < 7) {
         CGImageRef cgImage = getScreenImage();
         if (cgImage) {
-            image = [UIImage imageWithCGImage:cgImage];
+            // UIGetScreenImage returns the raw framebuffer in portrait.
+            // Rotate to match the current interface orientation.
+            UIImageOrientation orient = UIImageOrientationUp;
+            switch ([[UIApplication sharedApplication] statusBarOrientation]) {
+                case UIInterfaceOrientationLandscapeLeft:  orient = UIImageOrientationRight; break;
+                case UIInterfaceOrientationLandscapeRight: orient = UIImageOrientationLeft;  break;
+                case UIInterfaceOrientationPortraitUpsideDown: orient = UIImageOrientationDown; break;
+                default: break;
+            }
+            image = [UIImage imageWithCGImage:cgImage scale:1.0 orientation:orient];
             CGImageRelease(cgImage);
         }
     }

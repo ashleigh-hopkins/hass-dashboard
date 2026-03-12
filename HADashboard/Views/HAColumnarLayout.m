@@ -1,7 +1,6 @@
 #import "HAColumnarLayout.h"
 #import "HACellCompat.h"
 #import "HAAutoLayout.h"
-#import "HALog.h"
 
 @interface HAColumnarLayout ()
 @property (nonatomic, strong) NSMutableArray<UICollectionViewLayoutAttributes *> *itemAttributes;
@@ -39,8 +38,6 @@
     if (!cv) return;
 
     NSInteger sectionCount = [cv numberOfSections];
-    HALogI(@"layout", @"prepareLayout: cvBounds=%@ sections=%ld",
-           NSStringFromCGRect(cv.bounds), (long)sectionCount);
     if (sectionCount == 0) {
         self.cachedContentSize = CGSizeZero;
         return;
@@ -177,9 +174,6 @@
     }
 
     self.cachedContentSize = CGSizeMake(cv.bounds.size.width, sectionRowStartY + self.contentInsets.bottom);
-    HALogI(@"layout", @"prepareLayout done: contentSize=%@ items=%ld headers=%ld",
-           NSStringFromCGSize(self.cachedContentSize),
-           (long)self.itemAttributes.count, (long)self.headerAttributes.count);
 }
 
 - (CGSize)collectionViewContentSize {
