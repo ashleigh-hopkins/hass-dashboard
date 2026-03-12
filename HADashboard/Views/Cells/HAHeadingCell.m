@@ -23,7 +23,7 @@
         [self.contentView addSubview:self.iconLabel];
 
         self.titleLabel = [[UILabel alloc] init];
-        self.titleLabel.font = [UIFont ha_systemFontOfSize:17 weight:UIFontWeightSemibold];
+        self.titleLabel.font = [UIFont ha_systemFontOfSize:17 weight:HAFontWeightSemibold];
         self.titleLabel.textColor = [HATheme sectionHeaderColor];
         self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
         [self.contentView addSubview:self.titleLabel];

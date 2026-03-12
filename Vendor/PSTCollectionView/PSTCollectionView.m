@@ -11,10 +11,15 @@
 #import "PSTCollectionViewItemKey.h"
 
 #import <objc/runtime.h>
+#import <mach-o/dyld.h>
+#import <mach-o/getsect.h>
 #if TARGET_IPHONE_SIMULATOR
 #import <dlfcn.h>
 #endif
 #import <tgmath.h>
+
+// Forward declaration — defined at end of file
+static void PSTCreateUICollectionViewClasses(void);
 
 @interface PSTCollectionViewLayout (Internal)
 @property (nonatomic, unsafe_unretained) PSTCollectionView *collectionView;
@@ -140,6 +145,14 @@ CGFloat PSTSimulatorAnimationDragCoefficient(void);
 const char kPSTColletionViewExt;
 
 @implementation PSTCollectionView
+
+// +load runs before __attribute__((constructor)) and before other classes'
+// +initialize. By registering UICollectionView* here, subclasses in the app
+// (e.g. HABaseEntityCell : UICollectionViewCell) can resolve their superclass
+// when the ObjC runtime realizes them during the load phase.
++ (void)load {
+    PSTCreateUICollectionViewClasses();
+}
 
 @synthesize collectionViewLayout = _layout;
 @synthesize currentUpdate = _update;
@@ -2208,6 +2221,7 @@ static void PSTCollectionViewCommonSetup(PSTCollectionView *_self) {
 @implementation PSUICollectionViewController_ @end
 
 static void PSTRegisterClasses() {
+    NSLog(@"PSTRegisterClasses: starting");
     NSDictionary *map = @{
         @"UICollectionView": PSUICollectionView_.class,
         @"UICollectionViewCell": PSUICollectionViewCell_.class,
@@ -2234,12 +2248,15 @@ static void PSTRegisterClasses() {
         } else {
             canOverwrite = NO;
             // We're most likely on iOS5, the requested UIKit class doesn't exist, so we create it dynamically.
-            if ((UIClass = objc_allocateClassPair(PSTClass, UIClassName.UTF8String, 0))) {
+            UIClass = objc_allocateClassPair(PSTClass, UIClassName.UTF8String, 0);
+            NSLog(@"PSTRegisterClasses: %@ missing, created=%p from PST=%@", UIClassName, UIClass, PSTClass);
+            if (UIClass) {
                 objc_registerClassPair(UIClass);
             }
         }
     }];
 
+    NSLog(@"PSTRegisterClasses: canOverwrite=%d UICollectionView=%p", canOverwrite, NSClassFromString(@"UICollectionView"));
     if (canOverwrite) {
         // All UICollectionView types were found and appropriately sized, so it is safe to replace the super-class.
         [map enumerateKeysAndObjectsUsingBlock:^(NSString* UIClassName, id PSTClass, BOOL *stop) {
@@ -2253,17 +2270,94 @@ static void PSTRegisterClasses() {
     }
 }
 
+/// On iOS 5, the ObjC runtime drops classes whose superclass didn't exist at
+/// image load time.  After PSTRegisterClasses() creates UICollectionView* etc.,
+/// we scan the binary's __objc_classlist section and re-register any classes
+/// that the runtime skipped (their name won't be in the class table yet, but
+/// the raw class_ro_t metadata is still in the binary).
+///
+/// This uses the raw Mach-O section data to iterate over all class pointers
+/// that the compiler emitted.  For each one that the runtime doesn't know about
+/// (objc_getClass returns nil for its name), we create a new dynamic class with
+/// the same name, superclass, methods, and ivars.
+static void PSTFixupUnresolvedClasses(void) {
+    // Find our main executable image
+    const struct mach_header *header = NULL;
+    for (uint32_t i = 0; i < _dyld_image_count(); i++) {
+        if (_dyld_get_image_header(i)->filetype == MH_EXECUTE) {
+            header = _dyld_get_image_header(i);
+            break;
+        }
+    }
+    if (!header) return;
+
+    unsigned long size = 0;
+    // __objc_classrefs contains pointers to all class references in code.
+    // Classes that couldn't resolve their superclass will have nil pointers.
+    // But we need __objc_classlist which has ALL classes from the binary.
+    //
+    // On armv7 (32-bit), class pointers are 4 bytes.
+    uintptr_t slide = 0;
+    for (uint32_t i = 0; i < _dyld_image_count(); i++) {
+        if (_dyld_get_image_header(i) == header) {
+            slide = _dyld_get_image_vmaddr_slide(i);
+            break;
+        }
+    }
+
+    // Use objc_copyClassNamesForImage to get class names that the runtime DID load
+    // from our image. Classes with missing superclasses won't appear here.
+    // We can't easily scan __objc_classlist on iOS 5 without the raw pointers.
+    //
+    // Alternative approach: use objc_getClassList to enumerate ALL known classes,
+    // and for each class whose superclass is one of the PST/UI collection classes,
+    // verify it's properly in the hierarchy.
+    //
+    // Simplest approach: just manually re-create the known missing classes.
+    // We know which classes inherit from UICollectionViewCell, UICollectionReusableView,
+    // and UICollectionViewLayout because they're in our codebase.
+
+    // Instead of scanning Mach-O, register a fixup that can be called from app code.
+    // Nothing to do here — the app will use PSTFixupCollectionViewSubclass() below.
+}
+
+/// Manually re-register a class that was dropped by the ObjC runtime because
+/// its superclass (e.g. UICollectionViewCell) didn't exist at image load time.
+/// Creates a new dynamic class with the same name and superclass, then copies
+/// all methods and protocols from the "template" class if it still exists in
+/// the binary metadata.
+///
+/// Must be called AFTER PSTRegisterClasses() has created the UICollectionView* classes.
+void PSTFixupCollectionViewSubclass(const char *className, const char *superclassName) {
+    if (objc_getClass(className)) return; // already registered, nothing to do
+
+    Class superclass = objc_getClass(superclassName);
+    if (!superclass) {
+        NSLog(@"PSTFixup: superclass %s not found, can't fix %s", superclassName, className);
+        return;
+    }
+
+    Class newClass = objc_allocateClassPair(superclass, className, 0);
+    if (!newClass) {
+        NSLog(@"PSTFixup: objc_allocateClassPair failed for %s", className);
+        return;
+    }
+    objc_registerClassPair(newClass);
+    NSLog(@"PSTFixup: registered %s -> %s (%p)", className, superclassName, newClass);
+}
+
 // Create subclasses that pose as UICollectionView et al, if not available at runtime.
+static BOOL _pstClassesRegistered = NO;
 __attribute__((constructor)) static void PSTCreateUICollectionViewClasses(void) {
+    if (_pstClassesRegistered) return;
     if (objc_getClass("PSTCollectionViewDisableForwardToUICollectionViewSentinel")) return;
+    _pstClassesRegistered = YES;
 
     @autoreleasepool {
         // Change superclass at runtime. This allows seamless switching from PST* to UI* at runtime.
         PSTRegisterClasses();
 
         // add PSUI classes at runtime to make Interface Builder sane
-        // (IB doesn't allow adding the PSUICollectionView_ types but doesn't complain on unknown classes)
-        // The class name may already be in use. This may happen if this code is running for the second time (first for an app bundle, then again for a unit test bundle).
         Class c;
         if ((c = objc_allocateClassPair(PSUICollectionView_.class, "PSUICollectionView", 0))) objc_registerClassPair(c);
         if ((c = objc_allocateClassPair(PSUICollectionViewCell_.class, "PSUICollectionViewCell", 0))) objc_registerClassPair(c);

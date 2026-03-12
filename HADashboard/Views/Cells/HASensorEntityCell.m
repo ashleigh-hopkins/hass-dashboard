@@ -19,7 +19,7 @@
     // Override: use a large value display
     self.stateLabel.hidden = YES;
 
-    self.valueLabel = [self labelWithFont:[UIFont ha_monospacedDigitSystemFontOfSize:28 weight:UIFontWeightMedium]
+    self.valueLabel = [self labelWithFont:[UIFont ha_monospacedDigitSystemFontOfSize:28 weight:HAFontWeightMedium]
                                      color:[HATheme primaryTextColor] lines:1];
     self.valueLabel.textAlignment = NSTextAlignmentLeft;
     self.valueLabel.adjustsFontSizeToFitWidth = YES;

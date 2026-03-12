@@ -72,7 +72,7 @@
 
     // Toggle button
     self.toggleButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.toggleButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:UIFontWeightMedium];
+    self.toggleButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:HAFontWeightMedium];
     self.toggleButton.layer.cornerRadius = 8;
     self.toggleButton.clipsToBounds = YES;
     self.toggleButton.translatesAutoresizingMaskIntoConstraints = NO;
@@ -81,7 +81,7 @@
 
     // Brightness label
     self.brightnessLabel = [[UILabel alloc] init];
-    self.brightnessLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:13 weight:UIFontWeightRegular];
+    self.brightnessLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:13 weight:HAFontWeightRegular];
     self.brightnessLabel.textColor = [HATheme secondaryTextColor];
     self.brightnessLabel.textAlignment = NSTextAlignmentRight;
     self.brightnessLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -118,7 +118,7 @@
     if (self.hasHSColor) {
         self.colorLabel = [[UILabel alloc] init];
         self.colorLabel.text = @"Color";
-        self.colorLabel.font = [UIFont ha_systemFontOfSize:13 weight:UIFontWeightMedium];
+        self.colorLabel.font = [UIFont ha_systemFontOfSize:13 weight:HAFontWeightMedium];
         self.colorLabel.textColor = [HATheme secondaryTextColor];
         self.colorLabel.translatesAutoresizingMaskIntoConstraints = NO;
         [container addSubview:self.colorLabel];
@@ -146,13 +146,13 @@
     if (self.hasColorTemp) {
         UILabel *ctLabel = [[UILabel alloc] init];
         ctLabel.text = @"Color Temp";
-        ctLabel.font = [UIFont ha_systemFontOfSize:13 weight:UIFontWeightMedium];
+        ctLabel.font = [UIFont ha_systemFontOfSize:13 weight:HAFontWeightMedium];
         ctLabel.textColor = [HATheme secondaryTextColor];
         ctLabel.translatesAutoresizingMaskIntoConstraints = NO;
         [container addSubview:ctLabel];
 
         self.colorTempLabel = [[UILabel alloc] init];
-        self.colorTempLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:13 weight:UIFontWeightRegular];
+        self.colorTempLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:13 weight:HAFontWeightRegular];
         self.colorTempLabel.textColor = [HATheme secondaryTextColor];
         self.colorTempLabel.textAlignment = NSTextAlignmentRight;
         self.colorTempLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -224,7 +224,7 @@
     // Effects picker button (when effect_list is non-empty)
     if (self.hasEffects) {
         self.effectButton = [UIButton buttonWithType:UIButtonTypeSystem];
-        self.effectButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:UIFontWeightMedium];
+        self.effectButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:HAFontWeightMedium];
         self.effectButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
         self.effectButton.backgroundColor = [HATheme buttonBackgroundColor];
         self.effectButton.layer.cornerRadius = 8;
@@ -248,7 +248,7 @@
     // Flash button (quick identify blink)
     self.flashButton = [UIButton buttonWithType:UIButtonTypeSystem];
     [self.flashButton setTitle:@"\u26A1 Flash" forState:UIControlStateNormal];
-    self.flashButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:UIFontWeightMedium];
+    self.flashButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:HAFontWeightMedium];
     self.flashButton.backgroundColor = [HATheme buttonBackgroundColor];
     self.flashButton.layer.cornerRadius = 8;
     self.flashButton.clipsToBounds = YES;
@@ -267,7 +267,7 @@
     // Transition control
     self.transitionLabel = [[UILabel alloc] init];
     self.transitionLabel.text = @"Transition";
-    self.transitionLabel.font = [UIFont ha_systemFontOfSize:13 weight:UIFontWeightMedium];
+    self.transitionLabel.font = [UIFont ha_systemFontOfSize:13 weight:HAFontWeightMedium];
     self.transitionLabel.textColor = [HATheme secondaryTextColor];
     self.transitionLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [container addSubview:self.transitionLabel];
@@ -292,7 +292,7 @@
     if (self.areaScenes.count > 0) {
         UILabel *scenesHeader = [[UILabel alloc] init];
         scenesHeader.text = @"Scenes";
-        scenesHeader.font = [UIFont ha_systemFontOfSize:13 weight:UIFontWeightMedium];
+        scenesHeader.font = [UIFont ha_systemFontOfSize:13 weight:HAFontWeightMedium];
         scenesHeader.textColor = [HATheme secondaryTextColor];
         scenesHeader.translatesAutoresizingMaskIntoConstraints = NO;
         [container addSubview:scenesHeader];
@@ -527,7 +527,7 @@
 
         NSString *name = [scene friendlyName] ?: scene.entityId;
         [chip setTitle:name forState:UIControlStateNormal];
-        chip.titleLabel.font = [UIFont ha_systemFontOfSize:13 weight:UIFontWeightMedium];
+        chip.titleLabel.font = [UIFont ha_systemFontOfSize:13 weight:HAFontWeightMedium];
         [chip setTitleColor:[HATheme primaryTextColor] forState:UIControlStateNormal];
         chip.backgroundColor = [HATheme buttonBackgroundColor];
         chip.layer.cornerRadius = chipHeight / 2.0;
@@ -602,7 +602,7 @@
 
     // Target temperature stepper + label
     self.targetLabel = [[UILabel alloc] init];
-    self.targetLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:16 weight:UIFontWeightMedium];
+    self.targetLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:16 weight:HAFontWeightMedium];
     self.targetLabel.textColor = [HATheme primaryTextColor];
     self.targetLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [container addSubview:self.targetLabel];
@@ -638,7 +638,7 @@
     if (fanModes.count > 0) {
         self.fanModeLabel = [[UILabel alloc] init];
         self.fanModeLabel.text = @"Fan";
-        self.fanModeLabel.font = [UIFont ha_systemFontOfSize:13 weight:UIFontWeightMedium];
+        self.fanModeLabel.font = [UIFont ha_systemFontOfSize:13 weight:HAFontWeightMedium];
         self.fanModeLabel.textColor = [HATheme secondaryTextColor];
         self.fanModeLabel.translatesAutoresizingMaskIntoConstraints = NO;
         [container addSubview:self.fanModeLabel];
@@ -831,7 +831,7 @@
 
     if (self.supportsPosition) {
         self.positionLabel = [[UILabel alloc] init];
-        self.positionLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:13 weight:UIFontWeightRegular];
+        self.positionLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:13 weight:HAFontWeightRegular];
         self.positionLabel.textColor = [HATheme secondaryTextColor];
         self.positionLabel.textAlignment = NSTextAlignmentRight;
         self.positionLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -895,7 +895,7 @@
         [container addSubview:tiltTitle];
 
         self.tiltLabel = [[UILabel alloc] init];
-        self.tiltLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:13 weight:UIFontWeightRegular];
+        self.tiltLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:13 weight:HAFontWeightRegular];
         self.tiltLabel.textColor = [HATheme secondaryTextColor];
         self.tiltLabel.textAlignment = NSTextAlignmentRight;
         self.tiltLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -937,7 +937,7 @@
 - (UIButton *)makeButton:(NSString *)title action:(SEL)action {
     UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
     [btn setTitle:title forState:UIControlStateNormal];
-    btn.titleLabel.font = [UIFont ha_systemFontOfSize:14 weight:UIFontWeightMedium];
+    btn.titleLabel.font = [UIFont ha_systemFontOfSize:14 weight:HAFontWeightMedium];
     btn.backgroundColor = [HATheme buttonBackgroundColor];
     btn.layer.cornerRadius = 8;
     btn.clipsToBounds = YES;
@@ -1077,7 +1077,7 @@
     UIView *container = [[UIView alloc] init];
 
     self.valueLabel = [[UILabel alloc] init];
-    self.valueLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:36 weight:UIFontWeightBold];
+    self.valueLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:36 weight:HAFontWeightBold];
     self.valueLabel.textColor = [HATheme primaryTextColor];
     self.valueLabel.textAlignment = NSTextAlignmentCenter;
     self.valueLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1151,7 +1151,7 @@
 
     // Media info: title + source
     self.mediaInfoLabel = [[UILabel alloc] init];
-    self.mediaInfoLabel.font = [UIFont ha_systemFontOfSize:15 weight:UIFontWeightMedium];
+    self.mediaInfoLabel.font = [UIFont ha_systemFontOfSize:15 weight:HAFontWeightMedium];
     self.mediaInfoLabel.textColor = [HATheme primaryTextColor];
     self.mediaInfoLabel.textAlignment = NSTextAlignmentCenter;
     self.mediaInfoLabel.numberOfLines = 2;
@@ -1180,13 +1180,13 @@
     // Seek slider (if SEEK supported, bit 1 = 2)
     if (features & 2) {
         self.positionTimeLabel = [[UILabel alloc] init];
-        self.positionTimeLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:11 weight:UIFontWeightRegular];
+        self.positionTimeLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:11 weight:HAFontWeightRegular];
         self.positionTimeLabel.textColor = [HATheme secondaryTextColor];
         self.positionTimeLabel.translatesAutoresizingMaskIntoConstraints = NO;
         [container addSubview:self.positionTimeLabel];
 
         self.durationTimeLabel = [[UILabel alloc] init];
-        self.durationTimeLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:11 weight:UIFontWeightRegular];
+        self.durationTimeLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:11 weight:HAFontWeightRegular];
         self.durationTimeLabel.textColor = [HATheme secondaryTextColor];
         self.durationTimeLabel.textAlignment = NSTextAlignmentRight;
         self.durationTimeLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1287,7 +1287,7 @@
     NSArray *soundModes = [entity mediaSoundModes];
     if (soundModes.count > 0 && (features & 65536)) {
         self.sourceButton = [UIButton buttonWithType:UIButtonTypeSystem];
-        self.sourceButton.titleLabel.font = [UIFont ha_systemFontOfSize:14 weight:UIFontWeightMedium];
+        self.sourceButton.titleLabel.font = [UIFont ha_systemFontOfSize:14 weight:HAFontWeightMedium];
         self.sourceButton.backgroundColor = [HATheme buttonBackgroundColor];
         self.sourceButton.layer.cornerRadius = 8;
         self.sourceButton.clipsToBounds = YES;
@@ -1503,7 +1503,7 @@
 
     // Toggle button
     self.toggleButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.toggleButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:UIFontWeightMedium];
+    self.toggleButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:HAFontWeightMedium];
     self.toggleButton.layer.cornerRadius = 8;
     self.toggleButton.clipsToBounds = YES;
     self.toggleButton.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1512,7 +1512,7 @@
 
     // Speed slider + label
     self.speedLabel = [[UILabel alloc] init];
-    self.speedLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:13 weight:UIFontWeightRegular];
+    self.speedLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:13 weight:HAFontWeightRegular];
     self.speedLabel.textColor = [HATheme secondaryTextColor];
     self.speedLabel.textAlignment = NSTextAlignmentRight;
     self.speedLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1566,7 +1566,7 @@
     // Preset mode dropdown
     if (self.hasPresetModes) {
         self.presetModeButton = [UIButton buttonWithType:UIButtonTypeSystem];
-        self.presetModeButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:UIFontWeightMedium];
+        self.presetModeButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:HAFontWeightMedium];
         self.presetModeButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
         self.presetModeButton.backgroundColor = [HATheme buttonBackgroundColor];
         self.presetModeButton.layer.cornerRadius = 8;
@@ -1633,7 +1633,7 @@
 - (UIButton *)makeDirButton:(NSString *)title action:(SEL)action {
     UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
     [btn setTitle:title forState:UIControlStateNormal];
-    btn.titleLabel.font = [UIFont ha_systemFontOfSize:14 weight:UIFontWeightMedium];
+    btn.titleLabel.font = [UIFont ha_systemFontOfSize:14 weight:HAFontWeightMedium];
     btn.backgroundColor = [HATheme buttonBackgroundColor];
     btn.layer.cornerRadius = 8;
     btn.clipsToBounds = YES;
@@ -1765,7 +1765,7 @@
     self.supportsOpen = (features & 1) != 0;
 
     self.lockButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.lockButton.titleLabel.font = [UIFont ha_systemFontOfSize:16 weight:UIFontWeightSemibold];
+    self.lockButton.titleLabel.font = [UIFont ha_systemFontOfSize:16 weight:HAFontWeightSemibold];
     self.lockButton.layer.cornerRadius = 8;
     self.lockButton.clipsToBounds = YES;
     self.lockButton.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1775,7 +1775,7 @@
     if (self.supportsOpen) {
         self.openButton = [UIButton buttonWithType:UIButtonTypeSystem];
         [self.openButton setTitle:@"Open" forState:UIControlStateNormal];
-        self.openButton.titleLabel.font = [UIFont ha_systemFontOfSize:16 weight:UIFontWeightSemibold];
+        self.openButton.titleLabel.font = [UIFont ha_systemFontOfSize:16 weight:HAFontWeightSemibold];
         self.openButton.layer.cornerRadius = 8;
         self.openButton.clipsToBounds = YES;
         self.openButton.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1926,7 +1926,7 @@
     [container addSubview:self.statusLabel];
 
     self.batteryLabel = [[UILabel alloc] init];
-    self.batteryLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:14 weight:UIFontWeightRegular];
+    self.batteryLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:14 weight:HAFontWeightRegular];
     self.batteryLabel.textColor = [HATheme secondaryTextColor];
     self.batteryLabel.textAlignment = NSTextAlignmentRight;
     self.batteryLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -2000,7 +2000,7 @@
     // Fan speed dropdown
     if (self.hasFanSpeed) {
         self.fanSpeedButton = [UIButton buttonWithType:UIButtonTypeSystem];
-        self.fanSpeedButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:UIFontWeightMedium];
+        self.fanSpeedButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:HAFontWeightMedium];
         self.fanSpeedButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
         self.fanSpeedButton.backgroundColor = [HATheme buttonBackgroundColor];
         self.fanSpeedButton.layer.cornerRadius = 8;
@@ -2032,7 +2032,7 @@
 - (UIButton *)makeButton:(NSString *)title action:(SEL)action {
     UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
     [btn setTitle:title forState:UIControlStateNormal];
-    btn.titleLabel.font = [UIFont ha_systemFontOfSize:14 weight:UIFontWeightMedium];
+    btn.titleLabel.font = [UIFont ha_systemFontOfSize:14 weight:HAFontWeightMedium];
     btn.backgroundColor = [HATheme buttonBackgroundColor];
     btn.layer.cornerRadius = 8;
     btn.clipsToBounds = YES;
@@ -2149,7 +2149,7 @@
 
     // Countdown display
     self.countdownLabel = [[UILabel alloc] init];
-    self.countdownLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:32 weight:UIFontWeightBold];
+    self.countdownLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:32 weight:HAFontWeightBold];
     self.countdownLabel.textColor = [HATheme primaryTextColor];
     self.countdownLabel.textAlignment = NSTextAlignmentCenter;
     self.countdownLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -2192,7 +2192,7 @@
 - (UIButton *)makeButton:(NSString *)title action:(SEL)action {
     UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
     [btn setTitle:title forState:UIControlStateNormal];
-    btn.titleLabel.font = [UIFont ha_systemFontOfSize:14 weight:UIFontWeightMedium];
+    btn.titleLabel.font = [UIFont ha_systemFontOfSize:14 weight:HAFontWeightMedium];
     btn.backgroundColor = [HATheme buttonBackgroundColor];
     btn.layer.cornerRadius = 8;
     btn.clipsToBounds = YES;
@@ -2318,7 +2318,7 @@
 
     self.activateButton = [UIButton buttonWithType:UIButtonTypeSystem];
     [self.activateButton setTitle:@"Activate" forState:UIControlStateNormal];
-    self.activateButton.titleLabel.font = [UIFont ha_systemFontOfSize:16 weight:UIFontWeightSemibold];
+    self.activateButton.titleLabel.font = [UIFont ha_systemFontOfSize:16 weight:HAFontWeightSemibold];
     [self.activateButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
     self.activateButton.backgroundColor = [HATheme onTintColor];
     self.activateButton.layer.cornerRadius = 8;
@@ -2389,7 +2389,7 @@
     // Disarm button
     self.disarmButton = [UIButton buttonWithType:UIButtonTypeSystem];
     [self.disarmButton setTitle:@"Disarm" forState:UIControlStateNormal];
-    self.disarmButton.titleLabel.font = [UIFont ha_systemFontOfSize:16 weight:UIFontWeightSemibold];
+    self.disarmButton.titleLabel.font = [UIFont ha_systemFontOfSize:16 weight:HAFontWeightSemibold];
     [self.disarmButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
     self.disarmButton.backgroundColor = [UIColor colorWithRed:0.3 green:0.7 blue:0.3 alpha:1.0];
     self.disarmButton.layer.cornerRadius = 8;
@@ -2405,7 +2405,7 @@
     if (codeRequired) {
         self.codeField = [[UITextField alloc] init];
         self.codeField.placeholder = @"Enter code";
-        self.codeField.font = [UIFont ha_monospacedDigitSystemFontOfSize:18 weight:UIFontWeightMedium];
+        self.codeField.font = [UIFont ha_monospacedDigitSystemFontOfSize:18 weight:HAFontWeightMedium];
         self.codeField.textAlignment = NSTextAlignmentCenter;
         self.codeField.borderStyle = UITextBorderStyleRoundedRect;
         self.codeField.keyboardType = UIKeyboardTypeNumberPad;
@@ -2443,7 +2443,7 @@
 - (void)addModeButton:(NSString *)title service:(NSString *)service {
     UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
     [btn setTitle:title forState:UIControlStateNormal];
-    btn.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:UIFontWeightMedium];
+    btn.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:HAFontWeightMedium];
     btn.backgroundColor = [HATheme buttonBackgroundColor];
     btn.layer.cornerRadius = 8;
     btn.clipsToBounds = YES;
@@ -2519,7 +2519,7 @@
 
     self.pressButton = [UIButton buttonWithType:UIButtonTypeSystem];
     [self.pressButton setTitle:@"Press" forState:UIControlStateNormal];
-    self.pressButton.titleLabel.font = [UIFont ha_systemFontOfSize:16 weight:UIFontWeightSemibold];
+    self.pressButton.titleLabel.font = [UIFont ha_systemFontOfSize:16 weight:HAFontWeightSemibold];
     [self.pressButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
     self.pressButton.backgroundColor = [HATheme onTintColor];
     self.pressButton.layer.cornerRadius = 8;
@@ -2600,7 +2600,7 @@
 - (UIButton *)makeButton:(NSString *)title action:(SEL)action {
     UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
     [btn setTitle:title forState:UIControlStateNormal];
-    btn.titleLabel.font = [UIFont ha_systemFontOfSize:16 weight:UIFontWeightMedium];
+    btn.titleLabel.font = [UIFont ha_systemFontOfSize:16 weight:HAFontWeightMedium];
     btn.backgroundColor = [HATheme buttonBackgroundColor];
     btn.layer.cornerRadius = 8;
     btn.clipsToBounds = YES;
@@ -2655,7 +2655,7 @@
     UIView *container = [[UIView alloc] init];
 
     self.valueLabel = [[UILabel alloc] init];
-    self.valueLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:14 weight:UIFontWeightMedium];
+    self.valueLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:14 weight:HAFontWeightMedium];
     self.valueLabel.textColor = [HATheme primaryTextColor];
     self.valueLabel.textAlignment = NSTextAlignmentRight;
     self.valueLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -2742,7 +2742,7 @@
     self.containerRef = container;
 
     self.selectorButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.selectorButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:UIFontWeightMedium];
+    self.selectorButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:HAFontWeightMedium];
     self.selectorButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
     self.selectorButton.backgroundColor = [HATheme buttonBackgroundColor];
     self.selectorButton.layer.cornerRadius = 8;
@@ -2819,7 +2819,7 @@
 
     if (self.supportsPosition) {
         self.positionLabel = [[UILabel alloc] init];
-        self.positionLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:13 weight:UIFontWeightRegular];
+        self.positionLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:13 weight:HAFontWeightRegular];
         self.positionLabel.textColor = [HATheme secondaryTextColor];
         self.positionLabel.textAlignment = NSTextAlignmentRight;
         self.positionLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -2879,7 +2879,7 @@
 - (UIButton *)makeButton:(NSString *)title action:(SEL)action {
     UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
     [btn setTitle:title forState:UIControlStateNormal];
-    btn.titleLabel.font = [UIFont ha_systemFontOfSize:14 weight:UIFontWeightMedium];
+    btn.titleLabel.font = [UIFont ha_systemFontOfSize:14 weight:HAFontWeightMedium];
     btn.backgroundColor = [HATheme buttonBackgroundColor];
     btn.layer.cornerRadius = 8;
     btn.clipsToBounds = YES;
@@ -2942,7 +2942,7 @@
     UIView *container = [[UIView alloc] init];
 
     self.toggleButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.toggleButton.titleLabel.font = [UIFont ha_systemFontOfSize:16 weight:UIFontWeightSemibold];
+    self.toggleButton.titleLabel.font = [UIFont ha_systemFontOfSize:16 weight:HAFontWeightSemibold];
     self.toggleButton.layer.cornerRadius = 8;
     self.toggleButton.clipsToBounds = YES;
     self.toggleButton.translatesAutoresizingMaskIntoConstraints = NO;
@@ -3009,7 +3009,7 @@
 
     // Power toggle button
     self.toggleButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.toggleButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:UIFontWeightMedium];
+    self.toggleButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:HAFontWeightMedium];
     self.toggleButton.layer.cornerRadius = 8;
     self.toggleButton.clipsToBounds = YES;
     self.toggleButton.translatesAutoresizingMaskIntoConstraints = NO;
@@ -3018,7 +3018,7 @@
 
     // Humidity value label
     self.humidityLabel = [[UILabel alloc] init];
-    self.humidityLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:13 weight:UIFontWeightRegular];
+    self.humidityLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:13 weight:HAFontWeightRegular];
     self.humidityLabel.textColor = [HATheme secondaryTextColor];
     self.humidityLabel.textAlignment = NSTextAlignmentRight;
     self.humidityLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -3056,7 +3056,7 @@
     // Mode dropdown button (when available_modes is non-empty)
     if (self.hasModes) {
         self.modeButton = [UIButton buttonWithType:UIButtonTypeSystem];
-        self.modeButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:UIFontWeightMedium];
+        self.modeButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:HAFontWeightMedium];
         self.modeButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
         self.modeButton.backgroundColor = [HATheme buttonBackgroundColor];
         self.modeButton.layer.cornerRadius = 8;
@@ -3182,7 +3182,7 @@
     NSString *symbol = [HAEntity symbolForWeatherCondition:condition];
     UILabel *conditionLabel = [[UILabel alloc] init];
     conditionLabel.text = [NSString stringWithFormat:@"%@ %@", symbol, [condition capitalizedString]];
-    conditionLabel.font = [UIFont ha_systemFontOfSize:18 weight:UIFontWeightSemibold];
+    conditionLabel.font = [UIFont ha_systemFontOfSize:18 weight:HAFontWeightSemibold];
     conditionLabel.textColor = [HATheme primaryTextColor];
     [stack addArrangedSubview:conditionLabel];
 
@@ -3253,7 +3253,7 @@
 
     UILabel *valueLabel = [[UILabel alloc] init];
     valueLabel.text = value;
-    valueLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:14 weight:UIFontWeightMedium];
+    valueLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:14 weight:HAFontWeightMedium];
     valueLabel.textColor = [HATheme primaryTextColor];
     valueLabel.textAlignment = NSTextAlignmentRight;
     [valueLabel setContentHuggingPriority:UILayoutPriorityRequired forAxis:0];
@@ -3308,7 +3308,7 @@
 
     // Latest version
     self.latestLabel = [[UILabel alloc] init];
-    self.latestLabel.font = [UIFont ha_systemFontOfSize:14 weight:UIFontWeightMedium];
+    self.latestLabel.font = [UIFont ha_systemFontOfSize:14 weight:HAFontWeightMedium];
     self.latestLabel.textColor = [HATheme primaryTextColor];
     self.latestLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [container addSubview:self.latestLabel];
@@ -3337,7 +3337,7 @@
 
         self.installButton = [UIButton buttonWithType:UIButtonTypeSystem];
         [self.installButton setTitle:@"Install" forState:UIControlStateNormal];
-        self.installButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:UIFontWeightSemibold];
+        self.installButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:HAFontWeightSemibold];
         [self.installButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
         self.installButton.backgroundColor = [HATheme onTintColor];
         self.installButton.layer.cornerRadius = 8;
@@ -3347,7 +3347,7 @@
 
         self.skipButton = [UIButton buttonWithType:UIButtonTypeSystem];
         [self.skipButton setTitle:@"Skip" forState:UIControlStateNormal];
-        self.skipButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:UIFontWeightMedium];
+        self.skipButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:HAFontWeightMedium];
         self.skipButton.backgroundColor = [HATheme buttonBackgroundColor];
         self.skipButton.layer.cornerRadius = 8;
         self.skipButton.clipsToBounds = YES;
@@ -3458,7 +3458,7 @@
 
     // Target temperature stepper + label
     self.targetLabel = [[UILabel alloc] init];
-    self.targetLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:16 weight:UIFontWeightMedium];
+    self.targetLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:16 weight:HAFontWeightMedium];
     self.targetLabel.textColor = [HATheme primaryTextColor];
     self.targetLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [container addSubview:self.targetLabel];
@@ -3489,7 +3489,7 @@
     // Operation mode dropdown
     if (self.hasModes) {
         self.modeButton = [UIButton buttonWithType:UIButtonTypeSystem];
-        self.modeButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:UIFontWeightMedium];
+        self.modeButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:HAFontWeightMedium];
         self.modeButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
         self.modeButton.backgroundColor = [HATheme buttonBackgroundColor];
         self.modeButton.layer.cornerRadius = 8;
@@ -3796,7 +3796,7 @@
     UIView *container = [[UIView alloc] init];
 
     self.stateValueLabel = [[UILabel alloc] init];
-    self.stateValueLabel.font = [UIFont ha_systemFontOfSize:18 weight:UIFontWeightMedium];
+    self.stateValueLabel.font = [UIFont ha_systemFontOfSize:18 weight:HAFontWeightMedium];
     self.stateValueLabel.textColor = [HATheme primaryTextColor];
     self.stateValueLabel.textAlignment = NSTextAlignmentCenter;
     self.stateValueLabel.numberOfLines = 2;

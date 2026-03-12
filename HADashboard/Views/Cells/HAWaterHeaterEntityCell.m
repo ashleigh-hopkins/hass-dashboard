@@ -27,7 +27,7 @@
     CGFloat padding = 10.0;
 
     // Target temperature (large, centered)
-    self.tempLabel = [self labelWithFont:[UIFont ha_monospacedDigitSystemFontOfSize:28 weight:UIFontWeightMedium]
+    self.tempLabel = [self labelWithFont:[UIFont ha_monospacedDigitSystemFontOfSize:28 weight:HAFontWeightMedium]
                                    color:[HATheme primaryTextColor] lines:1];
     self.tempLabel.textAlignment = NSTextAlignmentCenter;
 
@@ -41,7 +41,7 @@
 
     // Mode button
     self.modeButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.modeButton.titleLabel.font = [UIFont ha_systemFontOfSize:11 weight:UIFontWeightMedium];
+    self.modeButton.titleLabel.font = [UIFont ha_systemFontOfSize:11 weight:HAFontWeightMedium];
     [self.modeButton setTitleColor:[HATheme secondaryTextColor] forState:UIControlStateNormal];
     self.modeButton.translatesAutoresizingMaskIntoConstraints = NO;
     [self.modeButton addTarget:self action:@selector(modeTapped) forControlEvents:UIControlEventTouchUpInside];

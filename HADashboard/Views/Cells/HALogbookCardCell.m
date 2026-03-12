@@ -31,7 +31,7 @@ static const NSInteger kMaxEntries = 10;
         self.contentView.backgroundColor = [HATheme cellBackgroundColor];
 
         self.titleLabel = [[UILabel alloc] init];
-        self.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:UIFontWeightSemibold];
+        self.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:HAFontWeightSemibold];
         self.titleLabel.textColor = [HATheme primaryTextColor];
         self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
         [self.contentView addSubview:self.titleLabel];
@@ -177,7 +177,7 @@ static const NSInteger kMaxEntries = 10;
 
     // Time label
     UILabel *timeLabel = [[UILabel alloc] init];
-    timeLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:10 weight:UIFontWeightRegular];
+    timeLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:10 weight:HAFontWeightRegular];
     timeLabel.textColor = [HATheme secondaryTextColor];
     timeLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [row addSubview:timeLabel];

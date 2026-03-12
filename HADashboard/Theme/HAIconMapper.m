@@ -1,5 +1,6 @@
 #import "HAIconMapper.h"
 #import "HALog.h"
+#import "UIFont+HACompat.h"
 #import <CoreText/CoreText.h>
 
 static NSString *_mdiFontName = nil;
@@ -124,11 +125,11 @@ static NSDictionary<NSString *, NSString *> *_domainIconMap = nil;
     (void)[self mdiFontOfSize:16];
     // Warm the monospaced digit system font used by thermostat gauge (57pt primary)
     if ([UIFont respondsToSelector:@selector(monospacedDigitSystemFontOfSize:weight:)]) {
-        (void)[UIFont monospacedDigitSystemFontOfSize:57 weight:UIFontWeightRegular];
+        (void)[UIFont monospacedDigitSystemFontOfSize:57 weight:HAFontWeightRegular];
     }
     // Warm the medium-weight system font used by labels
     if ([UIFont respondsToSelector:@selector(systemFontOfSize:weight:)]) {
-        (void)[UIFont systemFontOfSize:16 weight:UIFontWeightMedium];
+        (void)[UIFont systemFontOfSize:16 weight:HAFontWeightMedium];
     } else {
         (void)[UIFont boldSystemFontOfSize:16]; // iOS 5 fallback
     }

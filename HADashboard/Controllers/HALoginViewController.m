@@ -193,7 +193,7 @@
     UILabel *cardTitle = [[UILabel alloc] init];
     cardTitle.tag = 103;
     cardTitle.text = @"Connect to your server";
-    cardTitle.font = [UIFont ha_systemFontOfSize:20 weight:UIFontWeightSemibold];
+    cardTitle.font = [UIFont ha_systemFontOfSize:20 weight:HAFontWeightSemibold];
     cardTitle.textColor = [HATheme primaryTextColor];
     cardTitle.textAlignment = NSTextAlignmentCenter;
     cardTitle.translatesAutoresizingMaskIntoConstraints = NO;

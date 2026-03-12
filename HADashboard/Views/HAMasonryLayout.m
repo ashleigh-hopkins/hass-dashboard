@@ -1,4 +1,5 @@
 #import "HAMasonryLayout.h"
+#import "HACellCompat.h"
 
 /// HA masonry spacing constants (matching hui-masonry-view.ts)
 static const CGFloat kContainerPaddingTop = 4.0;
@@ -158,7 +159,7 @@ static const CGFloat kMaxColumnWidth = 500.0;
 
         // Create layout attributes
         UICollectionViewLayoutAttributes *attr =
-            [UICollectionViewLayoutAttributes layoutAttributesForCellWithIndexPath:indexPath];
+            [HACollectionViewLayoutAttributesBase layoutAttributesForCellWithIndexPath:indexPath];
         attr.frame = CGRectMake(columnX, columnY[targetColumn] + kCardMarginTop, cardWidth, itemHeight);
         [self.itemAttributes addObject:attr];
 

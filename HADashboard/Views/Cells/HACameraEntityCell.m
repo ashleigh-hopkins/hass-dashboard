@@ -202,7 +202,7 @@ static HACameraStreamMode currentStreamMode(void) {
 
     // State badge (recording/streaming indicator, top-right corner)
     self.stateBadge = [[UILabel alloc] init];
-    self.stateBadge.font = [UIFont ha_systemFontOfSize:9 weight:UIFontWeightBold];
+    self.stateBadge.font = [UIFont ha_systemFontOfSize:9 weight:HAFontWeightBold];
     self.stateBadge.textColor = [UIColor whiteColor];
     self.stateBadge.textAlignment = NSTextAlignmentCenter;
     self.stateBadge.backgroundColor = [[UIColor redColor] colorWithAlphaComponent:0.8];
@@ -266,13 +266,13 @@ static HACameraStreamMode currentStreamMode(void) {
     NSString *fullscreenGlyph = [HAIconMapper glyphForIconName:@"fullscreen"] ?: @"\u26F6";
     UIFont *iconFont = [HAIconMapper mdiFontOfSize:14];
     [self.cameraPowerButton setAttributedTitle:[[NSAttributedString alloc] initWithString:powerGlyph
-        attributes:@{NSFontAttributeName: iconFont, NSForegroundColorAttributeName: [UIColor whiteColor]}]
+        attributes:@{HAFontAttributeName: iconFont, HAForegroundColorAttributeName: [UIColor whiteColor]}]
         forState:UIControlStateNormal];
     [self.cameraSnapshotButton setAttributedTitle:[[NSAttributedString alloc] initWithString:snapGlyph
-        attributes:@{NSFontAttributeName: iconFont, NSForegroundColorAttributeName: [UIColor whiteColor]}]
+        attributes:@{HAFontAttributeName: iconFont, HAForegroundColorAttributeName: [UIColor whiteColor]}]
         forState:UIControlStateNormal];
     [self.cameraFullscreenButton setAttributedTitle:[[NSAttributedString alloc] initWithString:fullscreenGlyph
-        attributes:@{NSFontAttributeName: iconFont, NSForegroundColorAttributeName: [UIColor whiteColor]}]
+        attributes:@{HAFontAttributeName: iconFont, HAForegroundColorAttributeName: [UIColor whiteColor]}]
         forState:UIControlStateNormal];
 
     // Snapshot button leads from power button when visible, from snapshotView edge when hidden.
@@ -479,7 +479,7 @@ static HACameraStreamMode currentStreamMode(void) {
     NSString *closeGlyph = [HAIconMapper glyphForIconName:@"close"] ?: @"✕";
     UIFont *closeFont = [HAIconMapper mdiFontOfSize:18];
     [closeButton setAttributedTitle:[[NSAttributedString alloc] initWithString:closeGlyph
-        attributes:@{NSFontAttributeName: closeFont, NSForegroundColorAttributeName: [UIColor whiteColor]}]
+        attributes:@{HAFontAttributeName: closeFont, HAForegroundColorAttributeName: [UIColor whiteColor]}]
         forState:UIControlStateNormal];
     closeButton.frame = CGRectMake(fullscreen.view.bounds.size.width - 50, 40, 36, 36);
     closeButton.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleBottomMargin;
@@ -489,7 +489,7 @@ static HACameraStreamMode currentStreamMode(void) {
     // Camera name — bottom-left
     UILabel *nameLabel = [[UILabel alloc] init];
     nameLabel.text = [self.entity friendlyName] ?: self.currentEntityId;
-    nameLabel.font = [UIFont ha_systemFontOfSize:16 weight:UIFontWeightMedium];
+    nameLabel.font = [UIFont ha_systemFontOfSize:16 weight:HAFontWeightMedium];
     nameLabel.textColor = [UIColor whiteColor];
     nameLabel.frame = CGRectMake(16, fullscreen.view.bounds.size.height - 50, fullscreen.view.bounds.size.width - 100, 30);
     nameLabel.autoresizingMask = UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleWidth;
@@ -520,7 +520,7 @@ static HACameraStreamMode currentStreamMode(void) {
         muteButton.clipsToBounds = YES;
         muteButton.tag = 8001;
         [muteButton setAttributedTitle:[[NSAttributedString alloc] initWithString:initialGlyph
-            attributes:@{NSFontAttributeName: iconFont, NSForegroundColorAttributeName: [UIColor whiteColor]}]
+            attributes:@{HAFontAttributeName: iconFont, HAForegroundColorAttributeName: [UIColor whiteColor]}]
             forState:UIControlStateNormal];
         muteButton.frame = CGRectMake(fullscreen.view.bounds.size.width - 50,
                                       fullscreen.view.bounds.size.height - 50, 36, 36);
@@ -578,7 +578,7 @@ static HACameraStreamMode currentStreamMode(void) {
 
         NSString *glyph = [HAIconMapper glyphForIconName:@"volume-high"] ?: @"🔊";
         [sender setAttributedTitle:[[NSAttributedString alloc] initWithString:glyph
-            attributes:@{NSFontAttributeName: iconFont, NSForegroundColorAttributeName: [UIColor whiteColor]}]
+            attributes:@{HAFontAttributeName: iconFont, HAForegroundColorAttributeName: [UIColor whiteColor]}]
             forState:UIControlStateNormal];
 
         // Show volume slider
@@ -593,7 +593,7 @@ static HACameraStreamMode currentStreamMode(void) {
 
         NSString *glyph = [HAIconMapper glyphForIconName:@"volume-off"] ?: @"🔇";
         [sender setAttributedTitle:[[NSAttributedString alloc] initWithString:glyph
-            attributes:@{NSFontAttributeName: iconFont, NSForegroundColorAttributeName: [UIColor whiteColor]}]
+            attributes:@{HAFontAttributeName: iconFont, HAForegroundColorAttributeName: [UIColor whiteColor]}]
             forState:UIControlStateNormal];
 
         // Hide volume slider
@@ -622,7 +622,7 @@ static HACameraStreamMode currentStreamMode(void) {
         glyph = [HAIconMapper glyphForIconName:@"volume-high"] ?: @"🔊";
     }
     [muteBtn setAttributedTitle:[[NSAttributedString alloc] initWithString:glyph
-        attributes:@{NSFontAttributeName: iconFont, NSForegroundColorAttributeName: [UIColor whiteColor]}]
+        attributes:@{HAFontAttributeName: iconFont, HAForegroundColorAttributeName: [UIColor whiteColor]}]
         forState:UIControlStateNormal];
 }
 
@@ -694,7 +694,7 @@ static HACameraStreamMode currentStreamMode(void) {
             if (glyph) {
                 UIFont *mdiFont = [HAIconMapper mdiFontOfSize:kOverlayIconFontSize];
                 iconLabel.attributedText = [[NSAttributedString alloc] initWithString:glyph
-                    attributes:@{NSFontAttributeName: mdiFont, NSForegroundColorAttributeName: [UIColor whiteColor]}];
+                    attributes:@{HAFontAttributeName: mdiFont, HAForegroundColorAttributeName: [UIColor whiteColor]}];
             } else {
                 iconLabel.text = @"?";
                 iconLabel.font = [UIFont systemFontOfSize:kOverlayIconFontSize];
@@ -732,7 +732,7 @@ static HACameraStreamMode currentStreamMode(void) {
     if (glyph) {
         UIFont *mdiFont = [HAIconMapper mdiFontOfSize:kOverlayIconFontSize];
         iconLabel.attributedText = [[NSAttributedString alloc] initWithString:glyph
-            attributes:@{NSFontAttributeName: mdiFont, NSForegroundColorAttributeName: iconColor}];
+            attributes:@{HAFontAttributeName: mdiFont, HAForegroundColorAttributeName: iconColor}];
     } else {
         iconLabel.attributedText = nil;
         iconLabel.text = @"?";
@@ -903,7 +903,7 @@ static HACameraStreamMode currentStreamMode(void) {
         UIGraphicsBeginImageContextWithOptions(CGSizeMake(w, h), YES, 0);
         [[UIColor colorWithRed:0.1 green:0.12 blue:0.15 alpha:1] setFill];
         UIRectFill(CGRectMake(0, 0, w, h));
-        NSDictionary *attrs = @{NSFontAttributeName: [UIFont systemFontOfSize:14], NSForegroundColorAttributeName: [UIColor colorWithWhite:0.5 alpha:1]};
+        NSDictionary *attrs = @{HAFontAttributeName: [UIFont systemFontOfSize:14], HAForegroundColorAttributeName: [UIColor colorWithWhite:0.5 alpha:1]};
         NSString *label = [NSString stringWithFormat:@"📷 %@", [self.entity friendlyName] ?: @"Camera"];
         CGSize sz = [label ha_sizeWithAttributes:attrs];
         [label ha_drawAtPoint:CGPointMake((w - sz.width) / 2, (h - sz.height) / 2) withAttributes:attrs];
@@ -1348,7 +1348,7 @@ static HACameraStreamMode currentStreamMode(void) {
         glyph = [HAIconMapper glyphForIconName:@"volume-high"] ?: @"V";
     }
     [self.cameraVolumeButton setAttributedTitle:[[NSAttributedString alloc] initWithString:glyph
-        attributes:@{NSFontAttributeName: iconFont, NSForegroundColorAttributeName: [UIColor whiteColor]}]
+        attributes:@{HAFontAttributeName: iconFont, HAForegroundColorAttributeName: [UIColor whiteColor]}]
         forState:UIControlStateNormal];
 }
 

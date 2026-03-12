@@ -1,5 +1,6 @@
 #import "HAEntityCellFactory.h"
 #import "HAEntity.h"
+#import "HALog.h"
 #import "HABaseEntityCell.h"
 #import "HASwitchEntityCell.h"
 #import "HASensorEntityCell.h"
@@ -93,6 +94,10 @@ static NSString *const kLogbookCardCellId   = @"HALogbookCardCell";
 @implementation HAEntityCellFactory
 
 + (void)registerCellClassesWithCollectionView:(UICollectionView *)collectionView {
+    HALogI(@"cv", @"registerCells: cv=%p HABaseEntityCell=%p UICollectionViewCell=%p NSClassFromString=%p",
+           collectionView, [HABaseEntityCell class],
+           NSClassFromString(@"UICollectionViewCell"),
+           NSClassFromString(@"HABaseEntityCell"));
     [collectionView registerClass:[HABaseEntityCell class]    forCellWithReuseIdentifier:kBaseCellId];
     [collectionView registerClass:[HASwitchEntityCell class]  forCellWithReuseIdentifier:kSwitchCellId];
     [collectionView registerClass:[HASensorEntityCell class]  forCellWithReuseIdentifier:kSensorCellId];

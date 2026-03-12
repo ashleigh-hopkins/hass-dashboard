@@ -1397,6 +1397,7 @@
 		003CB58637360AC680F25FFB /* HATopAlignedFlowLayout.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HATopAlignedFlowLayout.m; sourceTree = "<group>"; };
 		00458E77F15FFD2DC558D11A /* testLawnMowerTile_default__dark_gradient@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "testLawnMowerTile_default__dark_gradient@2x.png"; sourceTree = "<group>"; };
 		0047977E08D39C8EC45DBE34 /* HAAutoLayout.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HAAutoLayout.h; sourceTree = "<group>"; };
+		0047977F08D39C8EC45DBE35 /* HACellCompat.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HACellCompat.h; sourceTree = "<group>"; };
 		005502184670A8EE5177F3AC /* testClimateScHeating__dark_gradient@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "testClimateScHeating__dark_gradient@2x.png"; sourceTree = "<group>"; };
 		0076127A1F6FFAE58DEC7B0B /* testClimateTile_hvacModes__light@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "testClimateTile_hvacModes__light@2x.png"; sourceTree = "<group>"; };
 		00772C0A9A3EB93D6862A038 /* testClimateTile_hvacAndPreset__dark_gradient@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "testClimateTile_hvacAndPreset__dark_gradient@2x.png"; sourceTree = "<group>"; };
@@ -3210,6 +3211,7 @@
 			children = (
 				AB9514E41EA4CEA33E1E31AE /* crt_start_armv7.s */,
 				0047977E08D39C8EC45DBE34 /* HAAutoLayout.h */,
+				0047977F08D39C8EC45DBE35 /* HACellCompat.h */,
 				843BC2A1EC770FACB8AB4383 /* HAAutoLayoutSwizzle.m */,
 				E1F88B7CE79A857F87B523EE /* HAStackView.h */,
 				59EC671C3BECF73DF58BC37C /* HAStackView.m */,

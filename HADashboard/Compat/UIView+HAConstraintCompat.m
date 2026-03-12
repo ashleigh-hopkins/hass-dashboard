@@ -34,6 +34,10 @@ static void HAInstallConstraintStubs(void) {
         class_addMethod(uiview, @selector(setTranslatesAutoresizingMaskIntoConstraints:),
                         imp_implementationWithBlock(^(id s, BOOL v) {}), "v@:B");
     }
+    if (!class_getInstanceMethod(uiview, @selector(constraints))) {
+        class_addMethod(uiview, @selector(constraints),
+                        imp_implementationWithBlock(^id(id s) { return @[]; }), "@@:");
+    }
     if (!class_getInstanceMethod(uiview, @selector(translatesAutoresizingMaskIntoConstraints))) {
         class_addMethod(uiview, @selector(translatesAutoresizingMaskIntoConstraints),
                         imp_implementationWithBlock(^BOOL(id s) { return YES; }), "B@:");
@@ -114,4 +118,58 @@ static void HAInstallConstraintStubs(void) {
 
     // UINavigationBar barTintColor (iOS 7+) — already guarded with respondsToSelector:
     // UIBarButtonItem tintColor follows UIView tintColor stub above
+
+    // UILabel attributedText (iOS 6+) — fall back to plain text on iOS 5
+    Class uilabel = [UILabel class];
+    if (!class_getInstanceMethod(uilabel, @selector(setAttributedText:))) {
+        class_addMethod(uilabel, @selector(setAttributedText:),
+                        imp_implementationWithBlock(^(UILabel *s, NSAttributedString *attr) {
+                            s.text = [attr string];
+                        }), "v@:@");
+    }
+    if (!class_getInstanceMethod(uilabel, @selector(attributedText))) {
+        class_addMethod(uilabel, @selector(attributedText),
+                        imp_implementationWithBlock(^id(id s) { return nil; }), "@@:");
+    }
+
+    // UITextView attributedText (iOS 6+)
+    Class uitextview = [UITextView class];
+    if (!class_getInstanceMethod(uitextview, @selector(setAttributedText:))) {
+        class_addMethod(uitextview, @selector(setAttributedText:),
+                        imp_implementationWithBlock(^(UITextView *s, NSAttributedString *attr) {
+                            s.text = [attr string];
+                        }), "v@:@");
+    }
+
+    // UIButton setAttributedTitle:forState: (iOS 6+) — fall back to plain title on iOS 5
+    Class uibutton = [UIButton class];
+    if (!class_getInstanceMethod(uibutton, @selector(setAttributedTitle:forState:))) {
+        class_addMethod(uibutton, @selector(setAttributedTitle:forState:),
+                        imp_implementationWithBlock(^(UIButton *s, NSAttributedString *title, NSUInteger state) {
+                            [s setTitle:[title string] forState:state];
+                        }), "v@:@I");
+    }
+
+    // UIColor system colors (iOS 7+) — provide sensible defaults on iOS 5-6
+    Class uicolor = objc_getMetaClass("UIColor");
+    struct { SEL sel; CGFloat r, g, b, a; } colorStubs[] = {
+        { @selector(systemBlueColor),   0.0, 0.478, 1.0, 1.0 },
+        { @selector(systemRedColor),    1.0, 0.231, 0.188, 1.0 },
+        { @selector(systemGreenColor),  0.298, 0.851, 0.392, 1.0 },
+        { @selector(systemOrangeColor), 1.0, 0.584, 0.0, 1.0 },
+        { @selector(systemYellowColor), 1.0, 0.8, 0.0, 1.0 },
+        { @selector(systemGray2Color),  0.682, 0.682, 0.698, 1.0 },
+        { @selector(systemGray3Color),  0.78, 0.78, 0.8, 1.0 },
+        { @selector(systemGray4Color),  0.82, 0.82, 0.84, 1.0 },
+    };
+    for (int i = 0; i < (int)(sizeof(colorStubs)/sizeof(colorStubs[0])); i++) {
+        if (!class_getClassMethod([UIColor class], colorStubs[i].sel)) {
+            CGFloat r = colorStubs[i].r, g = colorStubs[i].g;
+            CGFloat b = colorStubs[i].b, a = colorStubs[i].a;
+            class_addMethod(uicolor, colorStubs[i].sel,
+                            imp_implementationWithBlock(^id(id cls) {
+                                return [UIColor colorWithRed:r green:g blue:b alpha:a];
+                            }), "@@:");
+        }
+    }
 }

@@ -36,7 +36,7 @@
     [self.contentView insertSubview:self.bgImageView atIndex:0];
 
     self.titleLabel = [[UILabel alloc] init];
-    self.titleLabel.font = [UIFont ha_systemFontOfSize:16 weight:UIFontWeightBold];
+    self.titleLabel.font = [UIFont ha_systemFontOfSize:16 weight:HAFontWeightBold];
     self.titleLabel.textColor = [UIColor whiteColor];
     self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:self.titleLabel];

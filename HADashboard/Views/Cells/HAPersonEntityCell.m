@@ -50,7 +50,7 @@ static const CGFloat kAvatarSize = 40.0;
     }
 
     // GPS coordinates label (secondary, below location)
-    self.gpsLabel = [self labelWithFont:[UIFont ha_monospacedDigitSystemFontOfSize:10 weight:UIFontWeightRegular]
+    self.gpsLabel = [self labelWithFont:[UIFont ha_monospacedDigitSystemFontOfSize:10 weight:HAFontWeightRegular]
                                   color:[HATheme secondaryTextColor] lines:1];
     self.gpsLabel.hidden = YES;
 

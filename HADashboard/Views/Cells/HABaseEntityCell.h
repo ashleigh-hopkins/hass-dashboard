@@ -1,9 +1,10 @@
 #import <UIKit/UIKit.h>
+#import "HACellCompat.h"
 
 @class HAEntity;
 @class HADashboardConfigItem;
 
-@interface HABaseEntityCell : UICollectionViewCell
+@interface HABaseEntityCell : HACollectionViewCellBase
 
 @property (nonatomic, strong) UILabel *nameLabel;
 @property (nonatomic, strong) UILabel *stateLabel;

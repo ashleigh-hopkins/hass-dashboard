@@ -1,4 +1,5 @@
 #import <UIKit/UIKit.h>
+#import "HACellCompat.h"
 
 @protocol HAPanelLayoutDelegate <UICollectionViewDelegate>
 
@@ -13,7 +14,7 @@
 /// Single-card full-bleed layout for HA panel view type.
 /// Renders only the first card with no margins, no border-radius, no shadow.
 /// Compatible with iOS 9+ (UICollectionViewLayout subclass).
-@interface HAPanelLayout : UICollectionViewLayout
+@interface HAPanelLayout : HACollectionViewLayoutBase
 
 @property (nonatomic, weak) id<HAPanelLayoutDelegate> delegate;
 

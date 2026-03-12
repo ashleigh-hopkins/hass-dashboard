@@ -1,5 +1,18 @@
 #import <UIKit/UIKit.h>
 
+/// iOS 5-safe NSAttributedString attribute name constants.
+/// The NSFontAttributeName etc. extern symbols don't exist on iOS 5 — accessing
+/// them causes a dyld lazy-binding crash.  These use the same string values
+/// that UIKit uses internally, so they work identically on iOS 6+.
+#define HAFontAttributeName                  @"NSFont"
+#define HAForegroundColorAttributeName       @"NSColor"
+#define HABackgroundColorAttributeName       @"NSBackgroundColor"
+#define HAParagraphStyleAttributeName        @"NSParagraphStyle"
+#define HAStrikethroughStyleAttributeName    @"NSStrikethrough"
+#define HAUnderlineStyleAttributeName        @"NSUnderline"
+#define HAKernAttributeName                  @"NSKern"
+#define HABaselineOffsetAttributeName        @"NSBaselineOffset"
+
 /// iOS 5-safe text measurement and drawing.
 /// iOS 7+ uses attributed string APIs (sizeWithAttributes:, drawAtPoint:withAttributes:).
 /// iOS 5-6 uses the deprecated font-based APIs (sizeWithFont:, drawAtPoint:withFont:).

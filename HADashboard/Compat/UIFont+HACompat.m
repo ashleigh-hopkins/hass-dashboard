@@ -7,7 +7,7 @@
         return [UIFont systemFontOfSize:size weight:weight];
     }
     // iOS 5-7 fallback: approximate weight with bold/system
-    if (weight >= 0.23) { // UIFontWeightSemibold = 0.3, UIFontWeightBold = 0.4
+    if (weight >= 0.23) { // HAFontWeightSemibold = 0.3, HAFontWeightBold = 0.4
         return [UIFont boldSystemFontOfSize:size];
     }
     return [UIFont systemFontOfSize:size];

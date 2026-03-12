@@ -35,7 +35,7 @@
 
     self.stopButton.backgroundColor = [HATheme buttonBackgroundColor];
 
-    self.positionLabel = [self labelWithFont:[UIFont ha_monospacedDigitSystemFontOfSize:12 weight:UIFontWeightRegular] color:[HATheme secondaryTextColor] lines:1];
+    self.positionLabel = [self labelWithFont:[UIFont ha_monospacedDigitSystemFontOfSize:12 weight:HAFontWeightRegular] color:[HATheme secondaryTextColor] lines:1];
     self.positionLabel.textAlignment = NSTextAlignmentRight;
 
     // Position label: top-right
@@ -121,7 +121,7 @@
     }
 
     // Tilt slider + label
-    self.tiltLabel = [self labelWithFont:[UIFont ha_monospacedDigitSystemFontOfSize:10 weight:UIFontWeightRegular]
+    self.tiltLabel = [self labelWithFont:[UIFont ha_monospacedDigitSystemFontOfSize:10 weight:HAFontWeightRegular]
                                    color:[HATheme secondaryTextColor] lines:1];
     self.tiltLabel.hidden = YES;
 
@@ -150,7 +150,7 @@
 - (UIButton *)makeButtonWithTitle:(NSString *)title action:(SEL)action {
     UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
     [btn setTitle:title forState:UIControlStateNormal];
-    btn.titleLabel.font = [UIFont ha_systemFontOfSize:11 weight:UIFontWeightMedium];
+    btn.titleLabel.font = [UIFont ha_systemFontOfSize:11 weight:HAFontWeightMedium];
     btn.backgroundColor = [HATheme buttonBackgroundColor];
     btn.layer.cornerRadius = 4.0;
     btn.translatesAutoresizingMaskIntoConstraints = NO;

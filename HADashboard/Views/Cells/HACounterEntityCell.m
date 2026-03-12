@@ -23,7 +23,7 @@
     CGFloat padding = 10.0;
 
     // Value label (large, prominent)
-    self.valueLabel = [self labelWithFont:[UIFont ha_monospacedDigitSystemFontOfSize:28 weight:UIFontWeightBold]
+    self.valueLabel = [self labelWithFont:[UIFont ha_monospacedDigitSystemFontOfSize:28 weight:HAFontWeightBold]
                                     color:[HATheme primaryTextColor] lines:1];
     self.valueLabel.textAlignment = NSTextAlignmentRight;
 

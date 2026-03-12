@@ -1,4 +1,5 @@
 #import <UIKit/UIKit.h>
+#import "HACellCompat.h"
 
 @class HADashboardConfigItem, HADashboardConfigSection;
 
@@ -7,7 +8,7 @@ typedef NS_ENUM(NSInteger, HACalendarViewMode) {
     HACalendarViewModeMonth,     // dayGridMonth (default)
 };
 
-@interface HACalendarCardCell : UICollectionViewCell
+@interface HACalendarCardCell : HACollectionViewCellBase
 
 /// Configure with entity IDs and config. Defers event fetch until beginLoading.
 - (void)configureWithEntityIds:(NSArray<NSString *> *)entityIds configItem:(HADashboardConfigItem *)configItem;

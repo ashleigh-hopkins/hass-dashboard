@@ -51,7 +51,7 @@ static const NSInteger kDefaultForecastRows = 5;
 
     // Temperature
     self.tempLabel = [[UILabel alloc] init];
-    self.tempLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:28 weight:UIFontWeightLight];
+    self.tempLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:28 weight:HAFontWeightLight];
     self.tempLabel.textColor = [HATheme primaryTextColor];
     self.tempLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:self.tempLabel];

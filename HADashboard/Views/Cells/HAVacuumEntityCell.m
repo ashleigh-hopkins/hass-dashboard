@@ -1,5 +1,7 @@
 #import "HAAutoLayout.h"
+#import "NSString+HACompat.h"
 #import "HAVacuumEntityCell.h"
+#import "NSString+HACompat.h"
 #import "HAEntity.h"
 #import "HAConnectionManager.h"
 #import "HADashboardConfig.h"
@@ -52,7 +54,7 @@ static const CGFloat kButtonSpacing  = 12.0;
     [self.iconCircle addSubview:self.iconLabel];
 
     // -- Status label --
-    self.statusLabel2 = [self labelWithFont:[UIFont ha_systemFontOfSize:13 weight:UIFontWeightMedium] color:[HATheme secondaryTextColor] lines:1];
+    self.statusLabel2 = [self labelWithFont:[UIFont ha_systemFontOfSize:13 weight:HAFontWeightMedium] color:[HATheme secondaryTextColor] lines:1];
     self.statusLabel2.textAlignment = NSTextAlignmentCenter;
 
     // -- Command buttons --
@@ -287,8 +289,8 @@ static const CGFloat kButtonSpacing  = 12.0;
     NSString *glyph = [HAIconMapper glyphForIconName:@"robot-vacuum"] ?: @"\u2699"; // fallback gear
     NSAttributedString *iconAttr = [[NSAttributedString alloc] initWithString:glyph
         attributes:@{
-            NSFontAttributeName: [HAIconMapper mdiFontOfSize:kIconFontSize],
-            NSForegroundColorAttributeName: iconColor
+            HAFontAttributeName: [HAIconMapper mdiFontOfSize:kIconFontSize],
+            HAForegroundColorAttributeName: iconColor
         }];
     self.iconLabel.attributedText = iconAttr;
 }
@@ -317,7 +319,7 @@ static const CGFloat kButtonSpacing  = 12.0;
     if (fanSpeed) {
         [self.fanSpeedButton setAttributedTitle:nil forState:UIControlStateNormal];
         [self.fanSpeedButton setTitle:fanSpeed forState:UIControlStateNormal];
-        self.fanSpeedButton.titleLabel.font = [UIFont ha_systemFontOfSize:10 weight:UIFontWeightMedium];
+        self.fanSpeedButton.titleLabel.font = [UIFont ha_systemFontOfSize:10 weight:HAFontWeightMedium];
         [self.fanSpeedButton setTitleColor:[HATheme primaryTextColor] forState:UIControlStateNormal];
     } else {
         [self setButton:self.fanSpeedButton iconName:@"fan"];
@@ -338,8 +340,8 @@ static const CGFloat kButtonSpacing  = 12.0;
     NSString *glyph = [HAIconMapper glyphForIconName:iconName] ?: @"?";
     NSAttributedString *attr = [[NSAttributedString alloc] initWithString:glyph
         attributes:@{
-            NSFontAttributeName: [HAIconMapper mdiFontOfSize:kButtonIconSize],
-            NSForegroundColorAttributeName: [HATheme primaryTextColor]
+            HAFontAttributeName: [HAIconMapper mdiFontOfSize:kButtonIconSize],
+            HAForegroundColorAttributeName: [HATheme primaryTextColor]
         }];
     [button setAttributedTitle:attr forState:UIControlStateNormal];
 }

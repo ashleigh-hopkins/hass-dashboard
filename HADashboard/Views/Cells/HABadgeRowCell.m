@@ -164,7 +164,7 @@ static const CGFloat kArcNameLabelHeight = 16.0;
 
         UILabel *valueLabel = [[UILabel alloc] init];
         valueLabel.text = valueText;
-        valueLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:12 weight:UIFontWeightMedium];
+        valueLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:12 weight:HAFontWeightMedium];
         valueLabel.textColor = [HATheme primaryTextColor];
         valueLabel.lineBreakMode = NSLineBreakByTruncatingTail;
         valueLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -177,7 +177,7 @@ static const CGFloat kArcNameLabelHeight = 16.0;
             // Info column: label (name) on top, content (state) below
             UILabel *nameLabel = [[UILabel alloc] init];
             nameLabel.text = name;
-            nameLabel.font = [UIFont ha_systemFontOfSize:10 weight:UIFontWeightMedium];
+            nameLabel.font = [UIFont ha_systemFontOfSize:10 weight:HAFontWeightMedium];
             nameLabel.textColor = [HATheme secondaryTextColor];
             nameLabel.lineBreakMode = NSLineBreakByTruncatingTail;
             nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -195,7 +195,7 @@ static const CGFloat kArcNameLabelHeight = 16.0;
                     [valueLabel.trailingAnchor constraintLessThanOrEqualToAnchor:badge.trailingAnchor constant:-kBadgeHPad],
                 ]];
             }
-            nameWidth = ceil([name ha_sizeWithAttributes:@{NSFontAttributeName: nameLabel.font}].width);
+            nameWidth = ceil([name ha_sizeWithAttributes:@{HAFontAttributeName: nameLabel.font}].width);
         } else {
             // No name: icon + value centered on single line (chip style)
             if (HAAutoLayoutAvailable()) {
@@ -210,7 +210,7 @@ static const CGFloat kArcNameLabelHeight = 16.0;
         }
 
         // Measure badge width (ceil + 4pt buffer prevents truncation from rounding)
-        CGFloat valWidth = ceil([valueText ha_sizeWithAttributes:@{NSFontAttributeName: valueLabel.font}].width);
+        CGFloat valWidth = ceil([valueText ha_sizeWithAttributes:@{HAFontAttributeName: valueLabel.font}].width);
         CGFloat iconW = icon.length > 0 ? kBadgeIconSize : 0;
         CGFloat infoWidth = MAX(nameWidth, valWidth) + 4.0;
         CGFloat badgeWidth = (kBadgeHPad - 4) + iconW + kBadgeGap + infoWidth + kBadgeHPad;
@@ -440,12 +440,12 @@ static const CGFloat kArcNameLabelHeight = 16.0;
     NSString *valueText = stateText;
     UILabel *valueLabel = [[UILabel alloc] init];
     valueLabel.text = valueText;
-    valueLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:11.0 weight:UIFontWeightBold];
+    valueLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:11.0 weight:HAFontWeightBold];
     valueLabel.textColor = [HATheme primaryTextColor];
     valueLabel.textAlignment = NSTextAlignmentCenter;
 
     // Size the value label to fit the text, then center it
-    CGSize valSize = [valueText ha_sizeWithAttributes:@{NSFontAttributeName: valueLabel.font}];
+    CGSize valSize = [valueText ha_sizeWithAttributes:@{HAFontAttributeName: valueLabel.font}];
     CGFloat valWidth = MIN(valSize.width + 2, kArcDiameter - kArcLineWidth * 2);
     valueLabel.frame = CGRectMake(centerX - valWidth / 2.0,
                                   centerY - valSize.height / 2.0,
@@ -459,7 +459,7 @@ static const CGFloat kArcNameLabelHeight = 16.0;
     NSString *name = [HAEntityDisplayHelper displayNameForEntity:entity entityId:entityId section:section];
     UILabel *nameLabel = [[UILabel alloc] init];
     nameLabel.text = name;
-    nameLabel.font = [UIFont ha_systemFontOfSize:10.0 weight:UIFontWeightRegular];
+    nameLabel.font = [UIFont ha_systemFontOfSize:10.0 weight:HAFontWeightRegular];
     nameLabel.textColor = [HATheme secondaryTextColor];
     nameLabel.textAlignment = NSTextAlignmentCenter;
     nameLabel.lineBreakMode = NSLineBreakByTruncatingTail;
@@ -551,14 +551,14 @@ static const CGFloat kArcNameLabelHeight = 16.0;
 
     UILabel *nameLabel = [[UILabel alloc] init];
     nameLabel.text = name;
-    nameLabel.font = [UIFont ha_systemFontOfSize:10 weight:UIFontWeightMedium];
+    nameLabel.font = [UIFont ha_systemFontOfSize:10 weight:HAFontWeightMedium];
     nameLabel.textColor = [HATheme secondaryTextColor];
     nameLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
 
     UILabel *valueLabel = [[UILabel alloc] init];
     valueLabel.text = valueText;
-    valueLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:12 weight:UIFontWeightMedium];
+    valueLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:12 weight:HAFontWeightMedium];
     valueLabel.textColor = [HATheme primaryTextColor];
     valueLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     valueLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -567,8 +567,8 @@ static const CGFloat kArcNameLabelHeight = 16.0;
     [badge addSubview:nameLabel];
     [badge addSubview:valueLabel];
 
-    CGFloat nameWidth = ceil([name ha_sizeWithAttributes:@{NSFontAttributeName: nameLabel.font}].width);
-    CGFloat valWidth = ceil([valueText ha_sizeWithAttributes:@{NSFontAttributeName: valueLabel.font}].width);
+    CGFloat nameWidth = ceil([name ha_sizeWithAttributes:@{HAFontAttributeName: nameLabel.font}].width);
+    CGFloat valWidth = ceil([valueText ha_sizeWithAttributes:@{HAFontAttributeName: valueLabel.font}].width);
     CGFloat iconW = icon.length > 0 ? kBadgeIconSize : 0;
     CGFloat infoWidth = MAX(nameWidth, valWidth) + 4.0;
     CGFloat badgeWidth = (kBadgeHPad - 4) + iconW + kBadgeGap + infoWidth + kBadgeHPad;

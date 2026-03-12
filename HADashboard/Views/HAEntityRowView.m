@@ -101,7 +101,7 @@
     // Compact "Press" button for button / input_button entities
     self.pressButton = [UIButton buttonWithType:UIButtonTypeSystem];
     [self.pressButton setTitle:@"Press" forState:UIControlStateNormal];
-    self.pressButton.titleLabel.font = [UIFont ha_systemFontOfSize:13 weight:UIFontWeightMedium];
+    self.pressButton.titleLabel.font = [UIFont ha_systemFontOfSize:13 weight:HAFontWeightMedium];
     self.pressButton.layer.cornerRadius = 14;
     self.pressButton.layer.borderWidth = 1.0;
     self.pressButton.layer.borderColor = [UIColor systemBlueColor].CGColor;
@@ -113,7 +113,7 @@
 
     // Inline slider for input_number / number entities (compact, fits 36pt row)
     self.sliderValueLabel = [[UILabel alloc] init];
-    self.sliderValueLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:12 weight:UIFontWeightMedium];
+    self.sliderValueLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:12 weight:HAFontWeightMedium];
     self.sliderValueLabel.textColor = [HATheme secondaryTextColor];
     self.sliderValueLabel.textAlignment = NSTextAlignmentRight;
     self.sliderValueLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -544,11 +544,11 @@
             [btn setImage:symbol forState:UIControlStateNormal];
         } else {
             [btn setTitle:fallbackTitle forState:UIControlStateNormal];
-            btn.titleLabel.font = [UIFont ha_systemFontOfSize:12 weight:UIFontWeightMedium];
+            btn.titleLabel.font = [UIFont ha_systemFontOfSize:12 weight:HAFontWeightMedium];
         }
     } else {
         [btn setTitle:fallbackTitle forState:UIControlStateNormal];
-        btn.titleLabel.font = [UIFont ha_systemFontOfSize:12 weight:UIFontWeightMedium];
+        btn.titleLabel.font = [UIFont ha_systemFontOfSize:12 weight:HAFontWeightMedium];
     }
 
     [btn addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];

@@ -155,7 +155,7 @@
         } else {
             NSString *displayName = [self displayNameForMode:mode];
             [btn setTitle:displayName forState:UIControlStateNormal];
-            btn.titleLabel.font = [UIFont ha_systemFontOfSize:11 weight:UIFontWeightMedium];
+            btn.titleLabel.font = [UIFont ha_systemFontOfSize:11 weight:HAFontWeightMedium];
         }
 
         if (isActive) {
@@ -183,7 +183,7 @@
     self.dropdownButton.translatesAutoresizingMaskIntoConstraints = NO;
     NSString *displayName = self.currentMode ? [self displayNameForMode:self.currentMode] : @"Select";
     [self.dropdownButton setTitle:[NSString stringWithFormat:@"%@ \u25BE", displayName] forState:UIControlStateNormal]; // ▾
-    self.dropdownButton.titleLabel.font = [UIFont ha_systemFontOfSize:13 weight:UIFontWeightMedium];
+    self.dropdownButton.titleLabel.font = [UIFont ha_systemFontOfSize:13 weight:HAFontWeightMedium];
     [self.dropdownButton setTitleColor:[HATheme primaryTextColor] forState:UIControlStateNormal];
     self.dropdownButton.backgroundColor = [HATheme cellBackgroundColor];
     self.dropdownButton.layer.cornerRadius = 8;

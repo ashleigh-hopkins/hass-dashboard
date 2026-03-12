@@ -27,7 +27,7 @@
     [self addSubview:self.keyLabel];
 
     self.valueLabel = [[UILabel alloc] init];
-    self.valueLabel.font = [UIFont ha_systemFontOfSize:13 weight:UIFontWeightMedium];
+    self.valueLabel.font = [UIFont ha_systemFontOfSize:13 weight:HAFontWeightMedium];
     self.valueLabel.textColor = [HATheme primaryTextColor];
     self.valueLabel.textAlignment = NSTextAlignmentRight;
     self.valueLabel.numberOfLines = 2;

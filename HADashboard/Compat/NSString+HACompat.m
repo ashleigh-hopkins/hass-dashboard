@@ -3,7 +3,7 @@
 @implementation NSString (HACompat)
 
 - (UIFont *)ha_fontFromAttributes:(NSDictionary *)attrs {
-    UIFont *font = attrs[NSFontAttributeName];
+    UIFont *font = attrs[HAFontAttributeName];
     return font ?: [UIFont systemFontOfSize:14];
 }
 
@@ -25,7 +25,7 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
     UIFont *font = [self ha_fontFromAttributes:attrs];
-    UIColor *color = attrs[NSForegroundColorAttributeName];
+    UIColor *color = attrs[HAForegroundColorAttributeName];
     if (color) [color set];
     [self drawAtPoint:point withFont:font];
 #pragma clang diagnostic pop
@@ -39,7 +39,7 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
     UIFont *font = [self ha_fontFromAttributes:attrs];
-    UIColor *color = attrs[NSForegroundColorAttributeName];
+    UIColor *color = attrs[HAForegroundColorAttributeName];
     if (color) [color set];
     [self drawInRect:rect withFont:font lineBreakMode:NSLineBreakByTruncatingTail];
 #pragma clang diagnostic pop

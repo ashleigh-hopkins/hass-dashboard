@@ -1,8 +1,9 @@
 #import <UIKit/UIKit.h>
+#import "HACellCompat.h"
 
 @class HAEntity, HADashboardConfigItem, HADashboardConfigSection;
 
-@interface HAGraphCardCell : UICollectionViewCell
+@interface HAGraphCardCell : HACollectionViewCellBase
 
 /// Configure with a single entity (simple graph)
 - (void)configureWithEntity:(HAEntity *)entity item:(HADashboardConfigItem *)item;

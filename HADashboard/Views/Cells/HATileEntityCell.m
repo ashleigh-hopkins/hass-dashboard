@@ -86,7 +86,7 @@
 
     // Entity name (right of icon in both modes)
     self.tileNameLabel = [[UILabel alloc] init];
-    self.tileNameLabel.font = [UIFont ha_systemFontOfSize:13 weight:UIFontWeightMedium];
+    self.tileNameLabel.font = [UIFont ha_systemFontOfSize:13 weight:HAFontWeightMedium];
     self.tileNameLabel.textColor = [HATheme primaryTextColor];
     self.tileNameLabel.textAlignment = NSTextAlignmentLeft;
     self.tileNameLabel.numberOfLines = 2;
@@ -95,7 +95,7 @@
 
     // State label (below name, right of icon in normal mode; hidden in compact mode)
     self.tileStateLabel = [[UILabel alloc] init];
-    self.tileStateLabel.font = [UIFont ha_systemFontOfSize:11 weight:UIFontWeightRegular];
+    self.tileStateLabel.font = [UIFont ha_systemFontOfSize:11 weight:HAFontWeightRegular];
     self.tileStateLabel.textColor = [HATheme secondaryTextColor];
     self.tileStateLabel.textAlignment = NSTextAlignmentLeft;
     self.tileStateLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -186,7 +186,7 @@
             [NSLayoutConstraint activateConstraints:self.compactConstraints];
         }
         self.tileIconLabel.font = [HAIconMapper mdiFontOfSize:28];
-        self.tileNameLabel.font = [UIFont ha_systemFontOfSize:12 weight:UIFontWeightMedium];
+        self.tileNameLabel.font = [UIFont ha_systemFontOfSize:12 weight:HAFontWeightMedium];
         self.tileNameLabel.textAlignment = NSTextAlignmentCenter;
         self.tileNameLabel.numberOfLines = 1;
         self.contentView.layer.cornerRadius = 12.0;
@@ -203,7 +203,7 @@
             [NSLayoutConstraint activateConstraints:self.normalConstraints];
         }
         self.tileIconLabel.font = [HAIconMapper mdiFontOfSize:28];
-        self.tileNameLabel.font = [UIFont ha_systemFontOfSize:13 weight:UIFontWeightMedium];
+        self.tileNameLabel.font = [UIFont ha_systemFontOfSize:13 weight:HAFontWeightMedium];
         self.tileNameLabel.textAlignment = NSTextAlignmentLeft;
         self.tileNameLabel.numberOfLines = 2;
         self.contentView.layer.cornerRadius = 12.0;
@@ -229,7 +229,7 @@
         }
         // Vertical keeps normal font sizes (unlike compact which shrinks)
         self.tileIconLabel.font = [HAIconMapper mdiFontOfSize:28];
-        self.tileNameLabel.font = [UIFont ha_systemFontOfSize:13 weight:UIFontWeightMedium];
+        self.tileNameLabel.font = [UIFont ha_systemFontOfSize:13 weight:HAFontWeightMedium];
         self.tileNameLabel.textAlignment = NSTextAlignmentCenter;
         self.tileNameLabel.numberOfLines = 2;
         self.contentView.layer.cornerRadius = 14.0;
@@ -245,7 +245,7 @@
             [NSLayoutConstraint activateConstraints:self.normalConstraints];
         }
         self.tileIconLabel.font = [HAIconMapper mdiFontOfSize:28];
-        self.tileNameLabel.font = [UIFont ha_systemFontOfSize:13 weight:UIFontWeightMedium];
+        self.tileNameLabel.font = [UIFont ha_systemFontOfSize:13 weight:HAFontWeightMedium];
         self.tileNameLabel.textAlignment = NSTextAlignmentLeft;
         self.tileNameLabel.numberOfLines = 2;
         self.contentView.layer.cornerRadius = 14.0;

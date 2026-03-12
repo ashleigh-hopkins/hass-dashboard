@@ -1,5 +1,7 @@
 #import "HAAutoLayout.h"
+#import "NSString+HACompat.h"
 #import "HAStackView.h"
+#import "NSString+HACompat.h"
 #import "HAThermostatGaugeCell.h"
 #import "HAEntity.h"
 #import "HAConnectionManager.h"
@@ -319,7 +321,7 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
     // Mode/action label -- centered inside the arc, above the temperature
     // HA web: 16px, weight 500 (medium)
     self.modeLabel = [[UILabel alloc] init];
-    self.modeLabel.font = [UIFont ha_systemFontOfSize:16 weight:UIFontWeightMedium];
+    self.modeLabel.font = [UIFont ha_systemFontOfSize:16 weight:HAFontWeightMedium];
     self.modeLabel.textColor = [HATheme secondaryTextColor];
     self.modeLabel.textAlignment = NSTextAlignmentCenter;
     self.modeLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -328,7 +330,7 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
     // Temperature label (centered in gauge arc)
     // HA web: 57px (lg), 44px (md), 36px (sm), weight 400 (regular)
     self.tempLabel = [[UILabel alloc] init];
-    self.tempLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:57 weight:UIFontWeightRegular];
+    self.tempLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:57 weight:HAFontWeightRegular];
     self.tempLabel.textColor = [HATheme primaryTextColor];
     self.tempLabel.textAlignment = NSTextAlignmentCenter;
     self.tempLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -337,7 +339,7 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
     // Target/current label below temp (with icon)
     // HA web: 16px, weight 500 (medium)
     self.targetLabel = [[UILabel alloc] init];
-    self.targetLabel.font = [UIFont ha_systemFontOfSize:16 weight:UIFontWeightMedium];
+    self.targetLabel.font = [UIFont ha_systemFontOfSize:16 weight:HAFontWeightMedium];
     self.targetLabel.textColor = [HATheme secondaryTextColor];
     self.targetLabel.textAlignment = NSTextAlignmentCenter;
     self.targetLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -420,7 +422,7 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
 - (UIButton *)makeOutlinedButtonWithTitle:(NSString *)title action:(SEL)action {
     UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
     [btn setTitle:title forState:UIControlStateNormal];
-    btn.titleLabel.font = [UIFont ha_systemFontOfSize:24 weight:UIFontWeightLight];
+    btn.titleLabel.font = [UIFont ha_systemFontOfSize:24 weight:HAFontWeightLight];
     btn.backgroundColor = [UIColor clearColor];
     btn.layer.borderWidth = 1.5;
     btn.layer.borderColor = [HATheme tertiaryTextColor].CGColor;
@@ -532,7 +534,7 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
         primaryFontSize = 36.0;
         secondaryFontSize = 14.0;
     }
-    self.tempLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:primaryFontSize weight:UIFontWeightRegular];
+    self.tempLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:primaryFontSize weight:HAFontWeightRegular];
 
     // Hide +/- buttons for md/sm/xs size classes (HA web: .container.md .buttons { display: none })
     BOOL sizeAllowsButtons = isLg;
@@ -545,7 +547,7 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
     self.modeLabel.hidden = (slider < 130.0);
     self.targetLabel.hidden = self.targetLabel.hidden || (slider < 130.0);
 
-    self.modeLabel.font = [UIFont ha_systemFontOfSize:secondaryFontSize weight:UIFontWeightMedium];
+    self.modeLabel.font = [UIFont ha_systemFontOfSize:secondaryFontSize weight:HAFontWeightMedium];
 
     // Measure label sizes for manual centering
     CGFloat labelAreaWidth = slider * 0.6; // HA web .label { width: 60% }
@@ -989,12 +991,12 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
             }
             if (targetTemp && ![mode isEqualToString:@"off"]) {
                 NSMutableAttributedString *targetAttr = [[NSMutableAttributedString alloc] initWithString:tempIcon
-                    attributes:@{NSFontAttributeName: [HAIconMapper mdiFontOfSize:secondarySize],
-                                 NSForegroundColorAttributeName: [HATheme secondaryTextColor]}];
+                    attributes:@{HAFontAttributeName: [HAIconMapper mdiFontOfSize:secondarySize],
+                                 HAForegroundColorAttributeName: [HATheme secondaryTextColor]}];
                 [targetAttr appendAttributedString:[[NSAttributedString alloc]
                     initWithString:[NSString stringWithFormat:@" %.1f %@", targetTemp.doubleValue, self.tempUnitString]
-                    attributes:@{NSFontAttributeName: [UIFont ha_systemFontOfSize:secondarySize weight:UIFontWeightMedium],
-                                 NSForegroundColorAttributeName: [HATheme secondaryTextColor]}]];
+                    attributes:@{HAFontAttributeName: [UIFont ha_systemFontOfSize:secondarySize weight:HAFontWeightMedium],
+                                 HAForegroundColorAttributeName: [HATheme secondaryTextColor]}]];
                 self.targetLabel.attributedText = targetAttr;
                 self.targetLabel.hidden = NO;
             } else {
@@ -1013,12 +1015,12 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
             }
             if (currentTemp) {
                 NSMutableAttributedString *currentAttr = [[NSMutableAttributedString alloc] initWithString:tempIcon
-                    attributes:@{NSFontAttributeName: [HAIconMapper mdiFontOfSize:secondarySize],
-                                 NSForegroundColorAttributeName: [HATheme secondaryTextColor]}];
+                    attributes:@{HAFontAttributeName: [HAIconMapper mdiFontOfSize:secondarySize],
+                                 HAForegroundColorAttributeName: [HATheme secondaryTextColor]}];
                 [currentAttr appendAttributedString:[[NSAttributedString alloc]
                     initWithString:[NSString stringWithFormat:@" %.1f %@", currentTemp.doubleValue, self.tempUnitString]
-                    attributes:@{NSFontAttributeName: [UIFont ha_systemFontOfSize:secondarySize weight:UIFontWeightMedium],
-                                 NSForegroundColorAttributeName: [HATheme secondaryTextColor]}]];
+                    attributes:@{HAFontAttributeName: [UIFont ha_systemFontOfSize:secondarySize weight:HAFontWeightMedium],
+                                 HAForegroundColorAttributeName: [HATheme secondaryTextColor]}]];
                 self.targetLabel.attributedText = currentAttr;
                 self.targetLabel.hidden = NO;
             } else {
@@ -1216,7 +1218,7 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
 - (UIButton *)makeExtraModeButton:(NSString *)title tag:(NSInteger)tag {
     UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
     [btn setTitle:title forState:UIControlStateNormal];
-    btn.titleLabel.font = [UIFont ha_systemFontOfSize:11 weight:UIFontWeightMedium];
+    btn.titleLabel.font = [UIFont ha_systemFontOfSize:11 weight:HAFontWeightMedium];
     [btn setTitleColor:[HATheme secondaryTextColor] forState:UIControlStateNormal];
     btn.tag = tag;
     [btn addTarget:self action:@selector(extraModeTapped:) forControlEvents:UIControlEventTouchUpInside];

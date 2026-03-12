@@ -1,5 +1,7 @@
 #import "HAAutoLayout.h"
+#import "NSString+HACompat.h"
 #import "HABaseEntityCell.h"
+#import "NSString+HACompat.h"
 #import "HAEntity.h"
 #import "HADashboardConfig.h"
 #import "HATheme.h"
@@ -30,7 +32,7 @@ static const CGFloat kHeadingGap = 2.0;
         // Heading label: added to the CELL (self), not contentView.
         // When visible, layoutSubviews pushes contentView down below it.
         self.headingLabel = [[UILabel alloc] init];
-        self.headingLabel.font = [UIFont ha_systemFontOfSize:17 weight:UIFontWeightSemibold];
+        self.headingLabel.font = [UIFont ha_systemFontOfSize:17 weight:HAFontWeightSemibold];
         self.headingLabel.textColor = [HATheme sectionHeaderColor];
         self.headingLabel.numberOfLines = 1;
         self.headingLabel.hidden = YES;
@@ -118,12 +120,12 @@ static const CGFloat kHeadingGap = 2.0;
         NSString *glyph = [HAIconMapper glyphForIconName:iconName];
         if (glyph) {
             NSMutableAttributedString *heading = [[NSMutableAttributedString alloc] initWithString:glyph
-                attributes:@{NSFontAttributeName: [HAIconMapper mdiFontOfSize:16],
-                             NSForegroundColorAttributeName: [HATheme secondaryTextColor]}];
+                attributes:@{HAFontAttributeName: [HAIconMapper mdiFontOfSize:16],
+                             HAForegroundColorAttributeName: [HATheme secondaryTextColor]}];
             [heading appendAttributedString:[[NSAttributedString alloc] initWithString:
                 [NSString stringWithFormat:@"  %@", configItem.displayName]
-                attributes:@{NSFontAttributeName: [UIFont ha_systemFontOfSize:17 weight:UIFontWeightSemibold],
-                             NSForegroundColorAttributeName: [HATheme sectionHeaderColor]}]];
+                attributes:@{HAFontAttributeName: [UIFont ha_systemFontOfSize:17 weight:HAFontWeightSemibold],
+                             HAForegroundColorAttributeName: [HATheme sectionHeaderColor]}]];
             self.headingLabel.attributedText = heading;
         } else {
             self.headingLabel.text = configItem.displayName;

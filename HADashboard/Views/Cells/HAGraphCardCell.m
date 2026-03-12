@@ -81,14 +81,14 @@ static NSArray<UIColor *> *sColorPalette;
 
     // Name label (top, after icon)
     self.nameLabel = [[UILabel alloc] init];
-    self.nameLabel.font = [UIFont ha_systemFontOfSize:14 weight:UIFontWeightMedium];
+    self.nameLabel.font = [UIFont ha_systemFontOfSize:14 weight:HAFontWeightMedium];
     self.nameLabel.textColor = [HATheme secondaryTextColor];
     self.nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:self.nameLabel];
 
     // Value label (top-left, below name)
     self.valueLabel = [[UILabel alloc] init];
-    self.valueLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:24 weight:UIFontWeightBold];
+    self.valueLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:24 weight:HAFontWeightBold];
     self.valueLabel.textColor = [HATheme primaryTextColor];
     self.valueLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:self.valueLabel];
@@ -118,7 +118,7 @@ static NSArray<UIColor *> *sColorPalette;
 
     // Stats label (below graph: Min / Avg / Max)
     self.statsLabel = [[UILabel alloc] init];
-    self.statsLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:11 weight:UIFontWeightRegular];
+    self.statsLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:11 weight:HAFontWeightRegular];
     self.statsLabel.textColor = [HATheme secondaryTextColor];
     self.statsLabel.textAlignment = NSTextAlignmentCenter;
     self.statsLabel.translatesAutoresizingMaskIntoConstraints = NO;

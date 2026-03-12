@@ -1,5 +1,7 @@
 #import "HAAutoLayout.h"
+#import "NSString+HACompat.h"
 #import "HADashboardViewController.h"
+#import "NSString+HACompat.h"
 #import "HALog.h"
 #import "HAAuthManager.h"
 #import "HAConnectionManager.h"
@@ -342,6 +344,10 @@ static NSString * const kSectionHeaderReuseId = @"HASectionHeader";
             cvTop = pickerY;
         }
         self.collectionView.frame = CGRectMake(0, cvTop, bounds.size.width, bounds.size.height - cvTop);
+        HALogI(@"layout", @"CV frame: %@ bounds: %@ sections: %ld",
+               NSStringFromCGRect(self.collectionView.frame),
+               NSStringFromCGRect(self.collectionView.bounds),
+               (long)[self.collectionView numberOfSections]);
 
         // Status label + spinner: centered in view
         CGSize statusSize = [self.statusLabel sizeThatFits:CGSizeMake(bounds.size.width - 40, CGFLOAT_MAX)];
@@ -523,12 +529,29 @@ static NSString * const kSectionHeaderReuseId = @"HASectionHeader";
 
 - (void)setupCollectionView {
     // Start with flow layout; will switch to columnar when sections view is detected
-    UICollectionViewFlowLayout *layout = [[UICollectionViewFlowLayout alloc] init];
-    layout.minimumInteritemSpacing = 6;
-    layout.minimumLineSpacing = 6;
-    layout.sectionInset = UIEdgeInsetsMake(4, 16, 16, 16);
+    Class flowClass = NSClassFromString(@"UICollectionViewFlowLayout");
+    HALogI(@"cv", @"UICollectionView=%p FlowLayout=%p PSTCollectionView=%p PSTFlowLayout=%p",
+           NSClassFromString(@"UICollectionView"), flowClass,
+           NSClassFromString(@"PSTCollectionView"),
+           NSClassFromString(@"PSTCollectionViewFlowLayout"));
 
-    self.collectionView = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
+    id flowAlloc = [flowClass alloc];
+    HALogI(@"cv", @"flow alloc=%p class=%@", flowAlloc, NSStringFromClass([flowAlloc class]));
+    UICollectionViewFlowLayout *layout = [flowAlloc init];
+    HALogI(@"cv", @"flow init=%p class=%@", layout, NSStringFromClass([layout class]));
+
+    if (layout) {
+        layout.minimumInteritemSpacing = 6;
+        layout.minimumLineSpacing = 6;
+        layout.sectionInset = UIEdgeInsetsMake(4, 16, 16, 16);
+    }
+
+    Class cvClass = NSClassFromString(@"UICollectionView");
+    id cvAlloc = [cvClass alloc];
+    HALogI(@"cv", @"cv alloc=%p class=%@", cvAlloc, NSStringFromClass([cvAlloc class]));
+    self.collectionView = [cvAlloc initWithFrame:CGRectZero collectionViewLayout:layout];
+    HALogI(@"cv", @"cv init=%p class=%@",
+           self.collectionView, NSStringFromClass([self.collectionView class]));
     self.collectionView.backgroundColor = [UIColor clearColor];
     self.collectionView.dataSource = self;
     self.collectionView.delegate = self;
@@ -537,9 +560,11 @@ static NSString * const kSectionHeaderReuseId = @"HASectionHeader";
     [self.view addSubview:self.collectionView];
 
     // Pull-to-refresh (UIRefreshControl available since iOS 6)
-    self.refreshControl = [[UIRefreshControl alloc] init];
-    [self.refreshControl addTarget:self action:@selector(pullToRefresh:) forControlEvents:UIControlEventValueChanged];
-    [self.collectionView addSubview:self.refreshControl];
+    if (NSClassFromString(@"UIRefreshControl")) {
+        self.refreshControl = [[UIRefreshControl alloc] init];
+        [self.refreshControl addTarget:self action:@selector(pullToRefresh:) forControlEvents:UIControlEventValueChanged];
+        [self.collectionView addSubview:self.refreshControl];
+    }
     self.collectionView.alwaysBounceVertical = YES;
 
     if (HAAutoLayoutAvailable()) {
@@ -1059,6 +1084,15 @@ static const CGFloat kRowUnitHeight = 56.0;
     [self showLoading:NO message:nil];
     [self showConnectionBar:NO message:nil];
     [self.refreshControl endRefreshing];
+
+    HALogI(@"dash", @"reloadData: sections=%ld cv=%p cvClass=%@ cvFrame=%@ cvHidden=%d cvAlpha=%.1f cvSuperview=%@",
+           (long)self.dashboardConfig.sections.count,
+           self.collectionView,
+           NSStringFromClass([self.collectionView class]),
+           NSStringFromCGRect(self.collectionView.frame),
+           self.collectionView.hidden,
+           self.collectionView.alpha,
+           self.collectionView.superview);
     [self.collectionView reloadData];
     [[HAPerfMonitor sharedMonitor] markRebuildEnd];
 
@@ -1069,7 +1103,7 @@ static const CGFloat kRowUnitHeight = 56.0;
         if ([[NSFileManager defaultManager] fileExistsAtPath:triggerFile]) {
             self.screenshotScheduled = YES;
             [[NSFileManager defaultManager] removeItemAtPath:triggerFile error:nil];
-            HALogD(@"dash", @"Screenshot trigger found, will capture in 3s");
+            HALogI(@"dash", @"Screenshot trigger found, will capture in 3s");
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
                 [self captureScreenshotToPath:outputFile];
             });
@@ -1427,8 +1461,8 @@ static const CGFloat kRowUnitHeight = 56.0;
     UIFont *font = [HAIconMapper mdiFontOfSize:size];
     CGSize textSize;
     if ([glyph respondsToSelector:@selector(sizeWithAttributes:)]) {
-        NSDictionary *attrs = @{NSFontAttributeName: font,
-                                NSForegroundColorAttributeName: [UIColor blackColor]};
+        NSDictionary *attrs = @{HAFontAttributeName: font,
+                                HAForegroundColorAttributeName: [UIColor blackColor]};
         textSize = [glyph sizeWithAttributes:attrs];
         UIGraphicsBeginImageContextWithOptions(textSize, NO, 0);
         [glyph drawAtPoint:CGPointZero withAttributes:attrs];
@@ -1542,12 +1576,16 @@ static const CGFloat kRowUnitHeight = 56.0;
 #pragma mark - UICollectionViewDataSource
 
 - (NSInteger)numberOfSectionsInCollectionView:(UICollectionView *)collectionView {
-    return self.dashboardConfig ? (NSInteger)self.dashboardConfig.sections.count : 0;
+    NSInteger count = self.dashboardConfig ? (NSInteger)self.dashboardConfig.sections.count : 0;
+    HALogI(@"ds", @"numberOfSections: %ld", (long)count);
+    return count;
 }
 
 - (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section {
     HADashboardConfigSection *configSection = [self sectionAtIndex:section];
-    return configSection ? (NSInteger)configSection.items.count : 0;
+    NSInteger count = configSection ? (NSInteger)configSection.items.count : 0;
+    HALogI(@"ds", @"section %ld items: %ld", (long)section, (long)count);
+    return count;
 }
 
 - (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView
@@ -1560,6 +1598,8 @@ static const CGFloat kRowUnitHeight = 56.0;
     NSDictionary *allEntities = [conn allEntities];
 
     NSString *reuseId = [HAEntityCellFactory reuseIdentifierForEntity:entity cardType:item.cardType];
+    HALogI(@"ds", @"cellForItem [%ld,%ld] reuseId=%@ entity=%@",
+           (long)indexPath.section, (long)indexPath.item, reuseId, item.entityId);
     UICollectionViewCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:reuseId forIndexPath:indexPath];
     [[HAPerfMonitor sharedMonitor] markCellStart:reuseId];
 
@@ -2321,7 +2361,7 @@ heightForHeaderInSection:(NSInteger)section {
     HALogI(@"dash", @"Received Lovelace config: %lu views", (unsigned long)dashboard.views.count);
     for (NSUInteger i = 0; i < dashboard.views.count; i++) {
         HALovelaceView *view = dashboard.views[i];
-        HALogD(@"dash", @"  View %lu: %@ (%lu cards)", (unsigned long)i, view.title, (unsigned long)view.rawCards.count);
+        HALogI(@"dash", @"  View %lu: %@ (%lu cards)", (unsigned long)i, view.title, (unsigned long)view.rawCards.count);
     }
 
     [self populateViewPicker];

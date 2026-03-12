@@ -1,5 +1,7 @@
 #import "HAColumnarLayout.h"
+#import "HACellCompat.h"
 #import "HAAutoLayout.h"
+#import "HALog.h"
 
 @interface HAColumnarLayout ()
 @property (nonatomic, strong) NSMutableArray<UICollectionViewLayoutAttributes *> *itemAttributes;
@@ -37,6 +39,8 @@
     if (!cv) return;
 
     NSInteger sectionCount = [cv numberOfSections];
+    HALogI(@"layout", @"prepareLayout: cvBounds=%@ sections=%ld",
+           NSStringFromCGRect(cv.bounds), (long)sectionCount);
     if (sectionCount == 0) {
         self.cachedContentSize = CGSizeZero;
         return;
@@ -91,7 +95,7 @@
             if (headerHeight > 0) {
                 NSIndexPath *headerIndexPath = [NSIndexPath indexPathForItem:0 inSection:section];
                 UICollectionViewLayoutAttributes *headerAttr =
-                    [UICollectionViewLayoutAttributes layoutAttributesForSupplementaryViewOfKind:HACollectionElementKindSectionHeader()
+                    [HACollectionViewLayoutAttributesBase layoutAttributesForSupplementaryViewOfKind:HACollectionElementKindSectionHeader()
                                                                                   withIndexPath:headerIndexPath];
                 headerAttr.frame = CGRectMake(columnX, columnY[col], columnWidth, headerHeight);
                 [self.headerAttributes addObject:headerAttr];
@@ -145,7 +149,7 @@
                 }
 
                 UICollectionViewLayoutAttributes *attr =
-                    [UICollectionViewLayoutAttributes layoutAttributesForCellWithIndexPath:indexPath];
+                    [HACollectionViewLayoutAttributesBase layoutAttributesForCellWithIndexPath:indexPath];
                 attr.frame = CGRectMake(itemX, rowStartY, itemWidth, itemHeight);
                 [self.itemAttributes addObject:attr];
                 self.itemAttributesByIndexPath[indexPath] = attr;
@@ -173,6 +177,9 @@
     }
 
     self.cachedContentSize = CGSizeMake(cv.bounds.size.width, sectionRowStartY + self.contentInsets.bottom);
+    HALogI(@"layout", @"prepareLayout done: contentSize=%@ items=%ld headers=%ld",
+           NSStringFromCGSize(self.cachedContentSize),
+           (long)self.itemAttributes.count, (long)self.headerAttributes.count);
 }
 
 - (CGSize)collectionViewContentSize {

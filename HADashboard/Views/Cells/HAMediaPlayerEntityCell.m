@@ -83,14 +83,14 @@ static const CGFloat kPadding        = 12.0;
     }
 
     // ── Name label (right of icon) ──
-    self.mpNameLabel = [self labelWithFont:[UIFont ha_systemFontOfSize:13 weight:UIFontWeightMedium] color:[HATheme primaryTextColor] lines:1];
+    self.mpNameLabel = [self labelWithFont:[UIFont ha_systemFontOfSize:13 weight:HAFontWeightMedium] color:[HATheme primaryTextColor] lines:1];
     self.mpNameLabel.lineBreakMode = NSLineBreakByTruncatingTail;
 
     // ── State label (below name, right of icon) ──
-    self.mpStateLabel = [self labelWithFont:[UIFont ha_systemFontOfSize:11 weight:UIFontWeightRegular] color:[HATheme secondaryTextColor] lines:1];
+    self.mpStateLabel = [self labelWithFont:[UIFont ha_systemFontOfSize:11 weight:HAFontWeightRegular] color:[HATheme secondaryTextColor] lines:1];
 
     // ── Media info (artist - title) ──
-    self.mediaInfoLabel = [self labelWithFont:[UIFont ha_systemFontOfSize:12 weight:UIFontWeightRegular] color:[HATheme secondaryTextColor] lines:1];
+    self.mediaInfoLabel = [self labelWithFont:[UIFont ha_systemFontOfSize:12 weight:HAFontWeightRegular] color:[HATheme secondaryTextColor] lines:1];
     self.mediaInfoLabel.lineBreakMode = NSLineBreakByTruncatingTail;
 
     // ── Transport buttons (prev | play/pause | next) ──
@@ -177,7 +177,7 @@ static const CGFloat kPadding        = 12.0;
     [self.contentView addSubview:self.volumeSlider];
 
     self.volumeLabel = [[UILabel alloc] init];
-    self.volumeLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:11 weight:UIFontWeightMedium];
+    self.volumeLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:11 weight:HAFontWeightMedium];
     self.volumeLabel.textColor = [HATheme secondaryTextColor];
     self.volumeLabel.textAlignment = NSTextAlignmentRight;
     self.volumeLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -229,7 +229,7 @@ static const CGFloat kPadding        = 12.0;
 
     // ── Source + shuffle + repeat row (below progress) ──
     self.sourceButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.sourceButton.titleLabel.font = [UIFont ha_systemFontOfSize:11 weight:UIFontWeightMedium];
+    self.sourceButton.titleLabel.font = [UIFont ha_systemFontOfSize:11 weight:HAFontWeightMedium];
     self.sourceButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
     self.sourceButton.translatesAutoresizingMaskIntoConstraints = NO;
     self.sourceButton.hidden = YES;
@@ -275,8 +275,8 @@ static const CGFloat kPadding        = 12.0;
     NSString *glyph = [HAIconMapper glyphForIconName:iconName];
     UIFont *iconFont = [HAIconMapper mdiFontOfSize:kBtnIconSize];
     NSDictionary *attrs = @{
-        NSFontAttributeName: iconFont,
-        NSForegroundColorAttributeName: [HATheme primaryTextColor],
+        HAFontAttributeName: iconFont,
+        HAForegroundColorAttributeName: [HATheme primaryTextColor],
     };
     NSAttributedString *attrTitle = [[NSAttributedString alloc] initWithString:(glyph ?: @"?") attributes:attrs];
     [btn setAttributedTitle:attrTitle forState:UIControlStateNormal];
@@ -290,8 +290,8 @@ static const CGFloat kPadding        = 12.0;
     NSString *glyph = [HAIconMapper glyphForIconName:iconName];
     UIFont *iconFont = [HAIconMapper mdiFontOfSize:kBtnIconSize];
     NSDictionary *attrs = @{
-        NSFontAttributeName: iconFont,
-        NSForegroundColorAttributeName: color ?: [HATheme primaryTextColor],
+        HAFontAttributeName: iconFont,
+        HAForegroundColorAttributeName: color ?: [HATheme primaryTextColor],
     };
     NSAttributedString *attrTitle = [[NSAttributedString alloc] initWithString:(glyph ?: @"?") attributes:attrs];
     [btn setAttributedTitle:attrTitle forState:UIControlStateNormal];
@@ -400,7 +400,7 @@ static const CGFloat kPadding        = 12.0;
     NSString *muteGlyph = [HAIconMapper glyphForIconName:muteIcon];
     UIFont *muteFont = [HAIconMapper mdiFontOfSize:16];
     UIColor *muteColor = muted ? [UIColor systemRedColor] : [HATheme secondaryTextColor];
-    NSDictionary *muteAttrs = @{NSFontAttributeName: muteFont, NSForegroundColorAttributeName: muteColor};
+    NSDictionary *muteAttrs = @{HAFontAttributeName: muteFont, HAForegroundColorAttributeName: muteColor};
     [self.muteButton setAttributedTitle:[[NSAttributedString alloc] initWithString:(muteGlyph ?: @"🔊") attributes:muteAttrs]
                                forState:UIControlStateNormal];
     self.muteButton.enabled = available;
@@ -440,7 +440,7 @@ static const CGFloat kPadding        = 12.0;
     UIFont *ctrlFont = [HAIconMapper mdiFontOfSize:14];
     UIColor *shuffleColor = shuffle ? [UIColor systemBlueColor] : [HATheme secondaryTextColor];
     [self.shuffleButton setAttributedTitle:[[NSAttributedString alloc] initWithString:(shuffleGlyph ?: @"🔀")
-                                                                           attributes:@{NSFontAttributeName: ctrlFont, NSForegroundColorAttributeName: shuffleColor}]
+                                                                           attributes:@{HAFontAttributeName: ctrlFont, HAForegroundColorAttributeName: shuffleColor}]
                                   forState:UIControlStateNormal];
 
     // ── Repeat button ──
@@ -449,7 +449,7 @@ static const CGFloat kPadding        = 12.0;
     NSString *repeatGlyph = [HAIconMapper glyphForIconName:repeatIconName];
     UIColor *repeatColor = [repeatMode isEqualToString:@"off"] ? [HATheme secondaryTextColor] : [UIColor systemBlueColor];
     [self.repeatButton setAttributedTitle:[[NSAttributedString alloc] initWithString:(repeatGlyph ?: @"🔁")
-                                                                          attributes:@{NSFontAttributeName: ctrlFont, NSForegroundColorAttributeName: repeatColor}]
+                                                                          attributes:@{HAFontAttributeName: ctrlFont, HAForegroundColorAttributeName: repeatColor}]
                                  forState:UIControlStateNormal];
 
     // ── Card background ──
@@ -471,7 +471,7 @@ static const CGFloat kPadding        = 12.0;
     [c1 setFill]; UIRectFill(CGRectMake(0, 0, size, size / 2));
     [c2 setFill]; UIRectFill(CGRectMake(0, size / 2, size, size / 2));
     // Draw a music note symbol
-    NSDictionary *attrs = @{NSFontAttributeName: [UIFont systemFontOfSize:28], NSForegroundColorAttributeName: [UIColor whiteColor]};
+    NSDictionary *attrs = @{HAFontAttributeName: [UIFont systemFontOfSize:28], HAForegroundColorAttributeName: [UIColor whiteColor]};
     [@"\u266B" ha_drawAtPoint:CGPointMake(size / 2 - 10, size / 2 - 16) withAttributes:attrs];
     UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();

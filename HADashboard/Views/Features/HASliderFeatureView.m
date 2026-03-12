@@ -41,7 +41,7 @@
 
     self.valueLabel = [[UILabel alloc] init];
     self.valueLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.valueLabel.font = [UIFont ha_systemFontOfSize:11 weight:UIFontWeightMedium];
+    self.valueLabel.font = [UIFont ha_systemFontOfSize:11 weight:HAFontWeightMedium];
     self.valueLabel.textColor = [HATheme secondaryTextColor];
     self.valueLabel.textAlignment = NSTextAlignmentRight;
     if (HAAutoLayoutAvailable()) {

@@ -29,7 +29,7 @@ static const CGFloat kMinColumnWidth = 70.0; // auto column calculation threshol
         self.itemViews = [NSMutableArray array];
 
         self.titleLabel = [[UILabel alloc] init];
-        self.titleLabel.font = [UIFont ha_systemFontOfSize:kTitleFontSize weight:UIFontWeightSemibold];
+        self.titleLabel.font = [UIFont ha_systemFontOfSize:kTitleFontSize weight:HAFontWeightSemibold];
         self.titleLabel.textColor = [HATheme primaryTextColor];
         self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
         self.titleLabel.hidden = YES;

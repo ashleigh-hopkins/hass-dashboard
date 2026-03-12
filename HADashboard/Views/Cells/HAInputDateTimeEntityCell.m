@@ -22,7 +22,7 @@
     CGFloat padding = 10.0;
 
     self.valueButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.valueButton.titleLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:18 weight:UIFontWeightMedium];
+    self.valueButton.titleLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:18 weight:HAFontWeightMedium];
     self.valueButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
     self.valueButton.translatesAutoresizingMaskIntoConstraints = NO;
     [self.valueButton addTarget:self action:@selector(valueTapped) forControlEvents:UIControlEventTouchUpInside];

@@ -74,7 +74,7 @@ static const CGFloat kBottomPadding = 12.0;
 
     // Condition text (top-right): "Rainy, 7C"
     self.conditionLabel = [[UILabel alloc] init];
-    self.conditionLabel.font = [UIFont ha_systemFontOfSize:15 weight:UIFontWeightMedium];
+    self.conditionLabel.font = [UIFont ha_systemFontOfSize:15 weight:HAFontWeightMedium];
     self.conditionLabel.textColor = [HATheme primaryTextColor];
     self.conditionLabel.numberOfLines = 1;
     self.conditionLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -90,7 +90,7 @@ static const CGFloat kBottomPadding = 12.0;
 
     // Clock (large digital)
     self.clockLabel = [[UILabel alloc] init];
-    self.clockLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:44 weight:UIFontWeightLight];
+    self.clockLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:44 weight:HAFontWeightLight];
     self.clockLabel.textColor = [HATheme primaryTextColor];
     self.clockLabel.textAlignment = NSTextAlignmentLeft;
     self.clockLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -594,7 +594,13 @@ static const CGFloat kBottomPadding = 12.0;
 - (void)loadWeatherIconForCondition:(NSString *)condition {
     // Determine day/night
     NSCalendar *cal = [NSCalendar currentCalendar];
-    NSInteger hour = [cal component:NSCalendarUnitHour fromDate:[NSDate date]];
+    NSInteger hour;
+    if ([cal respondsToSelector:@selector(component:fromDate:)]) {
+        hour = [cal component:NSCalendarUnitHour fromDate:[NSDate date]];
+    } else {
+        NSDateComponents *comps = [cal components:NSHourCalendarUnit fromDate:[NSDate date]];
+        hour = [comps hour];
+    }
     BOOL isDaytime = (hour >= 6 && hour < 20);
 
     NSString *iconName = [[self class] iconFileNameForCondition:condition isDaytime:isDaytime];

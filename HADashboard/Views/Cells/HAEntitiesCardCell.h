@@ -1,12 +1,13 @@
 #import <UIKit/UIKit.h>
 #import "HAStackView.h"
+#import "HACellCompat.h"
 
 @class HADashboardConfigSection;
 @class HADashboardConfigItem;
 @class HAEntity;
 @class HAEntityRowView;
 
-@interface HAEntitiesCardCell : UICollectionViewCell
+@interface HAEntitiesCardCell : HACollectionViewCellBase
 
 - (void)configureWithSection:(HADashboardConfigSection *)section
                     entities:(NSDictionary *)entityDict

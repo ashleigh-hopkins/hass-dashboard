@@ -88,7 +88,7 @@
     // Skip button (below update button)
     self.skipButton = [UIButton buttonWithType:UIButtonTypeSystem];
     [self.skipButton setTitle:@"Skip" forState:UIControlStateNormal];
-    self.skipButton.titleLabel.font = [UIFont ha_systemFontOfSize:11 weight:UIFontWeightMedium];
+    self.skipButton.titleLabel.font = [UIFont ha_systemFontOfSize:11 weight:HAFontWeightMedium];
     self.skipButton.translatesAutoresizingMaskIntoConstraints = NO;
     self.skipButton.hidden = YES;
     [self.skipButton addTarget:self action:@selector(skipTapped) forControlEvents:UIControlEventTouchUpInside];
