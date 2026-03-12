@@ -260,20 +260,10 @@ static HACameraStreamMode currentStreamMode(void) {
     [self.cameraVolumeButton addTarget:self action:@selector(gridVolumeTapped) forControlEvents:UIControlEventTouchUpInside];
     [self.contentView addSubview:self.cameraVolumeButton];
 
-    // Set icons via MDI glyphs
-    NSString *powerGlyph = [HAIconMapper glyphForIconName:@"power"] ?: @"\u23FB";
-    NSString *snapGlyph = [HAIconMapper glyphForIconName:@"camera-iris"] ?: [HAIconMapper glyphForIconName:@"camera"] ?: @"\U0001F4F7";
-    NSString *fullscreenGlyph = [HAIconMapper glyphForIconName:@"fullscreen"] ?: @"\u26F6";
-    UIFont *iconFont = [HAIconMapper mdiFontOfSize:14];
-    [self.cameraPowerButton setAttributedTitle:[[NSAttributedString alloc] initWithString:powerGlyph
-        attributes:@{HAFontAttributeName: iconFont, HAForegroundColorAttributeName: [UIColor whiteColor]}]
-        forState:UIControlStateNormal];
-    [self.cameraSnapshotButton setAttributedTitle:[[NSAttributedString alloc] initWithString:snapGlyph
-        attributes:@{HAFontAttributeName: iconFont, HAForegroundColorAttributeName: [UIColor whiteColor]}]
-        forState:UIControlStateNormal];
-    [self.cameraFullscreenButton setAttributedTitle:[[NSAttributedString alloc] initWithString:fullscreenGlyph
-        attributes:@{HAFontAttributeName: iconFont, HAForegroundColorAttributeName: [UIColor whiteColor]}]
-        forState:UIControlStateNormal];
+    // Set icons via MDI glyphs (setIconName: handles iOS 5 CoreText fallback)
+    [HAIconMapper setIconName:@"power" onButton:self.cameraPowerButton size:14 color:[UIColor whiteColor]];
+    [HAIconMapper setIconName:@"camera-iris" onButton:self.cameraSnapshotButton size:14 color:[UIColor whiteColor]];
+    [HAIconMapper setIconName:@"fullscreen" onButton:self.cameraFullscreenButton size:14 color:[UIColor whiteColor]];
 
     // Snapshot button leads from power button when visible, from snapshotView edge when hidden.
     // Use two constraints with different priorities — the active one wins.
@@ -567,7 +557,6 @@ static HACameraStreamMode currentStreamMode(void) {
     if (!self.hlsPlayer) return;
 
     BOOL wasMuted = (self.hlsPlayer.volume == 0);
-    UIFont *iconFont = [HAIconMapper mdiFontOfSize:18];
     NSString *volKey = [NSString stringWithFormat:@"HACameraVolume_%@", self.currentEntityId];
 
     if (wasMuted) {
@@ -576,10 +565,7 @@ static HACameraStreamMode currentStreamMode(void) {
         if (vol <= 0) vol = 0.5;
         self.hlsPlayer.volume = vol;
 
-        NSString *glyph = [HAIconMapper glyphForIconName:@"volume-high"] ?: @"🔊";
-        [sender setAttributedTitle:[[NSAttributedString alloc] initWithString:glyph
-            attributes:@{HAFontAttributeName: iconFont, HAForegroundColorAttributeName: [UIColor whiteColor]}]
-            forState:UIControlStateNormal];
+        [HAIconMapper setIconName:@"volume-high" onButton:sender size:18 color:[UIColor whiteColor]];
 
         // Show volume slider
         UIView *slider = [sender.superview viewWithTag:8002];
@@ -591,10 +577,7 @@ static HACameraStreamMode currentStreamMode(void) {
         // Mute
         self.hlsPlayer.volume = 0;
 
-        NSString *glyph = [HAIconMapper glyphForIconName:@"volume-off"] ?: @"🔇";
-        [sender setAttributedTitle:[[NSAttributedString alloc] initWithString:glyph
-            attributes:@{HAFontAttributeName: iconFont, HAForegroundColorAttributeName: [UIColor whiteColor]}]
-            forState:UIControlStateNormal];
+        [HAIconMapper setIconName:@"volume-off" onButton:sender size:18 color:[UIColor whiteColor]];
 
         // Hide volume slider
         UIView *slider = [sender.superview viewWithTag:8002];
@@ -612,18 +595,15 @@ static HACameraStreamMode currentStreamMode(void) {
     // Update mute button icon based on volume level
     UIButton *muteBtn = (UIButton *)[slider.superview viewWithTag:8001];
     if (!muteBtn) return;
-    UIFont *iconFont = [HAIconMapper mdiFontOfSize:18];
-    NSString *glyph;
+    NSString *volIcon;
     if (slider.value <= 0.01) {
-        glyph = [HAIconMapper glyphForIconName:@"volume-off"] ?: @"🔇";
+        volIcon = @"volume-off";
     } else if (slider.value < 0.5) {
-        glyph = [HAIconMapper glyphForIconName:@"volume-medium"] ?: @"🔉";
+        volIcon = @"volume-medium";
     } else {
-        glyph = [HAIconMapper glyphForIconName:@"volume-high"] ?: @"🔊";
+        volIcon = @"volume-high";
     }
-    [muteBtn setAttributedTitle:[[NSAttributedString alloc] initWithString:glyph
-        attributes:@{HAFontAttributeName: iconFont, HAForegroundColorAttributeName: [UIColor whiteColor]}]
-        forState:UIControlStateNormal];
+    [HAIconMapper setIconName:volIcon onButton:muteBtn size:18 color:[UIColor whiteColor]];
 }
 
 #pragma mark - Overlay Action Buttons
@@ -1340,16 +1320,8 @@ static HACameraStreamMode currentStreamMode(void) {
 }
 
 - (void)updateGridVolumeIcon {
-    UIFont *iconFont = [HAIconMapper mdiFontOfSize:14];
-    NSString *glyph;
-    if (self.hlsPlayer.volume <= 0.01) {
-        glyph = [HAIconMapper glyphForIconName:@"volume-off"] ?: @"M";
-    } else {
-        glyph = [HAIconMapper glyphForIconName:@"volume-high"] ?: @"V";
-    }
-    [self.cameraVolumeButton setAttributedTitle:[[NSAttributedString alloc] initWithString:glyph
-        attributes:@{HAFontAttributeName: iconFont, HAForegroundColorAttributeName: [UIColor whiteColor]}]
-        forState:UIControlStateNormal];
+    NSString *volIcon = (self.hlsPlayer.volume <= 0.01) ? @"volume-off" : @"volume-high";
+    [HAIconMapper setIconName:volIcon onButton:self.cameraVolumeButton size:14 color:[UIColor whiteColor]];
 }
 
 - (void)gridVolumeTapped {

@@ -1,6 +1,7 @@
 #import "HAIconMapper.h"
 #import "HAAutoLayout.h"
 #import "HALog.h"
+#import "NSString+HACompat.h"
 #import "UIFont+HACompat.h"
 #import <CoreText/CoreText.h>
 
@@ -355,6 +356,50 @@ static NSDictionary<NSString *, NSString *> *_domainIconMap = nil;
         }
         iv.image = image;
     }
+}
+
++ (void)setIconName:(NSString *)iconName onButton:(UIButton *)button size:(CGFloat)size color:(UIColor *)color {
+    if (!iconName || !button) return;
+
+    if (HASystemMajorVersion() >= 6) {
+        NSString *glyph = [self glyphForIconName:iconName];
+        if (glyph) {
+            NSDictionary *attrs = @{
+                HAFontAttributeName: [self mdiFontOfSize:size],
+                HAForegroundColorAttributeName: color ?: [UIColor blackColor]
+            };
+            [button setAttributedTitle:[[NSAttributedString alloc] initWithString:glyph attributes:attrs]
+                              forState:UIControlStateNormal];
+        }
+    } else {
+        UIImage *img = [self imageForIconName:iconName size:size color:color ?: [UIColor blackColor]];
+        if (img) {
+            [button setImage:img forState:UIControlStateNormal];
+            [button setTitle:nil forState:UIControlStateNormal];
+        }
+    }
+}
+
++ (NSAttributedString *)attributedGlyph:(NSString *)glyphString fontSize:(CGFloat)fontSize color:(UIColor *)color {
+    if (!glyphString) return [[NSAttributedString alloc] initWithString:@""];
+
+    if (HASystemMajorVersion() >= 6) {
+        return [[NSAttributedString alloc] initWithString:glyphString
+            attributes:@{
+                HAFontAttributeName: [self mdiFontOfSize:fontSize],
+                HAForegroundColorAttributeName: color ?: [UIColor blackColor]
+            }];
+    }
+
+    // iOS 5: render glyph to image. NSTextAttachment is iOS 7+, so we can't
+    // use inline image attachments. Instead, return an empty string — the caller
+    // should use a separate UIImageView for the icon on iOS 5.
+    // For best effort, return the raw glyph (will show as □ but won't crash).
+    return [[NSAttributedString alloc] initWithString:glyphString
+        attributes:@{
+            HAFontAttributeName: [self mdiFontOfSize:fontSize],
+            HAForegroundColorAttributeName: color ?: [UIColor blackColor]
+        }];
 }
 
 @end

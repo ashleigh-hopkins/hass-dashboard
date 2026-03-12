@@ -1132,9 +1132,11 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
 
         UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
         NSString *iconName = _modeIconNames[mode];
-        NSString *icon = iconName ? [HAIconMapper glyphForIconName:iconName] : @"?";
-        [btn setTitle:icon forState:UIControlStateNormal];
-        btn.titleLabel.font = [HAIconMapper mdiFontOfSize:modeIconSize];
+        if (iconName) {
+            [HAIconMapper setIconName:iconName onButton:btn size:modeIconSize color:[HATheme primaryTextColor]];
+        } else {
+            [btn setTitle:@"?" forState:UIControlStateNormal];
+        }
         btn.layer.cornerRadius = modeBtnCornerRadius;
         btn.clipsToBounds = YES;
         btn.tag = [modes indexOfObject:mode];

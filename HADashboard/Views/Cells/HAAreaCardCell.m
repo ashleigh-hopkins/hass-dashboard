@@ -139,11 +139,16 @@
     for (NSInteger i = 0; i < maxToggles; i++) {
         HAEntity *entity = entities[toggleIds[i]];
         UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
-        NSString *glyph = [HAEntityDisplayHelper iconGlyphForEntity:entity];
-        [btn setTitle:glyph forState:UIControlStateNormal];
-        btn.titleLabel.font = [HAIconMapper mdiFontOfSize:18];
-        [btn setTitleColor:[entity isOn] ? [UIColor yellowColor] : [[UIColor whiteColor] colorWithAlphaComponent:0.7]
-                  forState:UIControlStateNormal];
+        NSString *iconName = [entity icon];
+        if (!iconName) {
+            NSString *domain = [entity domain];
+            if ([domain isEqualToString:@"light"])       iconName = @"lightbulb";
+            else if ([domain isEqualToString:@"switch"]) iconName = @"flash";
+            else if ([domain isEqualToString:@"fan"])    iconName = @"fan";
+            else                                         iconName = @"toggle-switch-variant";
+        }
+        UIColor *iconColor = [entity isOn] ? [UIColor yellowColor] : [[UIColor whiteColor] colorWithAlphaComponent:0.7];
+        [HAIconMapper setIconName:iconName onButton:btn size:18 color:iconColor];
         btn.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.15];
         btn.layer.cornerRadius = 16;
         btn.tag = i;

@@ -25,9 +25,17 @@
 /// Returns nil if the icon name is not recognized or the font isn't loaded.
 + (UIImage *)imageForIconName:(NSString *)mdiName size:(CGFloat)size color:(UIColor *)color;
 
-/// Set an MDI glyph on a UILabel. On iOS 6+, sets text directly (UILabel can
-/// render SMP codepoints). On iOS 5, renders via CoreText into a background
-/// image since UILabel's old text engine can't handle the Private Use Area.
+/// Set an MDI glyph on a UILabel. On iOS 6+, sets text directly. On iOS 5,
+/// renders via CoreText into a UIImageView overlay.
 + (void)setGlyph:(NSString *)glyphString onLabel:(UILabel *)label;
+
+/// Set an MDI glyph on a UIButton. On iOS 6+, uses setTitle: with MDI font.
+/// On iOS 5, uses setImage: with CoreText-rendered image.
++ (void)setIconName:(NSString *)iconName onButton:(UIButton *)button size:(CGFloat)size color:(UIColor *)color;
+
+/// Build an NSAttributedString containing an MDI glyph inline. On iOS 6+,
+/// uses the glyph character with MDI font. On iOS 5, inserts an
+/// NSTextAttachment image (iOS 7+) or returns the plain glyph string (best effort).
++ (NSAttributedString *)attributedGlyph:(NSString *)glyphString fontSize:(CGFloat)fontSize color:(UIColor *)color;
 
 @end
