@@ -32,7 +32,7 @@ static const NSTimeInterval kDebounceInterval = 5.0;
     NSMutableDictionary *validated = [NSMutableDictionary dictionaryWithCapacity:json.count];
     for (NSString *key in json) {
         id value = json[key];
-        if ([value isKindOfClass:[NSDictionary class]] && [key containsString:@"."]) {
+        if ([value isKindOfClass:[NSDictionary class]] && ([key rangeOfString:@"."].location != NSNotFound)) {
             validated[key] = value;
         }
     }

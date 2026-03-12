@@ -896,7 +896,7 @@ static const CGFloat kRowUnitHeight = 56.0;
         NSString *initialView = item.customProperties[@"initial_view"];
         HACalendarViewMode mode = ([initialView hasPrefix:@"list"]) ? HACalendarViewModeList : HACalendarViewModeMonth;
         height = [HACalendarCardCell preferredHeightForMode:mode] + headingExtra;
-    } else if ([item.cardType containsString:@"clock-weather"]) {
+    } else if (([item.cardType rangeOfString:@"clock-weather"].location != NSNotFound)) {
         NSNumber *rows = item.customProperties[@"forecast_rows"];
         NSInteger forecastRows = rows ? [rows integerValue] : 5;
         height = [HAClockWeatherCell preferredHeightForForecastRows:forecastRows] + headingExtra;

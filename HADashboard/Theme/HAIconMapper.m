@@ -36,7 +36,7 @@ static NSDictionary<NSString *, NSString *> *_domainIconMap = nil;
     for (NSString *family in [UIFont familyNames]) {
         for (NSString *name in [UIFont fontNamesForFamilyName:family]) {
             // MDI font PostScript name contains "materialdesignicons"
-            if ([name.lowercaseString containsString:@"materialdesignicons"]) {
+            if ([name.lowercaseString rangeOfString:@"materialdesignicons"].location != NSNotFound) {
                 _mdiFontName = name;
                 HALogD(@"icon", @"    loadFont: found name=%@", _mdiFontName);
                 return;

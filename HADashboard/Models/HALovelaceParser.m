@@ -165,7 +165,7 @@
                     }
                 }
                 BOOL isCompositeCard = ([effectiveCardType isEqualToString:@"entities"] ||
-                                        [effectiveCardType containsString:@"badge"] ||
+                                        ([effectiveCardType rangeOfString:@"badge"].location != NSNotFound) ||
                                         [effectiveCardType isEqualToString:@"graph"]) && cs.entityIds.count > 0;
                 if (isCompositeCard) {
                     HADashboardConfigItem *item = [[HADashboardConfigItem alloc] init];
@@ -600,7 +600,7 @@
             }
         }
         section.customProperties = [filterProps copy];
-    } else if ([cardType containsString:@"badge"]) {
+    } else if (([cardType rangeOfString:@"badge"].location != NSNotFound)) {
         isComposite = YES;
         compositeType = @"badges";
     } else if ([cardType isEqualToString:@"glance"]) {
@@ -623,7 +623,7 @@
             props[@"entityConfigs"] = [entityConfigs copy];
             section.customProperties = [props copy];
         }
-    } else if ([cardType containsString:@"mini-graph"]) {
+    } else if (([cardType rangeOfString:@"mini-graph"].location != NSNotFound)) {
         // Render as a single composite graph card with all entities
         isComposite = YES;
         compositeType = @"graph";
@@ -702,7 +702,7 @@
         if (graphProps.count > 0) {
             section.customProperties = [graphProps copy];
         }
-    } else if ([cardType containsString:@"mushroom-chips"]) {
+    } else if (([cardType rangeOfString:@"mushroom-chips"].location != NSNotFound)) {
         // Render chips as a compact badge row (no name labels, smaller sizing)
         isComposite = YES;
         compositeType = @"badges";
@@ -976,7 +976,7 @@
             if ([card[@"stat_type"] isKindOfClass:[NSString class]]) props[@"stat_type"] = card[@"stat_type"];
 
             // Clock-weather card: extract sensor overrides and display config
-            if ([cardType containsString:@"clock-weather"]) {
+            if (([cardType rangeOfString:@"clock-weather"].location != NSNotFound)) {
                 if (card[@"temperature_sensor"]) props[@"temperature_sensor"] = card[@"temperature_sensor"];
                 if (card[@"humidity_sensor"])    props[@"humidity_sensor"]    = card[@"humidity_sensor"];
                 if (card[@"forecast_rows"])      props[@"forecast_rows"]      = card[@"forecast_rows"];
@@ -994,7 +994,7 @@
 
             // Camera overlay elements: extract entity IDs and tap actions from "elements" array
             // Used by custom:advanced-camera-card and similar camera card types
-            if ([cardType hasPrefix:@"custom:"] && [cardType containsString:@"camera"]) {
+            if ([cardType hasPrefix:@"custom:"] && ([cardType rangeOfString:@"camera"].location != NSNotFound)) {
                 NSArray *elements = card[@"elements"];
                 if ([elements isKindOfClass:[NSArray class]] && elements.count > 0) {
                     NSMutableArray *overlayElements = [NSMutableArray arrayWithCapacity:elements.count];
@@ -1033,7 +1033,7 @@
             }
 
             // Vacuum card: extract configured commands and layout
-            if ([cardType containsString:@"vacuum"]) {
+            if (([cardType rangeOfString:@"vacuum"].location != NSNotFound)) {
                 NSArray *commands = card[@"commands"];
                 if ([commands isKindOfClass:[NSArray class]] && commands.count > 0) {
                     props[@"commands"] = commands;
@@ -1160,7 +1160,7 @@
     }
 
     // Custom camera cards: extract camera_entity from cameras array
-    if ([type hasPrefix:@"custom:"] && [type containsString:@"camera"]) {
+    if ([type hasPrefix:@"custom:"] && ([type rangeOfString:@"camera"].location != NSNotFound)) {
         NSArray *cameras = card[@"cameras"];
         if ([cameras isKindOfClass:[NSArray class]]) {
             for (NSDictionary *cam in cameras) {

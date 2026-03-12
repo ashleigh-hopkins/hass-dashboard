@@ -650,27 +650,27 @@ static const CGFloat kBottomPadding = 12.0;
         anim.fromValue = @0; anim.toValue = @(M_PI * 2);
         anim.duration = 12.0;
         key = @"sunRotation";
-    } else if ([condition containsString:@"rainy"] || [condition isEqualToString:@"pouring"]) {
+    } else if (([condition rangeOfString:@"rainy"].location != NSNotFound) || [condition isEqualToString:@"pouring"]) {
         anim = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
         anim.fromValue = @(-2); anim.toValue = @(2);
         anim.duration = 1.5; anim.autoreverses = YES;
         key = @"rainBounce";
-    } else if ([condition containsString:@"cloudy"]) {
+    } else if ([condition rangeOfString:@"cloudy"].location != NSNotFound) {
         anim = [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
         anim.fromValue = @(-3); anim.toValue = @(3);
         anim.duration = 3.0; anim.autoreverses = YES;
         key = @"cloudDrift";
-    } else if ([condition containsString:@"wind"]) {
+    } else if ([condition rangeOfString:@"wind"].location != NSNotFound) {
         anim = [CABasicAnimation animationWithKeyPath:@"transform.rotation.z"];
         anim.fromValue = @(-0.1); anim.toValue = @(0.1);
         anim.duration = 0.8; anim.autoreverses = YES;
         key = @"windSway";
-    } else if ([condition containsString:@"lightning"]) {
+    } else if ([condition rangeOfString:@"lightning"].location != NSNotFound) {
         anim = [CABasicAnimation animationWithKeyPath:@"opacity"];
         anim.fromValue = @(1.0); anim.toValue = @(0.4);
         anim.duration = 0.3; anim.autoreverses = YES;
         key = @"lightningFlash";
-    } else if ([condition containsString:@"snowy"]) {
+    } else if ([condition rangeOfString:@"snowy"].location != NSNotFound) {
         anim = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
         anim.fromValue = @(-2); anim.toValue = @(2);
         anim.duration = 2.0; anim.autoreverses = YES;

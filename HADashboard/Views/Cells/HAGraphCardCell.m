@@ -476,9 +476,9 @@ static NSArray<UIColor *> *sColorPalette;
 #pragma mark - Color Helpers
 
 - (void)applyDefaultColorForUnit:(NSString *)unit {
-    if ([unit containsString:@"W"] || [unit containsString:@"kWh"]) {
+    if (([unit rangeOfString:@"W"].location != NSNotFound) || ([unit rangeOfString:@"kWh"].location != NSNotFound)) {
         self.graphView.lineColor = [UIColor colorWithRed:1.0 green:0.4 blue:0.2 alpha:1.0]; // Orange-red
-    } else if ([unit containsString:@"°"] || [unit containsString:@"C"] || [unit containsString:@"F"]) {
+    } else if (([unit rangeOfString:@"°"].location != NSNotFound) || ([unit rangeOfString:@"C"].location != NSNotFound) || ([unit rangeOfString:@"F"].location != NSNotFound)) {
         self.graphView.lineColor = [UIColor colorWithRed:0.0 green:0.8 blue:0.7 alpha:1.0]; // Teal
     } else {
         self.graphView.lineColor = [UIColor colorWithRed:0.3 green:0.6 blue:1.0 alpha:1.0]; // Blue

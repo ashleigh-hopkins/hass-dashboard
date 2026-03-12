@@ -92,7 +92,7 @@ static const NSTimeInterval kFirstFrameTimeout = 10.0;
     }
 
     // First response — check if it's actually multipart
-    if (contentType && ![contentType containsString:@"multipart"]) {
+    if (contentType && ([contentType rangeOfString:@"multipart"].location == NSNotFound)) {
         HALogW(@"cam", @"Not a multipart stream (Content-Type: %@) — aborting", contentType);
         NSError *error = [NSError errorWithDomain:@"HAMJPEGStreamParser" code:-3
             userInfo:@{NSLocalizedDescriptionKey: @"Not a multipart MJPEG stream"}];
