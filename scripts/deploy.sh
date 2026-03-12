@@ -48,6 +48,8 @@ IPAD_MINI5_DEVICECTL_ID="${IPAD_MINI5_DEVICECTL_ID:-}"
 IPAD_MINI5_UDID="${IPAD_MINI5_UDID:-}"
 IPAD_MINI4_UDID="${IPAD_MINI4_UDID:-}"
 IPAD2_UDID="${IPAD2_UDID:-}"
+IPAD1_IP="${IPAD1_IP:-}"
+IPAD1_SSH_PASS="${IPAD1_SSH_PASS:-alpine}"
 IPAD2_IP="${IPAD2_IP:-}"
 IPAD2_SSH_PASS="${IPAD2_SSH_PASS:-alpine}"
 UNRAID_HOST="${UNRAID_HOST:-}"
@@ -74,7 +76,7 @@ TOKEN_OVERRIDE=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        sim|sim-ios93|sim-ios103|iphone|mini5|mini4|ipad2|ipad2-usb|mac|all)
+        sim|sim-ios93|sim-ios103|iphone|mini5|mini4|ipad1|ipad2|ipad2-usb|mac|all)
             if [[ -z "$TARGET" ]]; then
                 TARGET="$1"
             else
@@ -108,6 +110,7 @@ if [[ -z "$TARGET" ]]; then
     echo "  iphone         Physical iPhone (via devicectl)"
     echo "  mini5          iPad Mini 5 — iPadOS 26 (devicectl, WiFi)"
     echo "  mini4          iPad Mini 4 — iPadOS 15 (ios-deploy, WiFi)"
+    echo "  ipad1          iPad 1 — iOS 5.1.1 (WiFi SSH, jailbroken)"
     echo "  ipad2          iPad 2 — iOS 9 (WiFi SSH, jailbroken)"
     echo "  ipad2-usb      iPad 2 — iOS 9 (Unraid USB fallback)"
     echo "  mac            Mac Catalyst (local Mac, fullscreen)"
@@ -197,6 +200,7 @@ if [[ "$TARGET" == "all" ]]; then
     deploy_bg "iphone"      iphone      --no-build ${OPTS[@]+"${OPTS[@]}"}
     deploy_bg "mini5"       mini5       --no-build ${OPTS[@]+"${OPTS[@]}"}
     deploy_bg "mini4"       mini4       --no-build ${OPTS[@]+"${OPTS[@]}"}
+    deploy_bg "ipad1"       ipad1       --no-build ${OPTS[@]+"${OPTS[@]}"}
     deploy_bg "ipad2"       ipad2       --no-build ${OPTS[@]+"${OPTS[@]}"}
     deploy_bg "mac"         mac         --no-build ${OPTS[@]+"${OPTS[@]}"}
 
@@ -247,7 +251,7 @@ case "$TARGET" in
             APP="$PROJECT_DIR/build/rosettasim/Build/Products/Debug-iphonesimulator/HA Dashboard.app"
         fi
         ;;
-    iphone|mini5|mini4|ipad2|ipad2-usb)
+    iphone|mini5|mini4|ipad1|ipad2|ipad2-usb)
         if [[ "$NO_BUILD" == false ]]; then
             APP="$("$PROJECT_DIR/scripts/build.sh" device)"
         else
@@ -280,6 +284,7 @@ if [[ "$HA_DASHBOARD" == "living-room" ]]; then
     case "$TARGET" in
         mini5)    HA_DASHBOARD="dashboard-landing" ;;
         mini4)    HA_DASHBOARD="living-room" ;;
+        ipad1)            HA_DASHBOARD="living-room"; KIOSK_MODE="${KIOSK_MODE:-YES}" ;;
         ipad2|ipad2-usb)  HA_DASHBOARD="dashboard-office"; KIOSK_MODE="${KIOSK_MODE:-YES}" ;;
         # sim, sim-iphone, iphone: keep living-room
     esac
@@ -474,6 +479,93 @@ case "$TARGET" in
             --udid "$IPAD_MINI4_UDID" \
             "$BUNDLE_ID ${LAUNCH_ARGS[*]}" 2>&1
         echo "✅ Running on iPad Mini 4"
+        ;;
+
+    ipad1)
+        echo "📱 Deploying to iPad 1 via WiFi SSH ($IPAD1_IP)..."
+
+        if [[ -z "$IPAD1_IP" ]]; then
+            echo "❌ IPAD1_IP not set in .env"
+            exit 1
+        fi
+
+        # iPad 1 runs iOS 5.1.1 with legacy SSH (ssh-rsa only)
+        IPAD1_SSH="sshpass -p ${IPAD1_SSH_PASS} ssh -o StrictHostKeyChecking=no -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedAlgorithms=+ssh-rsa root@${IPAD1_IP}"
+        IPAD1_SCP="sshpass -p ${IPAD1_SSH_PASS} scp -O -o StrictHostKeyChecking=no -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedAlgorithms=+ssh-rsa"
+
+        # Verify iPad is reachable
+        if ! $IPAD1_SSH "echo ok" &>/dev/null; then
+            echo "❌ Cannot SSH to iPad 1 at $IPAD1_IP"
+            echo "   Ensure iPad is jailbroken, OpenSSH is installed, and WiFi is connected"
+            exit 1
+        fi
+
+        # Tar the .app preserving structure
+        APP_TAR="$PROJECT_DIR/build/HADashboard.app.tar.gz"
+        echo "   Packaging .app..."
+        tar -czf "$APP_TAR" -C "$(dirname "$APP")" "$(basename "$APP")"
+
+        # Merge deploy preferences into existing plist
+        IPAD1_PLIST="$PROJECT_DIR/build/ipad1-prefs.plist"
+        PREFS_PATH="/var/mobile/Library/Preferences/$BUNDLE_ID.plist"
+        rm -f "$IPAD1_PLIST"
+        $IPAD1_SCP "root@${IPAD1_IP}:$PREFS_PATH" "$IPAD1_PLIST" 2>/dev/null || true
+        IPAD1_PLIST_BASE="${IPAD1_PLIST%.plist}"
+        if [ "$RESET_MODE" = "true" ]; then
+            defaults write "$IPAD1_PLIST_BASE" HAClearCredentials -bool true
+        else
+            defaults write "$IPAD1_PLIST_BASE" HAServerURL -string "$HA_SERVER"
+            defaults write "$IPAD1_PLIST_BASE" HAAccessToken -string "${EFFECTIVE_TOKEN}"
+        fi
+        defaults write "$IPAD1_PLIST_BASE" HADashboard -string "$HA_DASHBOARD"
+        defaults write "$IPAD1_PLIST_BASE" HAKioskMode -bool "$([ "$KIOSK_MODE" = "YES" ] && echo true || echo false)"
+        [[ -n "$DEMO_MODE" ]] && defaults write "$IPAD1_PLIST_BASE" HADemoMode -bool true
+        plutil -convert binary1 "$IPAD1_PLIST"
+
+        # Transfer to iPad
+        echo "   Transferring to iPad 1 ($IPAD1_IP)..."
+        $IPAD1_SCP "$APP_TAR" "root@${IPAD1_IP}:/tmp/HADashboard.app.tar.gz"
+        $IPAD1_SCP "$IPAD1_PLIST" "root@${IPAD1_IP}:/tmp/ha-prefs.plist"
+
+        # Install
+        echo "   Installing..."
+        $IPAD1_SSH "
+            cd /Applications
+            rm -rf 'HA Dashboard.app'
+            tar xzf /tmp/HADashboard.app.tar.gz
+            rm /tmp/HADashboard.app.tar.gz
+
+            # Re-sign with ldid
+            which ldid >/dev/null 2>&1 && ldid -S 'HA Dashboard.app/HA Dashboard'
+
+            # Kill if running
+            killall 'HA Dashboard' 2>/dev/null || true
+
+            # Refresh SpringBoard app cache
+            uicache 2>/dev/null || true
+
+            # Write preferences
+            PREFS_DIR=/var/mobile/Library/Preferences
+            mkdir -p \$PREFS_DIR
+            mv /tmp/ha-prefs.plist \$PREFS_DIR/$BUNDLE_ID.plist
+            chmod 644 \$PREFS_DIR/$BUNDLE_ID.plist
+            chown mobile:mobile \$PREFS_DIR/$BUNDLE_ID.plist
+
+            killall cfprefsd 2>/dev/null || true
+            rm -f /tmp/ha-log.txt
+            sleep 2
+
+            open $BUNDLE_ID 2>/dev/null || true
+        "
+
+        echo "   Waiting for startup..."
+        sleep 8
+        echo ""
+        echo "── iPad 1 log ─────────────────────────────────────────"
+        $IPAD1_SSH "cat /var/mobile/Documents/ha-log.txt 2>/dev/null || echo '(no log file found)'"
+        echo "────────────────────────────────────────────────────────"
+        echo ""
+        echo "✅ Deployed to iPad 1 (WiFi)"
         ;;
 
     ipad2)
