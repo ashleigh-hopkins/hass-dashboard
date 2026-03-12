@@ -62,6 +62,7 @@
                         endDate:(NSDate *)endDate
                       maxPoints:(NSUInteger)maxPoints
                      completion:(void (^)(NSArray *, NSError *))completion {
+    HALogD(@"history", @"fetchHistory: entityId=%@ start=%@ end=%@", entityId, startDate, endDate);
     if (!entityId || !completion) return;
 
     // In demo mode, return fake history data

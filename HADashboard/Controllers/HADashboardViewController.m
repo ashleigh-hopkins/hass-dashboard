@@ -336,6 +336,9 @@ static NSString * const kSectionHeaderReuseId = @"HASectionHeader";
     [super viewDidLayoutSubviews];
     self.backgroundGradient.frame = self.view.bounds;
 
+    // Check screenshot trigger on every layout pass (timer may not fire on iOS 5)
+    [self checkScreenshotTrigger];
+
     if (!HAAutoLayoutAvailable()) {
         CGRect bounds = self.view.bounds;
 
@@ -362,8 +365,10 @@ static NSString * const kSectionHeaderReuseId = @"HASectionHeader";
         CGFloat cvTop;
         if (!self.viewPicker.hidden) {
             cvTop = CGRectGetMaxY(self.viewPicker.frame) + 12.0;
+        } else if (connH > 0) {
+            cvTop = connY + connH;
         } else {
-            cvTop = pickerY;
+            cvTop = connY; // right below nav bar / status bar
         }
         self.collectionView.frame = CGRectMake(0, cvTop, bounds.size.width, bounds.size.height - cvTop);
 
@@ -1093,8 +1098,9 @@ static const CGFloat kRowUnitHeight = 56.0;
     [self checkScreenshotTrigger];
     // Start polling timer so screenshots can be taken at any time (not just on reloadData)
     if (!self.screenshotTimer) {
-        self.screenshotTimer = [NSTimer scheduledTimerWithTimeInterval:2.0
+        self.screenshotTimer = [NSTimer timerWithTimeInterval:2.0
             target:self selector:@selector(checkScreenshotTrigger) userInfo:nil repeats:YES];
+        [[NSRunLoop mainRunLoop] addTimer:self.screenshotTimer forMode:NSRunLoopCommonModes];
     }
 }
 
@@ -2399,6 +2405,9 @@ heightForHeaderInSection:(NSInteger)section {
             self.screenshotScheduled = NO;
         });
     }
+    // Re-schedule via performSelector for iOS 5 where NSTimer may not fire reliably
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(checkScreenshotTrigger) object:nil];
+    [self performSelector:@selector(checkScreenshotTrigger) withObject:nil afterDelay:2.0];
 }
 
 - (void)captureScreenshotToPath:(NSString *)path {
@@ -2419,16 +2428,22 @@ heightForHeaderInSection:(NSInteger)section {
         CGImageRef cgImage = getScreenImage();
         if (cgImage) {
             // UIGetScreenImage returns the raw framebuffer in portrait.
-            // Rotate to match the current interface orientation.
-            UIImageOrientation orient = UIImageOrientationUp;
+            // Create a UIImage with the correct orientation, then draw it
+            // into a new context so UIImagePNGRepresentation outputs correctly.
+            UIImageOrientation imgOrient = UIImageOrientationUp;
             switch ([[UIApplication sharedApplication] statusBarOrientation]) {
-                case UIInterfaceOrientationLandscapeLeft:  orient = UIImageOrientationRight; break;
-                case UIInterfaceOrientationLandscapeRight: orient = UIImageOrientationLeft;  break;
-                case UIInterfaceOrientationPortraitUpsideDown: orient = UIImageOrientationDown; break;
+                case UIInterfaceOrientationLandscapeLeft:  imgOrient = UIImageOrientationRight; break;
+                case UIInterfaceOrientationLandscapeRight: imgOrient = UIImageOrientationLeft;  break;
+                case UIInterfaceOrientationPortraitUpsideDown: imgOrient = UIImageOrientationDown; break;
                 default: break;
             }
-            image = [UIImage imageWithCGImage:cgImage scale:1.0 orientation:orient];
+            UIImage *oriented = [UIImage imageWithCGImage:cgImage scale:1.0 orientation:imgOrient];
             CGImageRelease(cgImage);
+            // Draw into a fresh context to bake the orientation into pixels
+            UIGraphicsBeginImageContext(oriented.size);
+            [oriented drawInRect:CGRectMake(0, 0, oriented.size.width, oriented.size.height)];
+            image = UIGraphicsGetImageFromCurrentImageContext();
+            UIGraphicsEndImageContext();
         }
     }
 
