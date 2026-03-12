@@ -76,11 +76,14 @@ static const NSTimeInterval kDebounceInterval = 5.0;
     if (!entities || entities.count == 0) return;
     self.pendingEntities = nil;
 
-    // Serialize + write entirely off main thread.
-    // serializeEntities: iterates all entities and NSJSONSerialization can take
-    // 50-100ms on A5 with 100+ entities — must not block main.
+    // Snapshot entity data on main thread — copies string/dict values so the
+    // background block doesn't touch HAEntity objects that may be deallocated.
+    // This is fast (~1ms) since it copies NSString/NSDictionary refs, not deep data.
+    // The slow part (NSJSONSerialization) stays on the background queue.
+    NSDictionary *serialized = [self serializeEntities:entities];
+
+    // Write to disk off main thread.
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
-        NSDictionary *serialized = [self serializeEntities:entities];
         [[HACacheManager sharedManager] writeJSON:serialized toFile:kEntityStatesFile completion:^(BOOL success) {
             if (success) {
                 HALogD(@"cache", @"Wrote %lu entity states to disk", (unsigned long)serialized.count);
