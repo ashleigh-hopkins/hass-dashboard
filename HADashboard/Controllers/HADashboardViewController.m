@@ -1685,6 +1685,20 @@ static const CGFloat kRowUnitHeight = 56.0;
     // On iOS 9, willDisplayCell may not fire for initially visible cells.
     [self applyBlurBackgroundToCell:cell];
 
+    // PSTCollectionView (iOS 5) doesn't call willDisplayCell:, so trigger
+    // deferred network fetches here for camera/graph/calendar/logbook cells.
+    if (!HAAutoLayoutAvailable()) {
+        if ([cell isKindOfClass:[HACameraEntityCell class]]) {
+            [(HACameraEntityCell *)cell beginLoading];
+        } else if ([cell isKindOfClass:[HAGraphCardCell class]]) {
+            [(HAGraphCardCell *)cell beginLoading];
+        } else if ([cell isKindOfClass:[HACalendarCardCell class]]) {
+            [(HACalendarCardCell *)cell beginLoading];
+        } else if ([cell isKindOfClass:[HALogbookCardCell class]]) {
+            [(HALogbookCardCell *)cell beginLoading];
+        }
+    }
+
     [[HAPerfMonitor sharedMonitor] markCellEnd];
     return cell;
 }
