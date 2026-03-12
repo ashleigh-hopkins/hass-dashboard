@@ -1,5 +1,4 @@
 #import "HAAutoLayout.h"
-#import "HALog.h"
 #import "HAGraphCardCell.h"
 #import "HAGraphView.h"
 #import "HAEntity.h"
@@ -382,8 +381,6 @@ static NSArray<UIColor *> *sColorPalette;
     NSString *primaryId = graphEntityIds.firstObject;
     HAEntity *primary = allEntities[primaryId];
     self.currentEntityId = primaryId;
-    HALogD(@"graph", @"configureWithSection: primaryId=%@ primary=%p graphEntities=%lu needsHistory=%d",
-           primaryId, primary, (unsigned long)graphEntityInfos.count, self.needsHistoryLoad);
 
     // Icon from card config
     NSString *iconName = props[@"graphIcon"];
@@ -545,7 +542,6 @@ static NSArray<UIColor *> *sColorPalette;
 #pragma mark - Deferred Loading
 
 - (void)beginLoading {
-    HALogD(@"graph", @"beginLoading: needsHistory=%d entityId=%@", self.needsHistoryLoad, self.currentEntityId);
     if (self.needsHistoryLoad && self.currentEntityId) {
         self.needsHistoryLoad = NO;
         if (self.graphEntities.count > 1 || self.isTimelineMode) {

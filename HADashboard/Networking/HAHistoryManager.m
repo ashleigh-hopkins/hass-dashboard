@@ -99,10 +99,8 @@
             return;
         }
 
-        HALogD(@"history", @"fetchHistory response: %lu bytes, HTTP %ld, first200=%@",
-               (unsigned long)data.length, (long)((NSHTTPURLResponse *)response).statusCode,
-               [[NSString alloc] initWithData:[data subdataWithRange:NSMakeRange(0, MIN(200, data.length))]
-                                     encoding:NSUTF8StringEncoding]);
+        HALogD(@"history", @"fetchHistory response: %lu bytes, HTTP %ld",
+               (unsigned long)data.length, (long)((NSHTTPURLResponse *)response).statusCode);
         NSArray *points = [HAHistoryManager parseHistoryData:data maxPoints:capturedMax];
         HALogD(@"history", @"fetchHistory parsed: %lu points", (unsigned long)points.count);
         if (points.count > 0) {
@@ -271,11 +269,6 @@
         NSString *timeStr = [rawTime isKindOfClass:[NSString class]] ? rawTime : nil;
         if (!timeStr) continue;
 
-        static BOOL _loggedFirst = NO;
-        if (!_loggedFirst) {
-            _loggedFirst = YES;
-            HALogD(@"history", @"first timestamp: '%@' len=%lu", timeStr, (unsigned long)timeStr.length);
-        }
         NSDate *date = [parseFmt6 dateFromString:timeStr];
         if (!date) date = [parseFmt3 dateFromString:timeStr];
         if (!date) date = [parseFmtNone dateFromString:timeStr];
