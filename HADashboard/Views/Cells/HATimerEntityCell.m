@@ -217,12 +217,10 @@
                                                                preferredStyle:UIAlertControllerStyleAlert];
         [alert.view addSubview:picker];
         picker.translatesAutoresizingMaskIntoConstraints = NO;
-        if (HAAutoLayoutAvailable()) {
-            [NSLayoutConstraint activateConstraints:@[
-                [picker.centerXAnchor constraintEqualToAnchor:alert.view.centerXAnchor],
-                [picker.topAnchor constraintEqualToAnchor:alert.view.topAnchor constant:50],
-            ]];
-        }
+        HAActivateConstraints(@[
+            HACon([picker.centerXAnchor constraintEqualToAnchor:alert.view.centerXAnchor]),
+            HACon([picker.topAnchor constraintEqualToAnchor:alert.view.topAnchor constant:50]),
+        ]);
         [alert addAction:[UIAlertAction actionWithTitle:@"Set" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
             setDuration();
         }]];

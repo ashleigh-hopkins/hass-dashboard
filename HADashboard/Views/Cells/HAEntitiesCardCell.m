@@ -144,9 +144,7 @@ static const CGFloat kSceneChipRowHeight = 44.0; // chip height + padding
     // Bottom constraint uses high priority (not required) to avoid conflicts
     // with the cell frame height set by HAColumnarLayout.
     NSLayoutConstraint *bottom = HAMakeConstraint([self.sceneChipScrollView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:0]);
-    if (HAAutoLayoutAvailable()) {
-        bottom.priority = UILayoutPriorityDefaultHigh;
-    }
+    bottom.priority = UILayoutPriorityDefaultHigh;
 
     HAActivateConstraints(@[
         HACon([self.stackView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor]),

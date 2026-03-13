@@ -1340,9 +1340,7 @@
         self.muteButton = [UIButton buttonWithType:UIButtonTypeSystem];
         self.muteButton.titleLabel.font = [UIFont systemFontOfSize:18];
         [self.muteButton addTarget:self action:@selector(muteTapped) forControlEvents:UIControlEventTouchUpInside];
-        if (HAAutoLayoutAvailable()) {
-            [self.muteButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:0];
-        }
+        [self.muteButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:0];
         [volumeRow addArrangedSubview:self.muteButton];
     }
 

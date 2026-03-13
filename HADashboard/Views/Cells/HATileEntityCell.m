@@ -110,33 +110,31 @@
     self.compactStack.hidden = YES; // start hidden, activated by applyCompactMode:
     [self.contentView addSubview:self.compactStack];
 
-    if (HAAutoLayoutAvailable()) {
-        // Normal layout: icon on the left, name + state stacked to the right (HA web style).
-        // Pin to a fixed 72px top area so features below don't shift the content.
-        CGFloat iconWidth = 32.0;
-        CGFloat tileAreaCenterY = 72.0 / 2.0; // Center of the 72px tile content area
-        self.normalConstraints = @[
-            [self.tileIconLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:12],
-            [self.tileIconLabel.centerYAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:tileAreaCenterY],
-            [self.tileIconLabel.widthAnchor constraintEqualToConstant:iconWidth],
-            [self.tileNameLabel.leadingAnchor constraintEqualToAnchor:self.tileIconLabel.trailingAnchor constant:10],
-            [self.tileNameLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-padding],
-            [self.tileNameLabel.bottomAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:tileAreaCenterY - 1],
-            [self.tileStateLabel.leadingAnchor constraintEqualToAnchor:self.tileNameLabel.leadingAnchor],
-            [self.tileStateLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-padding],
-            [self.tileStateLabel.topAnchor constraintEqualToAnchor:self.tileNameLabel.bottomAnchor constant:2],
-        ];
+    // Normal layout: icon on the left, name + state stacked to the right (HA web style).
+    // Pin to a fixed 72px top area so features below don't shift the content.
+    CGFloat iconWidth = 32.0;
+    CGFloat tileAreaCenterY = 72.0 / 2.0; // Center of the 72px tile content area
+    self.normalConstraints = @[
+        HACon([self.tileIconLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:12]),
+        HACon([self.tileIconLabel.centerYAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:tileAreaCenterY]),
+        HACon([self.tileIconLabel.widthAnchor constraintEqualToConstant:iconWidth]),
+        HACon([self.tileNameLabel.leadingAnchor constraintEqualToAnchor:self.tileIconLabel.trailingAnchor constant:10]),
+        HACon([self.tileNameLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-padding]),
+        HACon([self.tileNameLabel.bottomAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:tileAreaCenterY - 1]),
+        HACon([self.tileStateLabel.leadingAnchor constraintEqualToAnchor:self.tileNameLabel.leadingAnchor]),
+        HACon([self.tileStateLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-padding]),
+        HACon([self.tileStateLabel.topAnchor constraintEqualToAnchor:self.tileNameLabel.bottomAnchor constant:2]),
+    ];
 
-        self.compactConstraints = @[
-            [self.compactStack.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor],
-            [self.compactStack.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
-            [self.compactStack.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.contentView.leadingAnchor constant:4],
-            [self.compactStack.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-4],
-        ];
+    self.compactConstraints = @[
+        HACon([self.compactStack.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor]),
+        HACon([self.compactStack.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor]),
+        HACon([self.compactStack.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.contentView.leadingAnchor constant:4]),
+        HACon([self.compactStack.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-4]),
+    ];
 
-        // Start with normal layout
-        HAActivateConstraints(self.normalConstraints);
-    }
+    // Start with normal layout
+    HAActivateConstraints(self.normalConstraints);
 
     // Features stack (brightness slider, cover buttons, etc.) — below main tile area
     self.featuresStack = [[HAStackView alloc] init];

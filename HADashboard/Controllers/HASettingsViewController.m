@@ -434,11 +434,9 @@ static NSString *const kDeviceNameOverride    = @"ha_device_name_override";
     NSDictionary *metrics = @{@"p": @16, @"sh": @32, @"hg": @10, @"fh": @44};
 
     NSMutableArray *verticalConstraints = [NSMutableArray array];
-    if (HAAutoLayoutAvailable()) {
-        [verticalConstraints addObjectsFromArray:[NSLayoutConstraint constraintsWithVisualFormat:
-            @"V:|[connHdr]-hg-[connRow]-sh-[appHdr]-hg-[themeStack]-sh-[dispHdr]-hg-[kiosk]-p-[demo]-p-[autoReload]-p-[camMute]-sh-[intHdr]-hg-[intSec]-sh-[aboutHdr]-hg-[about]-sh-[devHdr]-hg-[dev]-sh-[logout(fh)]|"
-            options:0 metrics:metrics views:views]];
-    }
+    [verticalConstraints addObjectsFromArray:[NSLayoutConstraint constraintsWithVisualFormat:
+        @"V:|[connHdr]-hg-[connRow]-sh-[appHdr]-hg-[themeStack]-sh-[dispHdr]-hg-[kiosk]-p-[demo]-p-[autoReload]-p-[camMute]-sh-[intHdr]-hg-[intSec]-sh-[aboutHdr]-hg-[about]-sh-[devHdr]-hg-[dev]-sh-[logout(fh)]|"
+        options:0 metrics:metrics views:views]];
     HAActivateConstraints(verticalConstraints);
 
     // Pin all views to container leading/trailing edges
@@ -512,18 +510,16 @@ static NSString *const kDeviceNameOverride    = @"ha_device_name_override";
     help.translatesAutoresizingMaskIntoConstraints = NO;
     [section addSubview:help];
 
-    if (HAAutoLayoutAvailable()) {
-        [NSLayoutConstraint activateConstraints:@[
-            [label.topAnchor constraintEqualToAnchor:section.topAnchor],
-            [label.leadingAnchor constraintEqualToAnchor:section.leadingAnchor],
-            [sw.trailingAnchor constraintEqualToAnchor:section.trailingAnchor],
-            [sw.centerYAnchor constraintEqualToAnchor:label.centerYAnchor],
-            [help.topAnchor constraintEqualToAnchor:label.bottomAnchor constant:8],
-            [help.leadingAnchor constraintEqualToAnchor:section.leadingAnchor],
-            [help.trailingAnchor constraintEqualToAnchor:section.trailingAnchor],
-            [help.bottomAnchor constraintEqualToAnchor:section.bottomAnchor],
-        ]];
-    }
+    HAActivateConstraints(@[
+        HACon([label.topAnchor constraintEqualToAnchor:section.topAnchor]),
+        HACon([label.leadingAnchor constraintEqualToAnchor:section.leadingAnchor]),
+        HACon([sw.trailingAnchor constraintEqualToAnchor:section.trailingAnchor]),
+        HACon([sw.centerYAnchor constraintEqualToAnchor:label.centerYAnchor]),
+        HACon([help.topAnchor constraintEqualToAnchor:label.bottomAnchor constant:8]),
+        HACon([help.leadingAnchor constraintEqualToAnchor:section.leadingAnchor]),
+        HACon([help.trailingAnchor constraintEqualToAnchor:section.trailingAnchor]),
+        HACon([help.bottomAnchor constraintEqualToAnchor:section.bottomAnchor]),
+    ]);
 
     return section;
 }
@@ -553,15 +549,13 @@ static NSString *const kDeviceNameOverride    = @"ha_device_name_override";
     self.registrationSwitch.translatesAutoresizingMaskIntoConstraints = NO;
     [regRow addSubview:self.registrationSwitch];
 
-    if (HAAutoLayoutAvailable()) {
-        [NSLayoutConstraint activateConstraints:@[
-            [regLabel.topAnchor constraintEqualToAnchor:regRow.topAnchor],
-            [regLabel.leadingAnchor constraintEqualToAnchor:regRow.leadingAnchor],
-            [regLabel.bottomAnchor constraintEqualToAnchor:regRow.bottomAnchor],
-            [self.registrationSwitch.trailingAnchor constraintEqualToAnchor:regRow.trailingAnchor],
-            [self.registrationSwitch.centerYAnchor constraintEqualToAnchor:regLabel.centerYAnchor],
-        ]];
-    }
+    HAActivateConstraints(@[
+        HACon([regLabel.topAnchor constraintEqualToAnchor:regRow.topAnchor]),
+        HACon([regLabel.leadingAnchor constraintEqualToAnchor:regRow.leadingAnchor]),
+        HACon([regLabel.bottomAnchor constraintEqualToAnchor:regRow.bottomAnchor]),
+        HACon([self.registrationSwitch.trailingAnchor constraintEqualToAnchor:regRow.trailingAnchor]),
+        HACon([self.registrationSwitch.centerYAnchor constraintEqualToAnchor:regLabel.centerYAnchor]),
+    ]);
 
     // Status label
     self.registrationStatusLabel = [[UILabel alloc] init];
@@ -591,9 +585,7 @@ static NSString *const kDeviceNameOverride    = @"ha_device_name_override";
     self.deviceNameField.translatesAutoresizingMaskIntoConstraints = NO;
     [self.deviceNameField addTarget:self action:@selector(deviceNameChanged:) forControlEvents:UIControlEventEditingDidEnd];
     [stack addArrangedSubview:self.deviceNameField];
-    if (HAAutoLayoutAvailable()) {
-        [self.deviceNameField.heightAnchor constraintEqualToConstant:36].active = YES;
-    }
+    HASetConstraintActive(HAMakeConstraint([self.deviceNameField.heightAnchor constraintEqualToConstant:36]), YES);
 
     return stack;
 }
@@ -720,17 +712,15 @@ static NSString *const kDeviceNameOverride    = @"ha_device_name_override";
     val.translatesAutoresizingMaskIntoConstraints = NO;
     [row addSubview:val];
 
-    if (HAAutoLayoutAvailable()) {
-        [NSLayoutConstraint activateConstraints:@[
-            [lbl.topAnchor constraintEqualToAnchor:row.topAnchor],
-            [lbl.leadingAnchor constraintEqualToAnchor:row.leadingAnchor],
-            [lbl.bottomAnchor constraintEqualToAnchor:row.bottomAnchor],
-            [val.topAnchor constraintEqualToAnchor:row.topAnchor],
-            [val.trailingAnchor constraintEqualToAnchor:row.trailingAnchor],
-            [val.bottomAnchor constraintEqualToAnchor:row.bottomAnchor],
-            [val.leadingAnchor constraintGreaterThanOrEqualToAnchor:lbl.trailingAnchor constant:12],
-        ]];
-    }
+    HAActivateConstraints(@[
+        HACon([lbl.topAnchor constraintEqualToAnchor:row.topAnchor]),
+        HACon([lbl.leadingAnchor constraintEqualToAnchor:row.leadingAnchor]),
+        HACon([lbl.bottomAnchor constraintEqualToAnchor:row.bottomAnchor]),
+        HACon([val.topAnchor constraintEqualToAnchor:row.topAnchor]),
+        HACon([val.trailingAnchor constraintEqualToAnchor:row.trailingAnchor]),
+        HACon([val.bottomAnchor constraintEqualToAnchor:row.bottomAnchor]),
+        HACon([val.leadingAnchor constraintGreaterThanOrEqualToAnchor:lbl.trailingAnchor constant:12]),
+    ]);
     // Give value label higher compression resistance
     [lbl setContentHuggingPriority:UILayoutPriorityDefaultHigh forAxis:0];
     [val setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:0];
@@ -812,23 +802,21 @@ static NSString *const kDeviceNameOverride    = @"ha_device_name_override";
     chevron.userInteractionEnabled = NO;
     [row addSubview:chevron];
 
-    if (HAAutoLayoutAvailable()) {
-        [NSLayoutConstraint activateConstraints:@[
-            [row.heightAnchor constraintEqualToConstant:56],
-            [icon.leadingAnchor constraintEqualToAnchor:row.leadingAnchor constant:14],
-            [icon.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
-            [icon.widthAnchor constraintEqualToConstant:24],
-            [self.connectionServerLabel.leadingAnchor constraintEqualToAnchor:icon.trailingAnchor constant:12],
-            [self.connectionServerLabel.topAnchor constraintEqualToAnchor:row.topAnchor constant:10],
-            [self.connectionServerLabel.trailingAnchor constraintLessThanOrEqualToAnchor:chevron.leadingAnchor constant:-8],
-            [self.connectionModeLabel.leadingAnchor constraintEqualToAnchor:self.connectionServerLabel.leadingAnchor],
-            [self.connectionModeLabel.topAnchor constraintEqualToAnchor:self.connectionServerLabel.bottomAnchor constant:2],
-            [self.connectionModeLabel.trailingAnchor constraintLessThanOrEqualToAnchor:chevron.leadingAnchor constant:-8],
-            [chevron.trailingAnchor constraintEqualToAnchor:row.trailingAnchor constant:-14],
-            [chevron.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
-            [chevron.widthAnchor constraintEqualToConstant:12],
-        ]];
-    }
+    HAActivateConstraints(@[
+        HACon([row.heightAnchor constraintEqualToConstant:56]),
+        HACon([icon.leadingAnchor constraintEqualToAnchor:row.leadingAnchor constant:14]),
+        HACon([icon.centerYAnchor constraintEqualToAnchor:row.centerYAnchor]),
+        HACon([icon.widthAnchor constraintEqualToConstant:24]),
+        HACon([self.connectionServerLabel.leadingAnchor constraintEqualToAnchor:icon.trailingAnchor constant:12]),
+        HACon([self.connectionServerLabel.topAnchor constraintEqualToAnchor:row.topAnchor constant:10]),
+        HACon([self.connectionServerLabel.trailingAnchor constraintLessThanOrEqualToAnchor:chevron.leadingAnchor constant:-8]),
+        HACon([self.connectionModeLabel.leadingAnchor constraintEqualToAnchor:self.connectionServerLabel.leadingAnchor]),
+        HACon([self.connectionModeLabel.topAnchor constraintEqualToAnchor:self.connectionServerLabel.bottomAnchor constant:2]),
+        HACon([self.connectionModeLabel.trailingAnchor constraintLessThanOrEqualToAnchor:chevron.leadingAnchor constant:-8]),
+        HACon([chevron.trailingAnchor constraintEqualToAnchor:row.trailingAnchor constant:-14]),
+        HACon([chevron.centerYAnchor constraintEqualToAnchor:row.centerYAnchor]),
+        HACon([chevron.widthAnchor constraintEqualToConstant:12]),
+    ]);
 
     return row;
 }

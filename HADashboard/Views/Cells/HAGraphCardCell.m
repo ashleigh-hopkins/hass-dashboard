@@ -126,51 +126,49 @@ static NSArray<UIColor *> *sColorPalette;
     [self.contentView addSubview:self.statsLabel];
 
     CGFloat pad = 12;
-    if (HAAutoLayoutAvailable()) {
-        // Icon constraints (fixed width, vertically centered with name)
-        NSLayoutConstraint *iconLeading = [self.iconLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:pad];
-        NSLayoutConstraint *iconCenterY = [self.iconLabel.centerYAnchor constraintEqualToAnchor:self.nameLabel.centerYAnchor];
-        NSLayoutConstraint *iconWidth = [self.iconLabel.widthAnchor constraintEqualToConstant:22];
+    // Icon constraints (fixed width, vertically centered with name)
+    NSLayoutConstraint *iconLeading = HAMakeConstraint([self.iconLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:pad]);
+    NSLayoutConstraint *iconCenterY = HAMakeConstraint([self.iconLabel.centerYAnchor constraintEqualToAnchor:self.nameLabel.centerYAnchor]);
+    NSLayoutConstraint *iconWidth = HAMakeConstraint([self.iconLabel.widthAnchor constraintEqualToConstant:22]);
 
-        // Name label: leading anchored to icon when visible, to content edge when not
-        NSLayoutConstraint *nameLeadingToIcon = [self.nameLabel.leadingAnchor constraintEqualToAnchor:self.iconLabel.trailingAnchor constant:4];
-        NSLayoutConstraint *nameLeadingToEdge = [self.nameLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:pad];
-        nameLeadingToEdge.active = YES;
-        nameLeadingToIcon.active = NO;
-        objc_setAssociatedObject(self, "nameLeadingToIcon", nameLeadingToIcon, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-        objc_setAssociatedObject(self, "nameLeadingToEdge", nameLeadingToEdge, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    // Name label: leading anchored to icon when visible, to content edge when not
+    NSLayoutConstraint *nameLeadingToIcon = HAMakeConstraint([self.nameLabel.leadingAnchor constraintEqualToAnchor:self.iconLabel.trailingAnchor constant:4]);
+    NSLayoutConstraint *nameLeadingToEdge = HAMakeConstraint([self.nameLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:pad]);
+    HASetConstraintActive(nameLeadingToEdge, YES);
+    HASetConstraintActive(nameLeadingToIcon, NO);
+    objc_setAssociatedObject(self, "nameLeadingToIcon", nameLeadingToIcon, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(self, "nameLeadingToEdge", nameLeadingToEdge, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 
-        // Graph bottom: either to stats or to content bottom
-        self.graphBottomToStats = HAMakeConstraint([self.graphView.bottomAnchor constraintEqualToAnchor:self.statsLabel.topAnchor constant:-2]);
-        self.graphBottomToContent = HAMakeConstraint([self.graphView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor]);
-        HASetConstraintActive(self.graphBottomToContent, YES);
-        HASetConstraintActive(self.graphBottomToStats, NO);
+    // Graph bottom: either to stats or to content bottom
+    self.graphBottomToStats = HAMakeConstraint([self.graphView.bottomAnchor constraintEqualToAnchor:self.statsLabel.topAnchor constant:-2]);
+    self.graphBottomToContent = HAMakeConstraint([self.graphView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor]);
+    HASetConstraintActive(self.graphBottomToContent, YES);
+    HASetConstraintActive(self.graphBottomToStats, NO);
 
-        HAActivateConstraints(@[
-            HACon([self.nameLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:pad]),
-            HACon([self.nameLabel.trailingAnchor constraintEqualToAnchor:self.secondaryLabel.leadingAnchor constant:-8]),
-            HACon(iconLeading), HACon(iconCenterY), HACon(iconWidth),
+    HAActivateConstraints(@[
+        HACon([self.nameLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:pad]),
+        HACon([self.nameLabel.trailingAnchor constraintEqualToAnchor:self.secondaryLabel.leadingAnchor constant:-8]),
+        HACon(iconLeading), HACon(iconCenterY), HACon(iconWidth),
 
-            HACon([self.valueLabel.topAnchor constraintEqualToAnchor:self.nameLabel.bottomAnchor constant:2]),
-            HACon([self.valueLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:pad]),
+        HACon([self.valueLabel.topAnchor constraintEqualToAnchor:self.nameLabel.bottomAnchor constant:2]),
+        HACon([self.valueLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:pad]),
 
-            HACon([self.unitLabel.leadingAnchor constraintEqualToAnchor:self.valueLabel.trailingAnchor constant:4]),
-            HACon([self.unitLabel.lastBaselineAnchor constraintEqualToAnchor:self.valueLabel.lastBaselineAnchor]),
+        HACon([self.unitLabel.leadingAnchor constraintEqualToAnchor:self.valueLabel.trailingAnchor constant:4]),
+        HACon([self.unitLabel.lastBaselineAnchor constraintEqualToAnchor:self.valueLabel.lastBaselineAnchor]),
 
-            HACon([self.secondaryLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:pad]),
-            HACon([self.secondaryLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-pad]),
-            HACon([self.secondaryLabel.widthAnchor constraintLessThanOrEqualToConstant:140]),
+        HACon([self.secondaryLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:pad]),
+        HACon([self.secondaryLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-pad]),
+        HACon([self.secondaryLabel.widthAnchor constraintLessThanOrEqualToConstant:140]),
 
-            HACon([self.graphView.topAnchor constraintEqualToAnchor:self.valueLabel.bottomAnchor constant:8]),
-            HACon([self.graphView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor]),
-            HACon([self.graphView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor]),
+        HACon([self.graphView.topAnchor constraintEqualToAnchor:self.valueLabel.bottomAnchor constant:8]),
+        HACon([self.graphView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor]),
+        HACon([self.graphView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor]),
 
-            HACon([self.statsLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:pad]),
-            HACon([self.statsLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-pad]),
-            HACon([self.statsLabel.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-4]),
-            HACon([self.statsLabel.heightAnchor constraintEqualToConstant:16]),
-        ]);
-    }
+        HACon([self.statsLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:pad]),
+        HACon([self.statsLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-pad]),
+        HACon([self.statsLabel.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-4]),
+        HACon([self.statsLabel.heightAnchor constraintEqualToConstant:16]),
+    ]);
 }
 
 - (void)layoutSubviews {

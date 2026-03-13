@@ -79,16 +79,10 @@
     [self addSubview:self.stateLabel];
 
     // Name label should resist compression so it always shows
-    if (HAAutoLayoutAvailable()) {
-        [self.nameLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:0];
-    }
-    if (HAAutoLayoutAvailable()) {
-        [self.stateLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:0];
-    }
+    [self.nameLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:0];
+    [self.stateLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:0];
     // State label should hug its content (not expand beyond needed)
-    if (HAAutoLayoutAvailable()) {
-        [self.stateLabel setContentHuggingPriority:UILayoutPriorityDefaultHigh forAxis:0];
-    }
+    [self.stateLabel setContentHuggingPriority:UILayoutPriorityDefaultHigh forAxis:0];
 
     // Toggle switch (for toggle-capable entities) — scaled down to 80% for compact rows
     self.toggleSwitch = [[HASwitch alloc] init];

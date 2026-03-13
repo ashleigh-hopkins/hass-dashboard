@@ -71,43 +71,33 @@ static const NSInteger kDefaultForecastRows = 5;
     [self.contentView addSubview:self.forecastContainer];
 
     // Symbol: left side, below name
-    if (HAAutoLayoutAvailable()) {
-        [NSLayoutConstraint activateConstraints:@[
-            [self.conditionSymbol.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding],
-            [self.conditionSymbol.topAnchor constraintEqualToAnchor:self.nameLabel.bottomAnchor constant:2],
-        ]];
-    }
+    HAActivateConstraints(@[
+        HACon([self.conditionSymbol.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding]),
+        HACon([self.conditionSymbol.topAnchor constraintEqualToAnchor:self.nameLabel.bottomAnchor constant:2]),
+    ]);
 
     // Temp: right of symbol
-    if (HAAutoLayoutAvailable()) {
-        [NSLayoutConstraint activateConstraints:@[
-            [self.tempLabel.leadingAnchor constraintEqualToAnchor:self.conditionSymbol.trailingAnchor constant:8],
-            [self.tempLabel.centerYAnchor constraintEqualToAnchor:self.conditionSymbol.centerYAnchor],
-        ]];
-    }
+    HAActivateConstraints(@[
+        HACon([self.tempLabel.leadingAnchor constraintEqualToAnchor:self.conditionSymbol.trailingAnchor constant:8]),
+        HACon([self.tempLabel.centerYAnchor constraintEqualToAnchor:self.conditionSymbol.centerYAnchor]),
+    ]);
 
     // Details: below condition symbol, single line
-    if (HAAutoLayoutAvailable()) {
-        [NSLayoutConstraint activateConstraints:@[
-            [self.detailsLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding],
-            [self.detailsLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-padding],
-            [self.detailsLabel.topAnchor constraintEqualToAnchor:self.conditionSymbol.bottomAnchor constant:4],
-        ]];
-    }
+    HAActivateConstraints(@[
+        HACon([self.detailsLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding]),
+        HACon([self.detailsLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-padding]),
+        HACon([self.detailsLabel.topAnchor constraintEqualToAnchor:self.conditionSymbol.bottomAnchor constant:4]),
+    ]);
 
     // Forecast container: below details, pinned leading/trailing/bottom
-    if (HAAutoLayoutAvailable()) {
-        self.forecastHeightConstraint = [self.forecastContainer.heightAnchor constraintEqualToConstant:kForecastRowHeight * kDefaultForecastRows];
-    }
-    if (HAAutoLayoutAvailable()) {
-        [NSLayoutConstraint activateConstraints:@[
-            [self.forecastContainer.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding],
-            [self.forecastContainer.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-padding],
-            [self.forecastContainer.topAnchor constraintGreaterThanOrEqualToAnchor:self.detailsLabel.bottomAnchor constant:kForecastGap],
-            [self.forecastContainer.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-kBottomPadding],
-            self.forecastHeightConstraint,
-        ]];
-    }
+    self.forecastHeightConstraint = HAMakeConstraint([self.forecastContainer.heightAnchor constraintEqualToConstant:kForecastRowHeight * kDefaultForecastRows]);
+    HAActivateConstraints(@[
+        HACon([self.forecastContainer.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding]),
+        HACon([self.forecastContainer.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-padding]),
+        HACon([self.forecastContainer.topAnchor constraintGreaterThanOrEqualToAnchor:self.detailsLabel.bottomAnchor constant:kForecastGap]),
+        HACon([self.forecastContainer.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-kBottomPadding]),
+        HACon(self.forecastHeightConstraint),
+    ]);
 }
 
 #pragma mark - Configure

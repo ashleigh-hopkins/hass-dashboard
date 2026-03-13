@@ -37,17 +37,15 @@
     self.buttonStack.translatesAutoresizingMaskIntoConstraints = NO;
     [self addSubview:self.buttonStack];
 
-    if (HAAutoLayoutAvailable()) {
-        NSLayoutConstraint *heightConstraint = [self.heightAnchor constraintEqualToConstant:[HAButtonRowFeatureView preferredHeight]];
-        heightConstraint.priority = UILayoutPriorityDefaultHigh;
-        HAActivateConstraints(@[
-            HACon([self.buttonStack.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:12]),
-            HACon([self.buttonStack.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-12]),
-            HACon([self.buttonStack.centerYAnchor constraintEqualToAnchor:self.centerYAnchor]),
-            HACon([self.buttonStack.heightAnchor constraintEqualToConstant:32]),
-            HACon(heightConstraint),
-        ]);
-    }
+    NSLayoutConstraint *heightConstraint = HAMakeConstraint([self.heightAnchor constraintEqualToConstant:[HAButtonRowFeatureView preferredHeight]]);
+    heightConstraint.priority = UILayoutPriorityDefaultHigh;
+    HAActivateConstraints(@[
+        HACon([self.buttonStack.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:12]),
+        HACon([self.buttonStack.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-12]),
+        HACon([self.buttonStack.centerYAnchor constraintEqualToAnchor:self.centerYAnchor]),
+        HACon([self.buttonStack.heightAnchor constraintEqualToConstant:32]),
+        HACon(heightConstraint),
+    ]);
 }
 
 - (void)configureWithEntity:(HAEntity *)entity featureConfig:(NSDictionary *)config {
@@ -214,9 +212,7 @@
     self.tempValueLabel.text = target
         ? [NSString stringWithFormat:@"%@%@", target, unit]
         : @"--";
-    if (HAAutoLayoutAvailable()) {
-        [self.tempValueLabel setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:0];
-    }
+    [self.tempValueLabel setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:0];
 
     UIButton *plusBtn = [self makeButtonWithTitle:@"+" tag:41];
     plusBtn.enabled = available;

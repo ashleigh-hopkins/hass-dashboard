@@ -400,23 +400,21 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
     self.extraModesStack.hidden = YES;
     [self.contentView addSubview:self.extraModesStack];
 
-    if (HAAutoLayoutAvailable()) {
-        [NSLayoutConstraint activateConstraints:@[
-            [self.modeBar.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kModeBarSidePad],
-            [self.modeBar.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kModeBarSidePad],
-            [self.modeBar.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-kModeBarBottomPad],
-            [self.modeBar.heightAnchor constraintEqualToConstant:kModeBarHeight],
-            [self.modeStack.leadingAnchor constraintEqualToAnchor:self.modeBar.leadingAnchor constant:8],
-            [self.modeStack.trailingAnchor constraintEqualToAnchor:self.modeBar.trailingAnchor constant:-8],
-            [self.modeStack.topAnchor constraintEqualToAnchor:self.modeBar.topAnchor constant:4],
-            [self.modeStack.bottomAnchor constraintEqualToAnchor:self.modeBar.bottomAnchor constant:-4],
-            // Extra modes: overlaid inside the arc area above mode bar (small text)
-            [self.extraModesStack.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kModeBarSidePad],
-            [self.extraModesStack.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kModeBarSidePad],
-            [self.extraModesStack.bottomAnchor constraintEqualToAnchor:self.modeBar.topAnchor constant:-4],
-            [self.extraModesStack.heightAnchor constraintEqualToConstant:24],
-        ]];
-    }
+    HAActivateConstraints(@[
+        HACon([self.modeBar.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kModeBarSidePad]),
+        HACon([self.modeBar.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kModeBarSidePad]),
+        HACon([self.modeBar.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-kModeBarBottomPad]),
+        HACon([self.modeBar.heightAnchor constraintEqualToConstant:kModeBarHeight]),
+        HACon([self.modeStack.leadingAnchor constraintEqualToAnchor:self.modeBar.leadingAnchor constant:8]),
+        HACon([self.modeStack.trailingAnchor constraintEqualToAnchor:self.modeBar.trailingAnchor constant:-8]),
+        HACon([self.modeStack.topAnchor constraintEqualToAnchor:self.modeBar.topAnchor constant:4]),
+        HACon([self.modeStack.bottomAnchor constraintEqualToAnchor:self.modeBar.bottomAnchor constant:-4]),
+        // Extra modes: overlaid inside the arc area above mode bar (small text)
+        HACon([self.extraModesStack.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kModeBarSidePad]),
+        HACon([self.extraModesStack.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kModeBarSidePad]),
+        HACon([self.extraModesStack.bottomAnchor constraintEqualToAnchor:self.modeBar.topAnchor constant:-4]),
+        HACon([self.extraModesStack.heightAnchor constraintEqualToConstant:24]),
+    ]);
 }
 
 - (UIButton *)makeOutlinedButtonWithTitle:(NSString *)title action:(SEL)action {
@@ -1141,9 +1139,7 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
         [btn addTarget:self action:@selector(modeTapped:) forControlEvents:UIControlEventTouchUpInside];
 
         // Height only — width is managed by FillEqually stack distribution
-        if (HAAutoLayoutAvailable()) {
-            [btn.heightAnchor constraintEqualToConstant:modeBtnHeight].active = YES;
-        }
+        HASetConstraintActive(HAMakeConstraint([btn.heightAnchor constraintEqualToConstant:modeBtnHeight]), YES);
 
         BOOL isActive = [mode isEqualToString:currentMode];
         if (isActive) {

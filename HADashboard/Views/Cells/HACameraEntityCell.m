@@ -256,13 +256,9 @@ static HACameraStreamMode currentStreamMode(void) {
     // Snapshot button leads from power button when visible, from snapshotView edge when hidden.
     // Use two constraints with different priorities — the active one wins.
     NSLayoutConstraint *snapAfterPower = HAMakeConstraint([self.cameraSnapshotButton.leadingAnchor constraintEqualToAnchor:self.cameraPowerButton.trailingAnchor constant:4]);
-    if (HAAutoLayoutAvailable()) {
-        snapAfterPower.priority = UILayoutPriorityDefaultHigh; // 750 — used when power visible
-    }
+    snapAfterPower.priority = UILayoutPriorityDefaultHigh; // 750 — used when power visible
     NSLayoutConstraint *snapAtEdge = HAMakeConstraint([self.cameraSnapshotButton.leadingAnchor constraintEqualToAnchor:self.snapshotView.leadingAnchor constant:6]);
-    if (HAAutoLayoutAvailable()) {
-        snapAtEdge.priority = UILayoutPriorityDefaultLow; // 250 — used when power hidden
-    }
+    snapAtEdge.priority = UILayoutPriorityDefaultLow; // 250 — used when power hidden
     self.snapAfterPowerConstraint = snapAfterPower;
     self.snapAtEdgeConstraint = snapAtEdge;
 

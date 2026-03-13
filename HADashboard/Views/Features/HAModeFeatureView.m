@@ -30,11 +30,9 @@
 - (instancetype)init {
     self = [super init];
     if (self) {
-        if (HAAutoLayoutAvailable()) {
-            NSLayoutConstraint *heightConstraint = [self.heightAnchor constraintEqualToConstant:[HAModeFeatureView preferredHeight]];
-            heightConstraint.priority = UILayoutPriorityDefaultHigh;
-            HAActivateConstraints(@[HACon(heightConstraint)]);
-        }
+        NSLayoutConstraint *heightConstraint = HAMakeConstraint([self.heightAnchor constraintEqualToConstant:[HAModeFeatureView preferredHeight]]);
+        heightConstraint.priority = UILayoutPriorityDefaultHigh;
+        HAActivateConstraints(@[HACon(heightConstraint)]);
     }
     return self;
 }

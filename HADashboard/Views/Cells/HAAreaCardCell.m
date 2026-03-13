@@ -151,12 +151,10 @@
         btn.layer.cornerRadius = 16;
         btn.tag = i;
         [btn addTarget:self action:@selector(toggleTapped:) forControlEvents:UIControlEventTouchUpInside];
-        if (HAAutoLayoutAvailable()) {
-            [NSLayoutConstraint activateConstraints:@[
-                [btn.widthAnchor constraintEqualToConstant:32],
-                [btn.heightAnchor constraintEqualToConstant:32],
-            ]];
-        }
+        HAActivateConstraints(@[
+            HACon([btn.widthAnchor constraintEqualToConstant:32]),
+            HACon([btn.heightAnchor constraintEqualToConstant:32]),
+        ]);
         [self.toggleStack addArrangedSubview:btn];
     }
 
