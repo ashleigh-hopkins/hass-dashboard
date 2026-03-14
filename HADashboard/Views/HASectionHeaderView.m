@@ -36,7 +36,7 @@
     self.titleLabel.font = [UIFont ha_systemFontOfSize:17 weight:HAFontWeightSemibold];
     self.titleLabel.textColor = [HATheme sectionHeaderColor];
     self.titleLabel.textAlignment = NSTextAlignmentLeft;
-    self.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    self.titleLabel.lineBreakMode = NSLineBreakByClipping;
     self.titleLabel.numberOfLines = 1;
     self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self addSubview:self.titleLabel];
@@ -92,9 +92,13 @@
         if (!self.iconLabel.hidden) {
             self.iconLabel.frame = CGRectMake(16, (h - 24) / 2, 24, 24);
             CGFloat titleX = CGRectGetMaxX(self.iconLabel.frame) + 4;
-            self.titleLabel.frame = CGRectMake(titleX, (h - 20) / 2, w - 16 - titleX, 20);
+            // Size title to fit content, not full column width — prevents iOS 5
+            // from spreading word spacing across the available width
+            CGSize titleFit = [self.titleLabel sizeThatFits:CGSizeMake(w - 16 - titleX, 20)];
+            self.titleLabel.frame = CGRectMake(titleX, (h - 20) / 2, MIN(titleFit.width, w - 16 - titleX), 20);
         } else {
-            self.titleLabel.frame = CGRectMake(16, (h - 20) / 2, w - 32, 20);
+            CGSize titleFit = [self.titleLabel sizeThatFits:CGSizeMake(w - 32, 20)];
+            self.titleLabel.frame = CGRectMake(16, (h - 20) / 2, MIN(titleFit.width, w - 32), 20);
         }
     }
 }
