@@ -394,4 +394,36 @@ static NSDictionary<NSString *, NSString *> *_domainIconMap = nil;
         }];
 }
 
++ (void)setIconGlyph:(NSString *)glyphString
+            iconSize:(CGFloat)iconSize
+           iconColor:(UIColor *)iconColor
+         onIconLabel:(UILabel *)iconLabel
+                text:(NSString *)text
+            textFont:(UIFont *)textFont
+           textColor:(UIColor *)textColor
+         onTextLabel:(UILabel *)textLabel {
+    if (!glyphString || !textLabel) return;
+
+    if (HASystemMajorVersion() >= 6) {
+        // iOS 6+: single attributed string with mixed fonts
+        NSMutableAttributedString *attr = [[NSMutableAttributedString alloc]
+            initWithAttributedString:[self attributedGlyph:glyphString fontSize:iconSize color:iconColor]];
+        [attr appendAttributedString:[[NSAttributedString alloc] initWithString:
+            [NSString stringWithFormat:@" %@", text ?: @""]
+            attributes:@{
+                HAFontAttributeName: textFont ?: [UIFont systemFontOfSize:14],
+                HAForegroundColorAttributeName: textColor ?: [UIColor blackColor]
+            }]];
+        textLabel.attributedText = attr;
+        iconLabel.hidden = YES;
+    } else {
+        // iOS 5: two separate labels (can't mix fonts in one UILabel)
+        iconLabel.text = glyphString;
+        iconLabel.hidden = NO;
+        textLabel.text = text;
+        textLabel.font = textFont;
+        textLabel.textColor = textColor;
+    }
+}
+
 @end

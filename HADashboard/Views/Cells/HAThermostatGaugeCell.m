@@ -59,7 +59,9 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
     HAGaugeFillNone,         // off
 };
 
-@interface HAThermostatGaugeCell () <UIGestureRecognizerDelegate>
+@interface HAThermostatGaugeCell () <UIGestureRecognizerDelegate> {
+    UILabel *_targetIconLabel;
+}
 @property (nonatomic, strong) CAShapeLayer *bgArcLayer;
 @property (nonatomic, strong) CAShapeLayer *coloredArcLayer;  // directional range at 0.5 opacity
 @property (nonatomic, strong) CAShapeLayer *fgArcLayer;        // active portion at 1.0 opacity
@@ -338,6 +340,13 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
 
     // Target/current label below temp (with icon)
     // HA web: 16px, weight 500 (medium)
+    _targetIconLabel = [[UILabel alloc] init];
+    _targetIconLabel.font = [HAIconMapper mdiFontOfSize:16];
+    _targetIconLabel.textColor = [HATheme secondaryTextColor];
+    _targetIconLabel.textAlignment = NSTextAlignmentCenter;
+    _targetIconLabel.hidden = YES;
+    [self.contentView addSubview:_targetIconLabel];
+
     self.targetLabel = [[UILabel alloc] init];
     self.targetLabel.font = [UIFont ha_systemFontOfSize:16 weight:HAFontWeightMedium];
     self.targetLabel.textColor = [HATheme secondaryTextColor];
@@ -587,8 +596,13 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
     currentY += tempLabelSize.height + infoGap;
 
     if (showTarget) {
+        CGFloat targetX = sliderLeft + (slider - targetLabelSize.width) / 2.0;
+        if (!_targetIconLabel.hidden) {
+            // Position icon label to the left of the text
+            _targetIconLabel.frame = CGRectMake(targetX - 20, currentY, 18, targetLabelSize.height);
+        }
         self.targetLabel.frame = CGRectMake(
-            sliderLeft + (slider - targetLabelSize.width) / 2.0,
+            targetX,
             currentY,
             targetLabelSize.width,
             targetLabelSize.height
@@ -988,17 +1002,12 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
                 self.tempLabel.text = @"--";
             }
             if (targetTemp && ![mode isEqualToString:@"off"]) {
-                if (HASystemMajorVersion() >= 6) {
-                    NSMutableAttributedString *targetAttr = [[NSMutableAttributedString alloc]
-                        initWithAttributedString:[HAIconMapper attributedGlyph:tempIcon fontSize:secondarySize color:[HATheme secondaryTextColor]]];
-                    [targetAttr appendAttributedString:[[NSAttributedString alloc]
-                        initWithString:[NSString stringWithFormat:@" %.1f %@", targetTemp.doubleValue, self.tempUnitString]
-                        attributes:@{HAFontAttributeName: [UIFont ha_systemFontOfSize:secondarySize weight:HAFontWeightMedium],
-                                     HAForegroundColorAttributeName: [HATheme secondaryTextColor]}]];
-                    self.targetLabel.attributedText = targetAttr;
-                } else {
-                    self.targetLabel.text = [NSString stringWithFormat:@"%.1f %@", targetTemp.doubleValue, self.tempUnitString];
-                }
+                [HAIconMapper setIconGlyph:tempIcon iconSize:secondarySize iconColor:[HATheme secondaryTextColor]
+                    onIconLabel:_targetIconLabel
+                    text:[NSString stringWithFormat:@"%.1f %@", targetTemp.doubleValue, self.tempUnitString]
+                    textFont:[UIFont ha_systemFontOfSize:secondarySize weight:HAFontWeightMedium]
+                    textColor:[HATheme secondaryTextColor]
+                    onTextLabel:self.targetLabel];
                 self.targetLabel.hidden = NO;
             } else {
                 self.targetLabel.hidden = YES;
@@ -1015,17 +1024,12 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
                 self.tempLabel.text = @"--";
             }
             if (currentTemp) {
-                if (HASystemMajorVersion() >= 6) {
-                    NSMutableAttributedString *currentAttr = [[NSMutableAttributedString alloc]
-                        initWithAttributedString:[HAIconMapper attributedGlyph:tempIcon fontSize:secondarySize color:[HATheme secondaryTextColor]]];
-                    [currentAttr appendAttributedString:[[NSAttributedString alloc]
-                        initWithString:[NSString stringWithFormat:@" %.1f %@", currentTemp.doubleValue, self.tempUnitString]
-                        attributes:@{HAFontAttributeName: [UIFont ha_systemFontOfSize:secondarySize weight:HAFontWeightMedium],
-                                     HAForegroundColorAttributeName: [HATheme secondaryTextColor]}]];
-                    self.targetLabel.attributedText = currentAttr;
-                } else {
-                    self.targetLabel.text = [NSString stringWithFormat:@"%.1f %@", currentTemp.doubleValue, self.tempUnitString];
-                }
+                [HAIconMapper setIconGlyph:tempIcon iconSize:secondarySize iconColor:[HATheme secondaryTextColor]
+                    onIconLabel:_targetIconLabel
+                    text:[NSString stringWithFormat:@"%.1f %@", currentTemp.doubleValue, self.tempUnitString]
+                    textFont:[UIFont ha_systemFontOfSize:secondarySize weight:HAFontWeightMedium]
+                    textColor:[HATheme secondaryTextColor]
+                    onTextLabel:self.targetLabel];
                 self.targetLabel.hidden = NO;
             } else {
                 self.targetLabel.hidden = YES;

@@ -133,21 +133,13 @@ static const CGFloat kHeadingGap = 2.0;
         NSString *iconName = headingIcon;
         if ([iconName hasPrefix:@"mdi:"]) iconName = [iconName substringFromIndex:4];
         NSString *glyph = [HAIconMapper glyphForIconName:iconName];
-        if (glyph && HASystemMajorVersion() >= 6) {
-            // iOS 6+: mixed icon+text attributed string in a single label
-            NSMutableAttributedString *heading = [[NSMutableAttributedString alloc]
-                initWithAttributedString:[HAIconMapper attributedGlyph:glyph fontSize:16 color:[HATheme secondaryTextColor]]];
-            [heading appendAttributedString:[[NSAttributedString alloc] initWithString:
-                [NSString stringWithFormat:@"  %@", configItem.displayName]
-                attributes:@{HAFontAttributeName: [UIFont ha_systemFontOfSize:17 weight:HAFontWeightSemibold],
-                             HAForegroundColorAttributeName: [HATheme sectionHeaderColor]}]];
-            self.headingLabel.attributedText = heading;
-            _headingIconLabel.hidden = YES;
-        } else if (glyph) {
-            // iOS 5: separate icon label (MDI font) + text label (system font)
-            _headingIconLabel.text = glyph;
-            _headingIconLabel.hidden = NO;
-            self.headingLabel.text = configItem.displayName;
+        if (glyph) {
+            [HAIconMapper setIconGlyph:glyph iconSize:16 iconColor:[HATheme secondaryTextColor]
+                onIconLabel:_headingIconLabel
+                text:configItem.displayName
+                textFont:[UIFont ha_systemFontOfSize:17 weight:HAFontWeightSemibold]
+                textColor:[HATheme sectionHeaderColor]
+                onTextLabel:self.headingLabel];
         } else {
             _headingIconLabel.hidden = YES;
             self.headingLabel.text = configItem.displayName;

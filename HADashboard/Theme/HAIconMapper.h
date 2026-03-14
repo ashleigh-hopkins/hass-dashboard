@@ -38,4 +38,17 @@
 /// NSTextAttachment image (iOS 7+) or returns the plain glyph string (best effort).
 + (NSAttributedString *)attributedGlyph:(NSString *)glyphString fontSize:(CGFloat)fontSize color:(UIColor *)color;
 
+/// Set icon + text on a label pair. On iOS 6+, uses a single attributed string
+/// on textLabel. On iOS 5, renders the icon in iconLabel (MDI font) and plain
+/// text in textLabel (system font) — two separate labels to avoid font mixing.
+/// Pass nil for glyphString to hide the icon label and show text only.
++ (void)setIconGlyph:(NSString *)glyphString
+            iconSize:(CGFloat)iconSize
+           iconColor:(UIColor *)iconColor
+         onIconLabel:(UILabel *)iconLabel
+                text:(NSString *)text
+            textFont:(UIFont *)textFont
+           textColor:(UIColor *)textColor
+         onTextLabel:(UILabel *)textLabel;
+
 @end
