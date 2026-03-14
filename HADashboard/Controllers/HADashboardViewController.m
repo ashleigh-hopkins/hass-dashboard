@@ -2219,12 +2219,9 @@ heightForHeaderInSection:(NSInteger)section {
     // Coalesce: batch rapid-fire entity updates into a single reload pass.
     // 300ms batches more updates together (reduces flush frequency on A5 devices)
     // while still feeling responsive for user-triggered changes.
-    [self.reloadCoalesceTimer invalidate];
-    self.reloadCoalesceTimer = [NSTimer scheduledTimerWithTimeInterval:0.3
-                                                               target:self
-                                                             selector:@selector(flushPendingReloads)
-                                                             userInfo:nil
-                                                              repeats:NO];
+    // Use performSelector instead of NSTimer — NSTimer doesn't fire reliably on iOS 5.
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(flushPendingReloads) object:nil];
+    [self performSelector:@selector(flushPendingReloads) withObject:nil afterDelay:0.3];
 }
 
 - (void)flushPendingReloads {
