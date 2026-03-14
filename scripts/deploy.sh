@@ -48,8 +48,12 @@ IPAD_MINI5_DEVICECTL_ID="${IPAD_MINI5_DEVICECTL_ID:-}"
 IPAD_MINI5_UDID="${IPAD_MINI5_UDID:-}"
 IPAD_MINI4_UDID="${IPAD_MINI4_UDID:-}"
 IPAD2_UDID="${IPAD2_UDID:-}"
+IPAD1_IP="${IPAD1_IP:-}"
+IPAD1_SSH_PASS="${IPAD1_SSH_PASS:-alpine}"
 IPAD2_IP="${IPAD2_IP:-}"
 IPAD2_SSH_PASS="${IPAD2_SSH_PASS:-alpine}"
+IPAD3_IP="${IPAD3_IP:-}"
+IPAD3_SSH_PASS="${IPAD3_SSH_PASS:-alpine}"
 UNRAID_HOST="${UNRAID_HOST:-}"
 UNRAID_USER="${UNRAID_USER:-root}"
 
@@ -74,7 +78,7 @@ TOKEN_OVERRIDE=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        sim|sim-ios93|sim-ios103|iphone|mini5|mini4|ipad2|ipad2-usb|mac|all)
+        sim|sim-ios93|sim-ios103|iphone|mini5|mini4|ipad1|ipad2|ipad2-usb|ipad3|mac|all)
             if [[ -z "$TARGET" ]]; then
                 TARGET="$1"
             else
@@ -108,8 +112,10 @@ if [[ -z "$TARGET" ]]; then
     echo "  iphone         Physical iPhone (via devicectl)"
     echo "  mini5          iPad Mini 5 — iPadOS 26 (devicectl, WiFi)"
     echo "  mini4          iPad Mini 4 — iPadOS 15 (ios-deploy, WiFi)"
+    echo "  ipad1          iPad 1 — iOS 5.1.1 (WiFi SSH, jailbroken)"
     echo "  ipad2          iPad 2 — iOS 9 (WiFi SSH, jailbroken)"
     echo "  ipad2-usb      iPad 2 — iOS 9 (Unraid USB fallback)"
+    echo "  ipad3          iPad 3 — (WiFi SSH, jailbroken)"
     echo "  mac            Mac Catalyst (local Mac, fullscreen)"
     echo ""
     echo "Options:"
@@ -197,7 +203,9 @@ if [[ "$TARGET" == "all" ]]; then
     deploy_bg "iphone"      iphone      --no-build ${OPTS[@]+"${OPTS[@]}"}
     deploy_bg "mini5"       mini5       --no-build ${OPTS[@]+"${OPTS[@]}"}
     deploy_bg "mini4"       mini4       --no-build ${OPTS[@]+"${OPTS[@]}"}
+    deploy_bg "ipad1"       ipad1       --no-build ${OPTS[@]+"${OPTS[@]}"}
     deploy_bg "ipad2"       ipad2       --no-build ${OPTS[@]+"${OPTS[@]}"}
+    deploy_bg "ipad3"       ipad3       --no-build ${OPTS[@]+"${OPTS[@]}"}
     deploy_bg "mac"         mac         --no-build ${OPTS[@]+"${OPTS[@]}"}
 
     # Wait for all deploys and collect results
@@ -212,7 +220,7 @@ if [[ "$TARGET" == "all" ]]; then
     done
 
     # Print logs for failures
-    for label in "${FAILURES[@]}"; do
+    for label in ${FAILURES[@]+"${FAILURES[@]}"}; do
         echo ""
         echo "── $label deploy log ──────────────────────────────────"
         cat "$LOGDIR/$label.log"
@@ -224,7 +232,7 @@ if [[ "$TARGET" == "all" ]]; then
     if [[ ${#FAILURES[@]} -eq 0 ]]; then
         echo "✅ All targets deployed"
     else
-        echo "⚠️  Deployed with failures: ${FAILURES[*]}"
+        echo "⚠️  Deployed with failures: ${FAILURES[*]+"${FAILURES[*]}"}"
         exit 1
     fi
     exit 0
@@ -247,7 +255,7 @@ case "$TARGET" in
             APP="$PROJECT_DIR/build/rosettasim/Build/Products/Debug-iphonesimulator/HA Dashboard.app"
         fi
         ;;
-    iphone|mini5|mini4|ipad2|ipad2-usb)
+    iphone|mini5|mini4|ipad1|ipad2|ipad2-usb|ipad3)
         if [[ "$NO_BUILD" == false ]]; then
             APP="$("$PROJECT_DIR/scripts/build.sh" device)"
         else
@@ -280,7 +288,9 @@ if [[ "$HA_DASHBOARD" == "living-room" ]]; then
     case "$TARGET" in
         mini5)    HA_DASHBOARD="dashboard-landing" ;;
         mini4)    HA_DASHBOARD="living-room" ;;
+        ipad1)            HA_DASHBOARD="living-room"; KIOSK_MODE="${KIOSK_MODE:-YES}" ;;
         ipad2|ipad2-usb)  HA_DASHBOARD="dashboard-office"; KIOSK_MODE="${KIOSK_MODE:-YES}" ;;
+        ipad3)            HA_DASHBOARD="living-room"; KIOSK_MODE="${KIOSK_MODE:-YES}" ;;
         # sim, sim-iphone, iphone: keep living-room
     esac
 fi
@@ -476,102 +486,99 @@ case "$TARGET" in
         echo "✅ Running on iPad Mini 4"
         ;;
 
-    ipad2)
-        echo "📱 Deploying to iPad 2 via WiFi SSH ($IPAD2_IP)..."
+    ipad1|ipad2|ipad3)
+        # ── Shared jailbroken iPad deploy (SSH over WiFi) ─────────────
+        case "$TARGET" in
+            ipad1) _IPAD_LABEL="iPad 1"; _IPAD_IP="$IPAD1_IP"; _IPAD_PASS="$IPAD1_SSH_PASS"
+                   _SSH_OPTS="-o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedAlgorithms=+ssh-rsa"
+                   _SCP_EXTRA="-O" ;;
+            ipad2) _IPAD_LABEL="iPad 2"; _IPAD_IP="$IPAD2_IP"; _IPAD_PASS="$IPAD2_SSH_PASS"
+                   _SSH_OPTS="-o HostkeyAlgorithms=ssh-rsa"
+                   _SCP_EXTRA="" ;;
+            ipad3) _IPAD_LABEL="iPad 3"; _IPAD_IP="$IPAD3_IP"; _IPAD_PASS="$IPAD3_SSH_PASS"
+                   _SSH_OPTS="-o HostkeyAlgorithms=ssh-rsa"
+                   _SCP_EXTRA="" ;;
+        esac
 
-        if [[ -z "$IPAD2_IP" ]]; then
-            echo "❌ IPAD2_IP not set in .env"
+        echo "📱 Deploying to $_IPAD_LABEL via WiFi SSH ($_IPAD_IP)..."
+
+        if [[ -z "$_IPAD_IP" ]]; then
+            echo "❌ IP not set in .env for $TARGET"
             exit 1
         fi
 
-        IPAD_SSH="sshpass -p ${IPAD2_SSH_PASS} ssh -o StrictHostKeyChecking=no -o HostkeyAlgorithms=ssh-rsa root@${IPAD2_IP}"
-        IPAD_SCP="sshpass -p ${IPAD2_SSH_PASS} scp -o StrictHostKeyChecking=no -o HostkeyAlgorithms=ssh-rsa"
+        _IPAD_SSH="sshpass -p ${_IPAD_PASS} ssh -o StrictHostKeyChecking=no ${_SSH_OPTS} root@${_IPAD_IP}"
+        _IPAD_SCP="sshpass -p ${_IPAD_PASS} scp ${_SCP_EXTRA} -o StrictHostKeyChecking=no ${_SSH_OPTS}"
 
-        # Verify iPad is reachable
-        if ! $IPAD_SSH "echo ok" &>/dev/null; then
-            echo "❌ Cannot SSH to iPad at $IPAD2_IP"
+        if ! $_IPAD_SSH "echo ok" &>/dev/null; then
+            echo "❌ Cannot SSH to $_IPAD_LABEL at $_IPAD_IP"
             echo "   Ensure iPad is jailbroken, OpenSSH is installed, and WiFi is connected"
             exit 1
         fi
 
-        # Tar the .app preserving structure (scp -r doesn't handle symlinks well)
         APP_TAR="$PROJECT_DIR/build/HADashboard.app.tar.gz"
         echo "   Packaging .app..."
         tar -czf "$APP_TAR" -C "$(dirname "$APP")" "$(basename "$APP")"
 
-        # Merge deploy preferences into the existing iPad plist (preserves user settings).
-        # Pull current plist from device, merge deploy keys locally, push back.
-        IPAD2_PLIST="$PROJECT_DIR/build/ipad2-prefs.plist"
+        # Merge deploy preferences into existing plist on device
+        _PLIST="$PROJECT_DIR/build/${TARGET}-prefs.plist"
         PREFS_PATH="/var/mobile/Library/Preferences/$BUNDLE_ID.plist"
-        rm -f "$IPAD2_PLIST"
-        sshpass -p "${IPAD2_SSH_PASS}" scp -o StrictHostKeyChecking=no -o HostkeyAlgorithms=ssh-rsa -o ConnectTimeout=5 "root@${IPAD2_IP}:$PREFS_PATH" "$IPAD2_PLIST" 2>/dev/null || true
-        # Strip .plist extension for `defaults` command (it adds it automatically)
-        IPAD2_PLIST_BASE="${IPAD2_PLIST%.plist}"
+        rm -f "$_PLIST"
+        $_IPAD_SCP "root@${_IPAD_IP}:$PREFS_PATH" "$_PLIST" 2>/dev/null || true
+        _PLIST_BASE="${_PLIST%.plist}"
         if [ "$RESET_MODE" = "true" ]; then
-            defaults write "$IPAD2_PLIST_BASE" HAClearCredentials -bool true
+            defaults write "$_PLIST_BASE" HAClearCredentials -bool true
         else
-            defaults write "$IPAD2_PLIST_BASE" HAServerURL -string "$HA_SERVER"
-            defaults write "$IPAD2_PLIST_BASE" HAAccessToken -string "${EFFECTIVE_TOKEN}"
+            defaults write "$_PLIST_BASE" HAServerURL -string "$HA_SERVER"
+            defaults write "$_PLIST_BASE" HAAccessToken -string "${EFFECTIVE_TOKEN}"
         fi
-        defaults write "$IPAD2_PLIST_BASE" HADashboard -string "$HA_DASHBOARD"
-        defaults write "$IPAD2_PLIST_BASE" HAKioskMode -bool "$([ "$KIOSK_MODE" = "YES" ] && echo true || echo false)"
-        [[ -n "$DEMO_MODE" ]] && defaults write "$IPAD2_PLIST_BASE" HADemoMode -bool true
-        # Convert to binary plist (iOS NSUserDefaults expects binary format)
-        plutil -convert binary1 "$IPAD2_PLIST"
+        defaults write "$_PLIST_BASE" HADashboard -string "$HA_DASHBOARD"
+        defaults write "$_PLIST_BASE" HAKioskMode -bool "$([ "$KIOSK_MODE" = "YES" ] && echo true || echo false)"
+        [[ -n "$DEMO_MODE" ]] && defaults write "$_PLIST_BASE" HADemoMode -bool true
+        plutil -convert binary1 "$_PLIST"
 
-        # Transfer to iPad
-        echo "   Transferring to iPad ($IPAD2_IP)..."
-        $IPAD_SCP "$APP_TAR" "root@${IPAD2_IP}:/tmp/HADashboard.app.tar.gz"
-        $IPAD_SCP "$IPAD2_PLIST" "root@${IPAD2_IP}:/tmp/ha-prefs.plist"
+        echo "   Transferring to $_IPAD_LABEL ($_IPAD_IP)..."
+        $_IPAD_SCP "$APP_TAR" "root@${_IPAD_IP}:/tmp/HADashboard.app.tar.gz"
+        $_IPAD_SCP "$_PLIST" "root@${_IPAD_IP}:/tmp/ha-prefs.plist"
 
-        # Install: extract to /Applications, refresh SpringBoard, write prefs, launch
         echo "   Installing..."
-        $IPAD_SSH "
-            # Extract app to /Applications
+        $_IPAD_SSH "
             cd /Applications
             rm -rf 'HA Dashboard.app'
             tar xzf /tmp/HADashboard.app.tar.gz
             rm /tmp/HADashboard.app.tar.gz
 
-            # Re-sign with ldid (jailbreak code signing)
             which ldid >/dev/null 2>&1 && ldid -S 'HA Dashboard.app/HA Dashboard'
-
-            # Kill the app if running (ensures NSUserDefaults cache is flushed)
             killall 'HA Dashboard' 2>/dev/null || true
+            uicache 2>/dev/null || true
 
-            # Refresh SpringBoard app cache
-            uicache
+            # Clear all app caches
+            rm -rf /var/mobile/Library/Caches/$BUNDLE_ID 2>/dev/null || true
+            rm -rf /var/mobile/tmp/$BUNDLE_ID* 2>/dev/null || true
+            for d in /var/mobile/Applications/*/Library/Caches; do
+                [ -d \"\$d\" ] && rm -rf \"\$d\"/* 2>/dev/null || true
+            done
 
-            # Copy merged preferences plist into place (transferred via SCP).
-            # The plist was pre-merged on macOS to preserve existing user settings.
             PREFS_DIR=/var/mobile/Library/Preferences
             mkdir -p \$PREFS_DIR
             mv /tmp/ha-prefs.plist \$PREFS_DIR/$BUNDLE_ID.plist
             chmod 644 \$PREFS_DIR/$BUNDLE_ID.plist
             chown mobile:mobile \$PREFS_DIR/$BUNDLE_ID.plist
 
-            # Flush the preferences daemon cache so NSUserDefaults reads the new plist
             killall cfprefsd 2>/dev/null || true
-
-            # Clear any previous log
             rm -f /tmp/ha-log.txt
-
-            # Give SpringBoard time to finish processing uicache
             sleep 2
-
-            # Launch the app
-            open $BUNDLE_ID
+            open $BUNDLE_ID 2>/dev/null || true
         "
 
-        # Wait for app to start (or crash) then fetch log
         echo "   Waiting for startup log..."
         sleep 8
         echo ""
-        echo "── Documents/ha-log.txt ─────────────────────────────────"
-        $IPAD_SSH "cat /var/mobile/Documents/ha-log.txt 2>/dev/null || echo '(no log file found)'"
+        echo "── $_IPAD_LABEL log ─────────────────────────────────────"
+        $_IPAD_SSH "cat /var/mobile/Documents/ha-log.txt 2>/dev/null || echo '(no log file found)'"
         echo "────────────────────────────────────────────────────────"
         echo ""
-        echo "✅ Deployed to iPad 2 (WiFi)"
+        echo "✅ Deployed to $_IPAD_LABEL (WiFi)"
         ;;
 
     mac)

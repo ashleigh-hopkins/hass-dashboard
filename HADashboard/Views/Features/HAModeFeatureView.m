@@ -1,3 +1,5 @@
+#import "HAAutoLayout.h"
+#import "HAStackView.h"
 #import "HAModeFeatureView.h"
 #import "HAEntity.h"
 #import "HAEntity+Climate.h"
@@ -7,10 +9,12 @@
 #import "HAEntityDisplayHelper.h"
 #import "HAIconMapper.h"
 #import "UIView+HAUtilities.h"
+#import "UIViewController+HAAlert.h"
+#import "UIFont+HACompat.h"
 
 @interface HAModeFeatureView ()
 @property (nonatomic, strong) UIScrollView *scrollView;       // For icons style
-@property (nonatomic, strong) UIStackView *modeStack;         // For icons style
+@property (nonatomic, strong) HAStackView *modeStack;         // For icons style
 @property (nonatomic, strong) UIButton *dropdownButton;       // For dropdown style
 @property (nonatomic, strong) NSArray<NSString *> *modes;     // Available mode values
 @property (nonatomic, copy) NSString *currentMode;            // Currently active mode
@@ -26,9 +30,9 @@
 - (instancetype)init {
     self = [super init];
     if (self) {
-        NSLayoutConstraint *heightConstraint = [self.heightAnchor constraintEqualToConstant:[HAModeFeatureView preferredHeight]];
+        NSLayoutConstraint *heightConstraint = HAMakeConstraint([self.heightAnchor constraintEqualToConstant:[HAModeFeatureView preferredHeight]]);
         heightConstraint.priority = UILayoutPriorityDefaultHigh;
-        [NSLayoutConstraint activateConstraints:@[heightConstraint]];
+        HAActivateConstraints(@[HACon(heightConstraint)]);
     }
     return self;
 }
@@ -112,23 +116,23 @@
     self.scrollView.showsVerticalScrollIndicator = NO;
     [self addSubview:self.scrollView];
 
-    self.modeStack = [[UIStackView alloc] init];
-    self.modeStack.axis = UILayoutConstraintAxisHorizontal;
+    self.modeStack = [[HAStackView alloc] init];
+    self.modeStack.axis = 0;
     self.modeStack.spacing = 6;
     self.modeStack.translatesAutoresizingMaskIntoConstraints = NO;
     [self.scrollView addSubview:self.modeStack];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.scrollView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:12],
-        [self.scrollView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-12],
-        [self.scrollView.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
-        [self.scrollView.heightAnchor constraintEqualToConstant:30],
-        [self.modeStack.leadingAnchor constraintEqualToAnchor:self.scrollView.leadingAnchor],
-        [self.modeStack.trailingAnchor constraintEqualToAnchor:self.scrollView.trailingAnchor],
-        [self.modeStack.topAnchor constraintEqualToAnchor:self.scrollView.topAnchor],
-        [self.modeStack.bottomAnchor constraintEqualToAnchor:self.scrollView.bottomAnchor],
-        [self.modeStack.heightAnchor constraintEqualToAnchor:self.scrollView.heightAnchor],
-    ]];
+    HAActivateConstraints(@[
+        HACon([self.scrollView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:12]),
+        HACon([self.scrollView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-12]),
+        HACon([self.scrollView.centerYAnchor constraintEqualToAnchor:self.centerYAnchor]),
+        HACon([self.scrollView.heightAnchor constraintEqualToConstant:30]),
+        HACon([self.modeStack.leadingAnchor constraintEqualToAnchor:self.scrollView.leadingAnchor]),
+        HACon([self.modeStack.trailingAnchor constraintEqualToAnchor:self.scrollView.trailingAnchor]),
+        HACon([self.modeStack.topAnchor constraintEqualToAnchor:self.scrollView.topAnchor]),
+        HACon([self.modeStack.bottomAnchor constraintEqualToAnchor:self.scrollView.bottomAnchor]),
+        HACon([self.modeStack.heightAnchor constraintEqualToAnchor:self.scrollView.heightAnchor]),
+    ]);
 
     UIColor *activeColor = [HAEntityDisplayHelper iconColorForEntity:entity];
 
@@ -136,18 +140,17 @@
         NSString *mode = self.modes[i];
         BOOL isActive = [mode isEqualToString:self.currentMode];
 
-        UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
+        UIButton *btn = HASystemButton();
         btn.tag = (NSInteger)i;
 
         // Try to get an icon for this mode, fall back to text
-        NSString *iconGlyph = [self iconGlyphForMode:mode type:self.featureType];
-        if (iconGlyph) {
-            [btn setTitle:iconGlyph forState:UIControlStateNormal];
-            btn.titleLabel.font = [HAIconMapper mdiFontOfSize:16];
+        NSString *iconName = [self iconNameForMode:mode type:self.featureType];
+        if (iconName) {
+            [HAIconMapper setIconName:iconName onButton:btn size:16 color:[HATheme primaryTextColor]];
         } else {
             NSString *displayName = [self displayNameForMode:mode];
             [btn setTitle:displayName forState:UIControlStateNormal];
-            btn.titleLabel.font = [UIFont systemFontOfSize:11 weight:UIFontWeightMedium];
+            btn.titleLabel.font = [UIFont ha_systemFontOfSize:11 weight:HAFontWeightMedium];
         }
 
         if (isActive) {
@@ -171,11 +174,11 @@
 #pragma mark - Dropdown Style
 
 - (void)setupDropdownForAvailable:(BOOL)available {
-    self.dropdownButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.dropdownButton = HASystemButton();
     self.dropdownButton.translatesAutoresizingMaskIntoConstraints = NO;
     NSString *displayName = self.currentMode ? [self displayNameForMode:self.currentMode] : @"Select";
     [self.dropdownButton setTitle:[NSString stringWithFormat:@"%@ \u25BE", displayName] forState:UIControlStateNormal]; // ▾
-    self.dropdownButton.titleLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
+    self.dropdownButton.titleLabel.font = [UIFont ha_systemFontOfSize:13 weight:HAFontWeightMedium];
     [self.dropdownButton setTitleColor:[HATheme primaryTextColor] forState:UIControlStateNormal];
     self.dropdownButton.backgroundColor = [HATheme cellBackgroundColor];
     self.dropdownButton.layer.cornerRadius = 8;
@@ -185,12 +188,30 @@
     [self.dropdownButton addTarget:self action:@selector(dropdownTapped:) forControlEvents:UIControlEventTouchUpInside];
     [self addSubview:self.dropdownButton];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.dropdownButton.centerXAnchor constraintEqualToAnchor:self.centerXAnchor],
-        [self.dropdownButton.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
-        [self.dropdownButton.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.leadingAnchor constant:12],
-        [self.dropdownButton.trailingAnchor constraintLessThanOrEqualToAnchor:self.trailingAnchor constant:-12],
-    ]];
+    HAActivateConstraints(@[
+        HACon([self.dropdownButton.centerXAnchor constraintEqualToAnchor:self.centerXAnchor]),
+        HACon([self.dropdownButton.centerYAnchor constraintEqualToAnchor:self.centerYAnchor]),
+        HACon([self.dropdownButton.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.leadingAnchor constant:12]),
+        HACon([self.dropdownButton.trailingAnchor constraintLessThanOrEqualToAnchor:self.trailingAnchor constant:-12]),
+    ]);
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    if (!HAAutoLayoutAvailable()) {
+        CGFloat h = [HAModeFeatureView preferredHeight];
+        CGFloat w = self.bounds.size.width;
+        if (self.isDropdownStyle && self.dropdownButton) {
+            CGSize btnSize = [self.dropdownButton sizeThatFits:CGSizeMake(w - 24, h)];
+            self.dropdownButton.frame = CGRectMake((w - btnSize.width) / 2, (h - btnSize.height) / 2,
+                                                    btnSize.width, btnSize.height);
+        } else if (self.scrollView) {
+            self.scrollView.frame = CGRectMake(12, (h - 30) / 2, w - 24, 30);
+            CGSize stackSize = [self.modeStack sizeThatFits:CGSizeMake(CGFLOAT_MAX, 30)];
+            self.modeStack.frame = CGRectMake(0, 0, stackSize.width, 30);
+            self.scrollView.contentSize = stackSize;
+        }
+    }
 }
 
 #pragma mark - Actions
@@ -207,32 +228,22 @@
     UIViewController *vc = [self ha_parentViewController];
     if (!vc) return;
 
-    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:nil
-                                                                  message:nil
-                                                           preferredStyle:UIAlertControllerStyleActionSheet];
-
-    __weak typeof(self) weakSelf = self; // Fix #2: prevent retain cycle
+    __weak typeof(self) weakSelf = self;
+    NSMutableArray *titles = [NSMutableArray arrayWithCapacity:self.modes.count];
     for (NSString *mode in self.modes) {
         NSString *displayName = [self displayNameForMode:mode];
         BOOL isActive = [mode isEqualToString:self.currentMode];
-        // Fix #6: use checkmark emoji instead of private setValue:@"checked"
-        NSString *title = isActive ? [NSString stringWithFormat:@"\u2713 %@", displayName] : displayName;
-        UIAlertAction *action = [UIAlertAction actionWithTitle:title
-                                                         style:UIAlertActionStyleDefault
-                                                       handler:^(UIAlertAction *a) {
-            [HAHaptics lightImpact];
-            [weakSelf callServiceForMode:mode];
-        }];
-        [sheet addAction:action];
+        [titles addObject:isActive ? [NSString stringWithFormat:@"\u2713 %@", displayName] : displayName];
     }
 
-    [sheet addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
-
-    // iPad popover anchor
-    sheet.popoverPresentationController.sourceView = sender;
-    sheet.popoverPresentationController.sourceRect = sender.bounds;
-
-    [vc presentViewController:sheet animated:YES completion:nil];
+    [vc ha_showActionSheetWithTitle:nil
+                        cancelTitle:@"Cancel"
+                       actionTitles:titles
+                         sourceView:sender
+                            handler:^(NSInteger index) {
+        [HAHaptics lightImpact];
+        [weakSelf callServiceForMode:weakSelf.modes[(NSUInteger)index]];
+    }];
 }
 
 - (void)callServiceForMode:(NSString *)mode {
@@ -285,27 +296,29 @@
     return [formatted capitalizedString];
 }
 
-- (NSString *)iconGlyphForMode:(NSString *)mode type:(NSString *)featureType {
-    // HVAC mode icons (match HA web frontend)
+- (NSString *)iconNameForMode:(NSString *)mode type:(NSString *)featureType {
     if ([featureType isEqualToString:@"climate-hvac-modes"]) {
-        if ([mode isEqualToString:@"heat"])       return [HAIconMapper glyphForIconName:@"fire"];
-        if ([mode isEqualToString:@"cool"])       return [HAIconMapper glyphForIconName:@"snowflake"];
-        if ([mode isEqualToString:@"heat_cool"])  return [HAIconMapper glyphForIconName:@"sun-snowflake-variant"];
-        if ([mode isEqualToString:@"auto"])       return [HAIconMapper glyphForIconName:@"thermostat-auto"];
-        if ([mode isEqualToString:@"dry"])        return [HAIconMapper glyphForIconName:@"water-percent"];
-        if ([mode isEqualToString:@"fan_only"])   return [HAIconMapper glyphForIconName:@"fan"];
-        if ([mode isEqualToString:@"off"])        return [HAIconMapper glyphForIconName:@"power"];
+        if ([mode isEqualToString:@"heat"])       return @"fire";
+        if ([mode isEqualToString:@"cool"])       return @"snowflake";
+        if ([mode isEqualToString:@"heat_cool"])  return @"sun-snowflake-variant";
+        if ([mode isEqualToString:@"auto"])       return @"thermostat-auto";
+        if ([mode isEqualToString:@"dry"])        return @"water-percent";
+        if ([mode isEqualToString:@"fan_only"])   return @"fan";
+        if ([mode isEqualToString:@"off"])        return @"power";
     }
-    // Alarm mode icons
     if ([featureType isEqualToString:@"alarm-modes"]) {
-        if ([mode isEqualToString:@"armed_home"])     return [HAIconMapper glyphForIconName:@"shield-home"];
-        if ([mode isEqualToString:@"armed_away"])     return [HAIconMapper glyphForIconName:@"shield-lock"];
-        if ([mode isEqualToString:@"armed_night"])    return [HAIconMapper glyphForIconName:@"shield-moon"];
-        if ([mode isEqualToString:@"armed_vacation"]) return [HAIconMapper glyphForIconName:@"shield-airplane"];
-        if ([mode isEqualToString:@"disarmed"])       return [HAIconMapper glyphForIconName:@"shield-off"];
+        if ([mode isEqualToString:@"armed_home"])     return @"shield-home";
+        if ([mode isEqualToString:@"armed_away"])     return @"shield-lock";
+        if ([mode isEqualToString:@"armed_night"])    return @"shield-moon";
+        if ([mode isEqualToString:@"armed_vacation"]) return @"shield-airplane";
+        if ([mode isEqualToString:@"disarmed"])       return @"shield-off";
     }
-    // Fan mode and preset mode — no standard icons, use text labels
     return nil;
+}
+
+- (NSString *)iconGlyphForMode:(NSString *)mode type:(NSString *)featureType {
+    NSString *name = [self iconNameForMode:mode type:featureType];
+    return name ? [HAIconMapper glyphForIconName:name] : nil;
 }
 
 @end

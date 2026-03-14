@@ -1,11 +1,12 @@
 #import <UIKit/UIKit.h>
+#import "HACellCompat.h"
 
 @class HAEntity;
 @class HADashboardConfigSection;
 @class HADashboardConfigItem;
 
 /// Renders a Glance card: a grid of entity icons with optional names and states.
-@interface HAGlanceCardCell : UICollectionViewCell
+@interface HAGlanceCardCell : HACollectionViewCellBase
 
 /// Called when a glance item is tapped. Passes the entity and per-entity action config.
 @property (nonatomic, copy) void (^entityTapBlock)(HAEntity *entity, NSDictionary *actionConfig);

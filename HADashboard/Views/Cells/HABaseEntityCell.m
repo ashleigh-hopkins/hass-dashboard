@@ -1,4 +1,7 @@
+#import "HAAutoLayout.h"
+#import "NSString+HACompat.h"
 #import "HABaseEntityCell.h"
+#import "NSString+HACompat.h"
 #import "HAEntity.h"
 #import "HADashboardConfig.h"
 #import "HATheme.h"
@@ -6,11 +9,15 @@
 #import "HAConnectionManager.h"
 #import "HAHaptics.h"
 #import "UIView+HAUtilities.h"
+#import "UIViewController+HAAlert.h"
+#import "UIFont+HACompat.h"
 
 static const CGFloat kHeadingHeight = 28.0;
 static const CGFloat kHeadingGap = 2.0;
 
-@interface HABaseEntityCell ()
+@interface HABaseEntityCell () {
+    UILabel *_headingIconLabel;
+}
 @property (nonatomic, assign) BOOL showsHeading;
 @end
 
@@ -24,10 +31,19 @@ static const CGFloat kHeadingGap = 2.0;
         self.contentView.layer.borderWidth = 0.0;
         [self applyGradientBackground];
 
+        // Heading icon: separate UILabel for MDI glyph on iOS 5
+        // (iOS 5 can't render mixed fonts in a single attributed string)
+        _headingIconLabel = [[UILabel alloc] init];
+        _headingIconLabel.font = [HAIconMapper mdiFontOfSize:16];
+        _headingIconLabel.textColor = [HATheme secondaryTextColor];
+        _headingIconLabel.textAlignment = NSTextAlignmentCenter;
+        _headingIconLabel.hidden = YES;
+        [self addSubview:_headingIconLabel];
+
         // Heading label: added to the CELL (self), not contentView.
         // When visible, layoutSubviews pushes contentView down below it.
         self.headingLabel = [[UILabel alloc] init];
-        self.headingLabel.font = [UIFont systemFontOfSize:17 weight:UIFontWeightSemibold];
+        self.headingLabel.font = [UIFont ha_systemFontOfSize:17 weight:HAFontWeightSemibold];
         self.headingLabel.textColor = [HATheme sectionHeaderColor];
         self.headingLabel.numberOfLines = 1;
         self.headingLabel.hidden = YES;
@@ -54,19 +70,20 @@ static const CGFloat kHeadingGap = 2.0;
     [self.contentView addSubview:self.stateLabel];
 
     CGFloat padding = 10.0;
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.nameLabel attribute:NSLayoutAttributeLeading
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeLeading multiplier:1 constant:padding]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.nameLabel attribute:NSLayoutAttributeTrailing
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTrailing multiplier:1 constant:-padding]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.nameLabel attribute:NSLayoutAttributeTop
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTop multiplier:1 constant:padding]];
-
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.stateLabel attribute:NSLayoutAttributeLeading
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeLeading multiplier:1 constant:padding]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.stateLabel attribute:NSLayoutAttributeTrailing
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTrailing multiplier:1 constant:-padding]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.stateLabel attribute:NSLayoutAttributeTop
-        relatedBy:NSLayoutRelationEqual toItem:self.nameLabel attribute:NSLayoutAttributeBottom multiplier:1 constant:4]];
+    HAActivateConstraints(@[
+        HACon([NSLayoutConstraint constraintWithItem:self.nameLabel attribute:NSLayoutAttributeLeading
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeLeading multiplier:1 constant:padding]),
+        HACon([NSLayoutConstraint constraintWithItem:self.nameLabel attribute:NSLayoutAttributeTrailing
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTrailing multiplier:1 constant:-padding]),
+        HACon([NSLayoutConstraint constraintWithItem:self.nameLabel attribute:NSLayoutAttributeTop
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTop multiplier:1 constant:padding]),
+        HACon([NSLayoutConstraint constraintWithItem:self.stateLabel attribute:NSLayoutAttributeLeading
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeLeading multiplier:1 constant:padding]),
+        HACon([NSLayoutConstraint constraintWithItem:self.stateLabel attribute:NSLayoutAttributeTrailing
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTrailing multiplier:1 constant:-padding]),
+        HACon([NSLayoutConstraint constraintWithItem:self.stateLabel attribute:NSLayoutAttributeTop
+            relatedBy:NSLayoutRelationEqual toItem:self.nameLabel attribute:NSLayoutAttributeBottom multiplier:1 constant:4]),
+    ]);
 }
 
 - (void)layoutSubviews {
@@ -74,8 +91,13 @@ static const CGFloat kHeadingGap = 2.0;
 
     if (self.showsHeading) {
         CGFloat headingH = kHeadingHeight + kHeadingGap;
-        // Heading sits at top of cell bounds, no card background
-        self.headingLabel.frame = CGRectMake(4, 0, self.bounds.size.width - 8, kHeadingHeight);
+        // Position heading icon + title
+        if (!_headingIconLabel.hidden) {
+            _headingIconLabel.frame = CGRectMake(4, 0, 24, kHeadingHeight);
+            self.headingLabel.frame = CGRectMake(30, 0, self.bounds.size.width - 38, kHeadingHeight);
+        } else {
+            self.headingLabel.frame = CGRectMake(4, 0, self.bounds.size.width - 8, kHeadingHeight);
+        }
         // Push contentView below the heading
         self.contentView.frame = CGRectMake(0, headingH,
             self.bounds.size.width, self.bounds.size.height - headingH);
@@ -87,6 +109,16 @@ static const CGFloat kHeadingGap = 2.0;
     // UICollectionViewCell auto-sizes backgroundView to cell bounds; override here.
     if (self.backgroundView) {
         self.backgroundView.frame = self.contentView.frame;
+    }
+
+    if (!HAAutoLayoutAvailable()) {
+        CGFloat padding = 10.0;
+        CGFloat w = self.contentView.bounds.size.width;
+        CGFloat labelW = w - padding * 2;
+        CGSize nameSize = [self.nameLabel sizeThatFits:CGSizeMake(labelW, CGFLOAT_MAX)];
+        self.nameLabel.frame = CGRectMake(padding, padding, labelW, nameSize.height);
+        CGSize stateSize = [self.stateLabel sizeThatFits:CGSizeMake(labelW, CGFLOAT_MAX)];
+        self.stateLabel.frame = CGRectMake(padding, CGRectGetMaxY(self.nameLabel.frame) + 4, labelW, stateSize.height);
     }
 }
 
@@ -102,15 +134,14 @@ static const CGFloat kHeadingGap = 2.0;
         if ([iconName hasPrefix:@"mdi:"]) iconName = [iconName substringFromIndex:4];
         NSString *glyph = [HAIconMapper glyphForIconName:iconName];
         if (glyph) {
-            NSMutableAttributedString *heading = [[NSMutableAttributedString alloc] initWithString:glyph
-                attributes:@{NSFontAttributeName: [HAIconMapper mdiFontOfSize:16],
-                             NSForegroundColorAttributeName: [HATheme secondaryTextColor]}];
-            [heading appendAttributedString:[[NSAttributedString alloc] initWithString:
-                [NSString stringWithFormat:@"  %@", configItem.displayName]
-                attributes:@{NSFontAttributeName: [UIFont systemFontOfSize:17 weight:UIFontWeightSemibold],
-                             NSForegroundColorAttributeName: [HATheme sectionHeaderColor]}]];
-            self.headingLabel.attributedText = heading;
+            [HAIconMapper setIconGlyph:glyph iconSize:16 iconColor:[HATheme secondaryTextColor]
+                onIconLabel:_headingIconLabel
+                text:configItem.displayName
+                textFont:[UIFont ha_systemFontOfSize:17 weight:HAFontWeightSemibold]
+                textColor:[HATheme sectionHeaderColor]
+                onTextLabel:self.headingLabel];
         } else {
+            _headingIconLabel.hidden = YES;
             self.headingLabel.text = configItem.displayName;
         }
         self.headingLabel.hidden = NO;
@@ -168,11 +199,19 @@ static const CGFloat kHeadingGap = 2.0;
     self.headingLabel.hidden = YES;
     self.showsHeading = NO;
     self.contentView.alpha = 1.0;
-    [self applyGradientBackground];
-    // Refresh theme-dependent colors (labels set once in setupSubviews)
+    [self resetThemeColors];
+}
+
+- (void)resetThemeColors {
+    self.contentView.backgroundColor = [HATheme cellBackgroundColor];
+    self.contentView.opaque = NO;
     self.nameLabel.textColor = [HATheme secondaryTextColor];
     self.stateLabel.textColor = [HATheme primaryTextColor];
     self.headingLabel.textColor = [HATheme sectionHeaderColor];
+}
+
+- (void)applyOnStateTint:(BOOL)isOn {
+    self.contentView.backgroundColor = isOn ? [HATheme onTintColor] : [HATheme cellBackgroundColor];
 }
 
 #pragma mark - Factory Helpers
@@ -200,7 +239,7 @@ static const CGFloat kHeadingGap = 2.0;
 }
 
 - (UIButton *)actionButtonWithTitle:(NSString *)title target:(id)target action:(SEL)action {
-    UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
+    UIButton *btn = HASystemButton();
     [btn setTitle:title forState:UIControlStateNormal];
     btn.titleLabel.font = [UIFont boldSystemFontOfSize:12];
     btn.backgroundColor = [HATheme accentColor];
@@ -232,28 +271,20 @@ static const CGFloat kHeadingGap = 2.0;
     UIViewController *vc = [self ha_parentViewController];
     if (!vc) return;
 
-    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:title
-                                                                  message:nil
-                                                           preferredStyle:UIAlertControllerStyleActionSheet];
+    NSMutableArray *titles = [NSMutableArray arrayWithCapacity:options.count];
     for (NSString *option in options) {
-        UIAlertAction *action = [UIAlertAction actionWithTitle:[option capitalizedString]
-                                                         style:UIAlertActionStyleDefault
-                                                       handler:^(UIAlertAction *a) {
-            [HAHaptics lightImpact];
-            if (handler) handler(option);
-        }];
-        if ([option isEqualToString:current]) {
-            [action setValue:@YES forKey:@"checked"];
-        }
-        [sheet addAction:action];
+        BOOL isActive = [option isEqualToString:current];
+        [titles addObject:isActive ? [NSString stringWithFormat:@"\u2713 %@", [option capitalizedString]] : [option capitalizedString]];
     }
-    [sheet addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
 
-    if (sourceView) {
-        sheet.popoverPresentationController.sourceView = sourceView;
-        sheet.popoverPresentationController.sourceRect = sourceView.bounds;
-    }
-    [vc presentViewController:sheet animated:YES completion:nil];
+    [vc ha_showActionSheetWithTitle:title
+                        cancelTitle:@"Cancel"
+                       actionTitles:titles
+                         sourceView:sourceView
+                            handler:^(NSInteger index) {
+        [HAHaptics lightImpact];
+        if (handler) handler(options[(NSUInteger)index]);
+    }];
 }
 
 @end

@@ -1,9 +1,11 @@
+#import "HAAutoLayout.h"
 #import "HAEntityCardCell.h"
 #import "HAEntity.h"
 #import "HADashboardConfig.h"
 #import "HATheme.h"
 #import "HAIconMapper.h"
 #import "HAEntityDisplayHelper.h"
+#import "UIFont+HACompat.h"
 
 @interface HAEntityCardCell ()
 @property (nonatomic, strong) UILabel *entityIconLabel;
@@ -31,7 +33,7 @@
 
     // Entity name (below icon)
     self.entityNameLabel = [[UILabel alloc] init];
-    self.entityNameLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
+    self.entityNameLabel.font = [UIFont ha_systemFontOfSize:14 weight:HAFontWeightMedium];
     self.entityNameLabel.textColor = [HATheme primaryTextColor];
     self.entityNameLabel.textAlignment = NSTextAlignmentCenter;
     self.entityNameLabel.numberOfLines = 1;
@@ -40,27 +42,47 @@
 
     // Large state/attribute value
     self.entityStateLabel = [[UILabel alloc] init];
-    self.entityStateLabel.font = [UIFont monospacedDigitSystemFontOfSize:28 weight:UIFontWeightLight];
+    self.entityStateLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:28 weight:HAFontWeightLight];
     self.entityStateLabel.textColor = [HATheme primaryTextColor];
     self.entityStateLabel.textAlignment = NSTextAlignmentCenter;
     self.entityStateLabel.numberOfLines = 1;
     self.entityStateLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:self.entityStateLabel];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.entityIconLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:12],
-        [self.entityIconLabel.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor],
+    HAActivateConstraints(@[
+        HACon([self.entityIconLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:12]),
+        HACon([self.entityIconLabel.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor]),
 
-        [self.entityStateLabel.topAnchor constraintEqualToAnchor:self.entityIconLabel.bottomAnchor constant:4],
-        [self.entityStateLabel.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor],
-        [self.entityStateLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.contentView.leadingAnchor constant:8],
-        [self.entityStateLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-8],
+        HACon([self.entityStateLabel.topAnchor constraintEqualToAnchor:self.entityIconLabel.bottomAnchor constant:4]),
+        HACon([self.entityStateLabel.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor]),
+        HACon([self.entityStateLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.contentView.leadingAnchor constant:8]),
+        HACon([self.entityStateLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-8]),
 
-        [self.entityNameLabel.topAnchor constraintEqualToAnchor:self.entityStateLabel.bottomAnchor constant:2],
-        [self.entityNameLabel.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor],
-        [self.entityNameLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.contentView.leadingAnchor constant:8],
-        [self.entityNameLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-8],
-    ]];
+        HACon([self.entityNameLabel.topAnchor constraintEqualToAnchor:self.entityStateLabel.bottomAnchor constant:2]),
+        HACon([self.entityNameLabel.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor]),
+        HACon([self.entityNameLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.contentView.leadingAnchor constant:8]),
+        HACon([self.entityNameLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-8]),
+    ]);
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    if (!HAAutoLayoutAvailable()) {
+        CGFloat w = self.contentView.bounds.size.width;
+        CGFloat padding = 8.0;
+        CGFloat maxW = w - padding * 2;
+
+        CGSize iconSize = [self.entityIconLabel sizeThatFits:CGSizeMake(maxW, CGFLOAT_MAX)];
+        self.entityIconLabel.frame = CGRectMake((w - iconSize.width) / 2.0, 12, iconSize.width, iconSize.height);
+
+        CGSize stateSize = [self.entityStateLabel sizeThatFits:CGSizeMake(maxW, CGFLOAT_MAX)];
+        self.entityStateLabel.frame = CGRectMake((w - stateSize.width) / 2.0, CGRectGetMaxY(self.entityIconLabel.frame) + 4,
+                                                  stateSize.width, stateSize.height);
+
+        CGSize nameSize = [self.entityNameLabel sizeThatFits:CGSizeMake(maxW, CGFLOAT_MAX)];
+        self.entityNameLabel.frame = CGRectMake((w - nameSize.width) / 2.0, CGRectGetMaxY(self.entityStateLabel.frame) + 2,
+                                                 nameSize.width, nameSize.height);
+    }
 }
 
 - (void)configureWithEntity:(HAEntity *)entity configItem:(HADashboardConfigItem *)configItem {
@@ -126,11 +148,14 @@
     self.entityIconLabel.text = nil;
     self.entityNameLabel.text = nil;
     self.entityStateLabel.text = nil;
+    self.alpha = 1.0;
+}
+
+- (void)resetThemeColors {
+    [super resetThemeColors];
     self.entityIconLabel.textColor = [HATheme secondaryTextColor];
     self.entityStateLabel.textColor = [HATheme primaryTextColor];
     self.entityNameLabel.textColor = [HATheme primaryTextColor];
-    self.contentView.backgroundColor = [HATheme cellBackgroundColor];
-    self.alpha = 1.0;
 }
 
 @end

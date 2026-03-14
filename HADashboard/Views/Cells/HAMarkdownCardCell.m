@@ -1,6 +1,10 @@
+#import "HAAutoLayout.h"
+#import "NSString+HACompat.h"
 #import "HAMarkdownCardCell.h"
+#import "NSString+HACompat.h"
 #import "HADashboardConfig.h"
 #import "HATheme.h"
+#import "UIFont+HACompat.h"
 
 static const CGFloat kPadding = 12.0;
 static const CGFloat kTitleHeight = 24.0;
@@ -20,7 +24,7 @@ static const CGFloat kTitleHeight = 24.0;
         self.contentView.clipsToBounds = YES;
 
         self.titleLabel = [[UILabel alloc] init];
-        self.titleLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightSemibold];
+        self.titleLabel.font = [UIFont ha_systemFontOfSize:14 weight:HAFontWeightSemibold];
         self.titleLabel.textColor = [HATheme primaryTextColor];
         self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
         self.titleLabel.hidden = YES;
@@ -34,15 +38,15 @@ static const CGFloat kTitleHeight = 24.0;
         self.contentLabel.translatesAutoresizingMaskIntoConstraints = NO;
         [self.contentView addSubview:self.contentLabel];
 
-        [NSLayoutConstraint activateConstraints:@[
-            [self.titleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:kPadding],
-            [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kPadding],
-            [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kPadding],
+        HAActivateConstraints(@[
+            HACon([self.titleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:kPadding]),
+            HACon([self.titleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kPadding]),
+            HACon([self.titleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kPadding]),
 
-            [self.contentLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kPadding],
-            [self.contentLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kPadding],
-            [self.contentLabel.bottomAnchor constraintLessThanOrEqualToAnchor:self.contentView.bottomAnchor constant:-kPadding],
-        ]];
+            HACon([self.contentLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kPadding]),
+            HACon([self.contentLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kPadding]),
+            HACon([self.contentLabel.bottomAnchor constraintLessThanOrEqualToAnchor:self.contentView.bottomAnchor constant:-kPadding]),
+        ]);
     }
     return self;
 }
@@ -67,13 +71,13 @@ static const CGFloat kTitleHeight = 24.0;
     // Remove existing top constraint and re-add
     for (NSLayoutConstraint *c in self.contentView.constraints) {
         if (c.firstItem == self.contentLabel && c.firstAttribute == NSLayoutAttributeTop) {
-            c.active = NO;
+            HASetConstraintActive(c, NO);
         }
     }
     if (!self.titleLabel.hidden) {
-        [self.contentLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:6].active = YES;
+        HASetConstraintActive([self.contentLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:6], YES);
     } else {
-        [self.contentLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:kPadding].active = YES;
+        HASetConstraintActive([self.contentLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:kPadding], YES);
     }
 
     // text_only mode: no background/border
@@ -96,15 +100,15 @@ static const CGFloat kTitleHeight = 24.0;
     NSMutableAttributedString *result = [[NSMutableAttributedString alloc] init];
     UIFont *normalFont = [UIFont systemFontOfSize:13];
     UIFont *boldFont = [UIFont boldSystemFontOfSize:13];
-    UIFont *codeFont = [UIFont monospacedSystemFontOfSize:12 weight:UIFontWeightRegular];
+    UIFont *codeFont = [UIFont monospacedSystemFontOfSize:12 weight:HAFontWeightRegular];
     UIFont *headingFont = [UIFont boldSystemFontOfSize:16];
     UIColor *textColor = [HATheme primaryTextColor];
     UIColor *codeColor = [HATheme secondaryTextColor];
 
-    NSDictionary *normalAttrs = @{NSFontAttributeName: normalFont, NSForegroundColorAttributeName: textColor};
-    NSDictionary *boldAttrs = @{NSFontAttributeName: boldFont, NSForegroundColorAttributeName: textColor};
-    NSDictionary *codeAttrs = @{NSFontAttributeName: codeFont, NSForegroundColorAttributeName: codeColor};
-    NSDictionary *headingAttrs = @{NSFontAttributeName: headingFont, NSForegroundColorAttributeName: textColor};
+    NSDictionary *normalAttrs = @{HAFontAttributeName: normalFont, HAForegroundColorAttributeName: textColor};
+    NSDictionary *boldAttrs = @{HAFontAttributeName: boldFont, HAForegroundColorAttributeName: textColor};
+    NSDictionary *codeAttrs = @{HAFontAttributeName: codeFont, HAForegroundColorAttributeName: codeColor};
+    NSDictionary *headingAttrs = @{HAFontAttributeName: headingFont, HAForegroundColorAttributeName: textColor};
 
     NSArray *lines = [markdown componentsSeparatedByString:@"\n"];
     for (NSUInteger i = 0; i < lines.count; i++) {
@@ -119,7 +123,7 @@ static const CGFloat kTitleHeight = 24.0;
         if ([line hasPrefix:@"## "]) {
             UIFont *h2 = [UIFont boldSystemFontOfSize:15];
             [result appendAttributedString:[[NSAttributedString alloc] initWithString:[line substringFromIndex:3]
-                                                                           attributes:@{NSFontAttributeName: h2, NSForegroundColorAttributeName: textColor}]];
+                                                                           attributes:@{HAFontAttributeName: h2, HAForegroundColorAttributeName: textColor}]];
             continue;
         }
 
@@ -186,12 +190,26 @@ static const CGFloat kTitleHeight = 24.0;
     return kPadding + titleExtra + contentHeight + kPadding;
 }
 
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    if (!HAAutoLayoutAvailable()) {
+        CGFloat w = self.contentView.bounds.size.width;
+        CGFloat labelW = w - kPadding * 2;
+        CGFloat y = kPadding;
+        if (!self.titleLabel.hidden) {
+            self.titleLabel.frame = CGRectMake(kPadding, y, labelW, kTitleHeight);
+            y = CGRectGetMaxY(self.titleLabel.frame) + 6;
+        }
+        CGSize contentSize = [self.contentLabel sizeThatFits:CGSizeMake(labelW, CGFLOAT_MAX)];
+        self.contentLabel.frame = CGRectMake(kPadding, y, labelW, contentSize.height);
+    }
+}
+
 - (void)prepareForReuse {
     [super prepareForReuse];
     self.titleLabel.text = nil;
     self.titleLabel.hidden = YES;
     self.contentLabel.attributedText = nil;
-    self.contentView.backgroundColor = [HATheme cellBackgroundColor];
     self.contentView.layer.cornerRadius = 12.0;
 }
 

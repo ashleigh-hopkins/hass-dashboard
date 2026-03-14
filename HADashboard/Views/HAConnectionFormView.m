@@ -1,3 +1,5 @@
+#import "HAAutoLayout.h"
+#import "HAStackView.h"
 #import "HAConnectionFormView.h"
 #import "HAAuthManager.h"
 #import "HAOAuthClient.h"
@@ -6,6 +8,9 @@
 #import "HADiscoveryService.h"
 #import "HADiscoveredServer.h"
 #import "HATheme.h"
+#import "UIView+HAUtilities.h"
+#import "UIViewController+HAAlert.h"
+#import "UIFont+HACompat.h"
 
 static NSString *const kModeTrusted = @"trusted";
 static NSString *const kModeLogin   = @"login";
@@ -20,7 +25,7 @@ static NSString *const kModeToken   = @"token";
 
 // Login mode container
 @property (nonatomic, strong) UIView *loginContainer;
-@property (nonatomic, strong) UIStackView *authFieldsStack;
+@property (nonatomic, strong) HAStackView *authFieldsStack;
 @property (nonatomic, strong) UITextField *usernameField;
 @property (nonatomic, strong) UITextField *passwordField;
 
@@ -43,7 +48,7 @@ static NSString *const kModeToken   = @"token";
 // Discovery
 @property (nonatomic, strong) HADiscoveryService *discoveryService;
 @property (nonatomic, strong) UIView *discoverySection;
-@property (nonatomic, strong) UIStackView *discoveryStack;
+@property (nonatomic, strong) HAStackView *discoveryStack;
 @end
 
 @implementation HAConnectionFormView
@@ -82,26 +87,26 @@ static NSString *const kModeToken   = @"token";
 
     UILabel *discoveryTitle = [[UILabel alloc] init];
     discoveryTitle.text = @"Servers found on your network";
-    discoveryTitle.font = [UIFont systemFontOfSize:12 weight:UIFontWeightMedium];
+    discoveryTitle.font = [UIFont ha_systemFontOfSize:12 weight:HAFontWeightMedium];
     discoveryTitle.textColor = [HATheme secondaryTextColor];
     discoveryTitle.translatesAutoresizingMaskIntoConstraints = NO;
     [self.discoverySection addSubview:discoveryTitle];
 
-    self.discoveryStack = [[UIStackView alloc] init];
-    self.discoveryStack.axis = UILayoutConstraintAxisVertical;
+    self.discoveryStack = [[HAStackView alloc] init];
+    self.discoveryStack.axis = 1;
     self.discoveryStack.spacing = 6;
     self.discoveryStack.translatesAutoresizingMaskIntoConstraints = NO;
     [self.discoverySection addSubview:self.discoveryStack];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [discoveryTitle.topAnchor constraintEqualToAnchor:self.discoverySection.topAnchor],
-        [discoveryTitle.leadingAnchor constraintEqualToAnchor:self.discoverySection.leadingAnchor],
-        [discoveryTitle.trailingAnchor constraintEqualToAnchor:self.discoverySection.trailingAnchor],
-        [self.discoveryStack.topAnchor constraintEqualToAnchor:discoveryTitle.bottomAnchor constant:6],
-        [self.discoveryStack.leadingAnchor constraintEqualToAnchor:self.discoverySection.leadingAnchor],
-        [self.discoveryStack.trailingAnchor constraintEqualToAnchor:self.discoverySection.trailingAnchor],
-        [self.discoveryStack.bottomAnchor constraintEqualToAnchor:self.discoverySection.bottomAnchor],
-    ]];
+    HAActivateConstraints(@[
+        HACon([discoveryTitle.topAnchor constraintEqualToAnchor:self.discoverySection.topAnchor]),
+        HACon([discoveryTitle.leadingAnchor constraintEqualToAnchor:self.discoverySection.leadingAnchor]),
+        HACon([discoveryTitle.trailingAnchor constraintEqualToAnchor:self.discoverySection.trailingAnchor]),
+        HACon([self.discoveryStack.topAnchor constraintEqualToAnchor:discoveryTitle.bottomAnchor constant:6]),
+        HACon([self.discoveryStack.leadingAnchor constraintEqualToAnchor:self.discoverySection.leadingAnchor]),
+        HACon([self.discoveryStack.trailingAnchor constraintEqualToAnchor:self.discoverySection.trailingAnchor]),
+        HACon([self.discoveryStack.bottomAnchor constraintEqualToAnchor:self.discoverySection.bottomAnchor]),
+    ]);
 
     // ── Server URL ─────────────────────────────────────────────────────
     UILabel *urlLabel = [[UILabel alloc] init];
@@ -109,6 +114,7 @@ static NSString *const kModeToken   = @"token";
     urlLabel.font = [UIFont systemFontOfSize:14];
     urlLabel.textColor = [HATheme secondaryTextColor];
     urlLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    urlLabel.tag = 300;
     [self addSubview:urlLabel];
 
     self.serverURLField = [[UITextField alloc] init];
@@ -130,8 +136,8 @@ static NSString *const kModeToken   = @"token";
     [self addSubview:self.authModeSegment];
 
     // ── Auth fields stack ──────────────────────────────────────────────
-    self.authFieldsStack = [[UIStackView alloc] init];
-    self.authFieldsStack.axis = UILayoutConstraintAxisVertical;
+    self.authFieldsStack = [[HAStackView alloc] init];
+    self.authFieldsStack.axis = 1;
     self.authFieldsStack.spacing = 0;
     self.authFieldsStack.translatesAutoresizingMaskIntoConstraints = NO;
     [self addSubview:self.authFieldsStack];
@@ -151,12 +157,12 @@ static NSString *const kModeToken   = @"token";
     trustedHint.translatesAutoresizingMaskIntoConstraints = NO;
     [self.trustedContainer addSubview:trustedHint];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [trustedHint.topAnchor constraintEqualToAnchor:self.trustedContainer.topAnchor constant:8],
-        [trustedHint.leadingAnchor constraintEqualToAnchor:self.trustedContainer.leadingAnchor],
-        [trustedHint.trailingAnchor constraintEqualToAnchor:self.trustedContainer.trailingAnchor],
-        [trustedHint.bottomAnchor constraintEqualToAnchor:self.trustedContainer.bottomAnchor constant:-4],
-    ]];
+    HAActivateConstraints(@[
+        HACon([trustedHint.topAnchor constraintEqualToAnchor:self.trustedContainer.topAnchor constant:8]),
+        HACon([trustedHint.leadingAnchor constraintEqualToAnchor:self.trustedContainer.leadingAnchor]),
+        HACon([trustedHint.trailingAnchor constraintEqualToAnchor:self.trustedContainer.trailingAnchor]),
+        HACon([trustedHint.bottomAnchor constraintEqualToAnchor:self.trustedContainer.bottomAnchor constant:-4]),
+    ]);
 
     // ── Login mode container ───────────────────────────────────────────
     self.loginContainer = [[UIView alloc] init];
@@ -206,24 +212,24 @@ static NSString *const kModeToken   = @"token";
     loginHint.translatesAutoresizingMaskIntoConstraints = NO;
     [self.loginContainer addSubview:loginHint];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [userLabel.topAnchor constraintEqualToAnchor:self.loginContainer.topAnchor],
-        [userLabel.leadingAnchor constraintEqualToAnchor:self.loginContainer.leadingAnchor],
-        [self.usernameField.topAnchor constraintEqualToAnchor:userLabel.bottomAnchor constant:6],
-        [self.usernameField.leadingAnchor constraintEqualToAnchor:self.loginContainer.leadingAnchor],
-        [self.usernameField.trailingAnchor constraintEqualToAnchor:self.loginContainer.trailingAnchor],
-        [self.usernameField.heightAnchor constraintEqualToConstant:fieldHeight],
-        [passLabel.topAnchor constraintEqualToAnchor:self.usernameField.bottomAnchor constant:16],
-        [passLabel.leadingAnchor constraintEqualToAnchor:self.loginContainer.leadingAnchor],
-        [self.passwordField.topAnchor constraintEqualToAnchor:passLabel.bottomAnchor constant:6],
-        [self.passwordField.leadingAnchor constraintEqualToAnchor:self.loginContainer.leadingAnchor],
-        [self.passwordField.trailingAnchor constraintEqualToAnchor:self.loginContainer.trailingAnchor],
-        [self.passwordField.heightAnchor constraintEqualToConstant:fieldHeight],
-        [loginHint.topAnchor constraintEqualToAnchor:self.passwordField.bottomAnchor constant:8],
-        [loginHint.leadingAnchor constraintEqualToAnchor:self.loginContainer.leadingAnchor],
-        [loginHint.trailingAnchor constraintEqualToAnchor:self.loginContainer.trailingAnchor],
-        [loginHint.bottomAnchor constraintEqualToAnchor:self.loginContainer.bottomAnchor],
-    ]];
+    HAActivateConstraints(@[
+        HACon([userLabel.topAnchor constraintEqualToAnchor:self.loginContainer.topAnchor]),
+        HACon([userLabel.leadingAnchor constraintEqualToAnchor:self.loginContainer.leadingAnchor]),
+        HACon([self.usernameField.topAnchor constraintEqualToAnchor:userLabel.bottomAnchor constant:6]),
+        HACon([self.usernameField.leadingAnchor constraintEqualToAnchor:self.loginContainer.leadingAnchor]),
+        HACon([self.usernameField.trailingAnchor constraintEqualToAnchor:self.loginContainer.trailingAnchor]),
+        HACon([self.usernameField.heightAnchor constraintEqualToConstant:fieldHeight]),
+        HACon([passLabel.topAnchor constraintEqualToAnchor:self.usernameField.bottomAnchor constant:16]),
+        HACon([passLabel.leadingAnchor constraintEqualToAnchor:self.loginContainer.leadingAnchor]),
+        HACon([self.passwordField.topAnchor constraintEqualToAnchor:passLabel.bottomAnchor constant:6]),
+        HACon([self.passwordField.leadingAnchor constraintEqualToAnchor:self.loginContainer.leadingAnchor]),
+        HACon([self.passwordField.trailingAnchor constraintEqualToAnchor:self.loginContainer.trailingAnchor]),
+        HACon([self.passwordField.heightAnchor constraintEqualToConstant:fieldHeight]),
+        HACon([loginHint.topAnchor constraintEqualToAnchor:self.passwordField.bottomAnchor constant:8]),
+        HACon([loginHint.leadingAnchor constraintEqualToAnchor:self.loginContainer.leadingAnchor]),
+        HACon([loginHint.trailingAnchor constraintEqualToAnchor:self.loginContainer.trailingAnchor]),
+        HACon([loginHint.bottomAnchor constraintEqualToAnchor:self.loginContainer.bottomAnchor]),
+    ]);
 
     // ── Token mode container (hidden initially) ────────────────────────
     self.tokenContainer = [[UIView alloc] init];
@@ -257,22 +263,22 @@ static NSString *const kModeToken   = @"token";
     tokenHint.translatesAutoresizingMaskIntoConstraints = NO;
     [self.tokenContainer addSubview:tokenHint];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [tokenLabel.topAnchor constraintEqualToAnchor:self.tokenContainer.topAnchor],
-        [tokenLabel.leadingAnchor constraintEqualToAnchor:self.tokenContainer.leadingAnchor],
-        [tokenLabel.trailingAnchor constraintEqualToAnchor:self.tokenContainer.trailingAnchor],
-        [self.tokenField.topAnchor constraintEqualToAnchor:tokenLabel.bottomAnchor constant:6],
-        [self.tokenField.leadingAnchor constraintEqualToAnchor:self.tokenContainer.leadingAnchor],
-        [self.tokenField.trailingAnchor constraintEqualToAnchor:self.tokenContainer.trailingAnchor],
-        [self.tokenField.heightAnchor constraintEqualToConstant:fieldHeight],
-        [tokenHint.topAnchor constraintEqualToAnchor:self.tokenField.bottomAnchor constant:8],
-        [tokenHint.leadingAnchor constraintEqualToAnchor:self.tokenContainer.leadingAnchor],
-        [tokenHint.trailingAnchor constraintEqualToAnchor:self.tokenContainer.trailingAnchor],
-        [tokenHint.bottomAnchor constraintEqualToAnchor:self.tokenContainer.bottomAnchor],
-    ]];
+    HAActivateConstraints(@[
+        HACon([tokenLabel.topAnchor constraintEqualToAnchor:self.tokenContainer.topAnchor]),
+        HACon([tokenLabel.leadingAnchor constraintEqualToAnchor:self.tokenContainer.leadingAnchor]),
+        HACon([tokenLabel.trailingAnchor constraintEqualToAnchor:self.tokenContainer.trailingAnchor]),
+        HACon([self.tokenField.topAnchor constraintEqualToAnchor:tokenLabel.bottomAnchor constant:6]),
+        HACon([self.tokenField.leadingAnchor constraintEqualToAnchor:self.tokenContainer.leadingAnchor]),
+        HACon([self.tokenField.trailingAnchor constraintEqualToAnchor:self.tokenContainer.trailingAnchor]),
+        HACon([self.tokenField.heightAnchor constraintEqualToConstant:fieldHeight]),
+        HACon([tokenHint.topAnchor constraintEqualToAnchor:self.tokenField.bottomAnchor constant:8]),
+        HACon([tokenHint.leadingAnchor constraintEqualToAnchor:self.tokenContainer.leadingAnchor]),
+        HACon([tokenHint.trailingAnchor constraintEqualToAnchor:self.tokenContainer.trailingAnchor]),
+        HACon([tokenHint.bottomAnchor constraintEqualToAnchor:self.tokenContainer.bottomAnchor]),
+    ]);
 
     // ── Connect button ─────────────────────────────────────────────────
-    self.connectButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.connectButton = HASystemButton();
     [self.connectButton setTitle:@"Connect" forState:UIControlStateNormal];
     self.connectButton.titleLabel.font = [UIFont boldSystemFontOfSize:18];
     self.connectButton.backgroundColor = [HATheme accentColor];
@@ -304,29 +310,167 @@ static NSString *const kModeToken   = @"token";
         self.connectButton, self.statusLabel,
     ];
     for (UIView *v in fullWidthViews) {
-        [NSLayoutConstraint activateConstraints:@[
-            [v.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
-            [v.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
-        ]];
+        HAActivateConstraints(@[
+            HACon([v.leadingAnchor constraintEqualToAnchor:self.leadingAnchor]),
+            HACon([v.trailingAnchor constraintEqualToAnchor:self.trailingAnchor]),
+        ]);
     }
 
     // Status + spinner sit below the connect button but collapse when empty.
     // The bottom of the form is pinned to the connect button; the status area
     // hangs below and only takes space when populated.
-    [NSLayoutConstraint activateConstraints:@[
-        [self.discoverySection.topAnchor constraintEqualToAnchor:self.topAnchor],
-        [urlLabel.topAnchor constraintEqualToAnchor:self.discoverySection.bottomAnchor constant:sectionGap],
-        [self.serverURLField.topAnchor constraintEqualToAnchor:urlLabel.bottomAnchor constant:labelGap],
-        [self.serverURLField.heightAnchor constraintEqualToConstant:fieldHeight],
-        [self.authModeSegment.topAnchor constraintEqualToAnchor:self.serverURLField.bottomAnchor constant:sectionGap],
-        [self.authFieldsStack.topAnchor constraintEqualToAnchor:self.authModeSegment.bottomAnchor constant:sectionGap],
-        [self.connectButton.topAnchor constraintEqualToAnchor:self.authFieldsStack.bottomAnchor constant:24],
-        [self.connectButton.heightAnchor constraintEqualToConstant:fieldHeight],
-        [self.connectButton.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
-        [self.statusLabel.topAnchor constraintEqualToAnchor:self.connectButton.bottomAnchor constant:12],
-        [self.spinner.topAnchor constraintEqualToAnchor:self.statusLabel.bottomAnchor constant:6],
-        [self.spinner.centerXAnchor constraintEqualToAnchor:self.centerXAnchor],
-    ]];
+    HAActivateConstraints(@[
+        HACon([self.discoverySection.topAnchor constraintEqualToAnchor:self.topAnchor]),
+        HACon([urlLabel.topAnchor constraintEqualToAnchor:self.discoverySection.bottomAnchor constant:sectionGap]),
+        HACon([self.serverURLField.topAnchor constraintEqualToAnchor:urlLabel.bottomAnchor constant:labelGap]),
+        HACon([self.serverURLField.heightAnchor constraintEqualToConstant:fieldHeight]),
+        HACon([self.authModeSegment.topAnchor constraintEqualToAnchor:self.serverURLField.bottomAnchor constant:sectionGap]),
+        HACon([self.authFieldsStack.topAnchor constraintEqualToAnchor:self.authModeSegment.bottomAnchor constant:sectionGap]),
+        HACon([self.connectButton.topAnchor constraintEqualToAnchor:self.authFieldsStack.bottomAnchor constant:24]),
+        HACon([self.connectButton.heightAnchor constraintEqualToConstant:fieldHeight]),
+        HACon([self.connectButton.bottomAnchor constraintEqualToAnchor:self.bottomAnchor]),
+        HACon([self.statusLabel.topAnchor constraintEqualToAnchor:self.connectButton.bottomAnchor constant:12]),
+        HACon([self.spinner.topAnchor constraintEqualToAnchor:self.statusLabel.bottomAnchor constant:6]),
+        HACon([self.spinner.centerXAnchor constraintEqualToAnchor:self.centerXAnchor]),
+    ]);
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    if (!HAAutoLayoutAvailable()) {
+        CGFloat w = self.bounds.size.width;
+        CGFloat fieldHeight = 44.0;
+        CGFloat sectionGap = 20.0;
+        CGFloat labelGap = 6.0;
+        CGFloat y = 0;
+
+        // Discovery section
+        if (!self.discoverySection.hidden) {
+            CGSize dSize = [self.discoverySection sizeThatFits:CGSizeMake(w, CGFLOAT_MAX)];
+            self.discoverySection.frame = CGRectMake(0, y, w, dSize.height);
+            y = CGRectGetMaxY(self.discoverySection.frame);
+        }
+
+        // URL label
+        UILabel *urlLabel = (UILabel *)[self viewWithTag:300];
+        y += sectionGap;
+        CGSize urlLabelSize = [urlLabel sizeThatFits:CGSizeMake(w, CGFLOAT_MAX)];
+        urlLabel.frame = CGRectMake(0, y, w, urlLabelSize.height);
+        y = CGRectGetMaxY(urlLabel.frame) + labelGap;
+
+        // Server URL field
+        self.serverURLField.frame = CGRectMake(0, y, w, fieldHeight);
+        y = CGRectGetMaxY(self.serverURLField.frame) + sectionGap;
+
+        // Auth mode segment
+        CGSize segSize = [self.authModeSegment sizeThatFits:CGSizeMake(w, CGFLOAT_MAX)];
+        self.authModeSegment.frame = CGRectMake(0, y, w, segSize.height);
+        y = CGRectGetMaxY(self.authModeSegment.frame) + sectionGap;
+
+        // Layout container internals before measuring the stack
+        [self layoutContainersManually];
+
+        // Auth fields stack
+        CGSize stackSize = [self.authFieldsStack sizeThatFits:CGSizeMake(w, CGFLOAT_MAX)];
+        self.authFieldsStack.frame = CGRectMake(0, y, w, stackSize.height);
+        y = CGRectGetMaxY(self.authFieldsStack.frame) + 24;
+
+        // Connect button
+        self.connectButton.frame = CGRectMake(0, y, w, fieldHeight);
+        y = CGRectGetMaxY(self.connectButton.frame);
+
+        // Status label
+        CGSize statusSize = [self.statusLabel sizeThatFits:CGSizeMake(w, CGFLOAT_MAX)];
+        self.statusLabel.frame = CGRectMake(0, y + 12, w, statusSize.height);
+
+        // Spinner
+        CGSize spinSize = self.spinner.frame.size;
+        self.spinner.frame = CGRectMake((w - spinSize.width) / 2,
+                                        CGRectGetMaxY(self.statusLabel.frame) + 6,
+                                        spinSize.width, spinSize.height);
+    }
+}
+
+/// Frame-based layout for login/token/trusted containers when Auto Layout is disabled.
+/// The containers are inside an HAStackView which calls sizeThatFits: on each child,
+/// but the internal subviews have zero frames without constraints.
+- (void)layoutContainersManually {
+    CGFloat w = self.authFieldsStack.bounds.size.width;
+    if (w <= 0) w = self.bounds.size.width;
+    CGFloat fieldHeight = 44.0;
+    CGFloat labelGap = 6.0;
+
+    // ── Login container ───────────────────────────────────────────────
+    if (!self.loginContainer.hidden) {
+        CGFloat y = 0;
+        for (UIView *sub in self.loginContainer.subviews) {
+            if ([sub isKindOfClass:[UILabel class]]) {
+                CGSize s = [sub sizeThatFits:CGSizeMake(w, CGFLOAT_MAX)];
+                sub.frame = CGRectMake(0, y, w, s.height);
+                y = CGRectGetMaxY(sub.frame) + labelGap;
+            } else if ([sub isKindOfClass:[UITextField class]]) {
+                sub.frame = CGRectMake(0, y, w, fieldHeight);
+                y = CGRectGetMaxY(sub.frame) + 16;
+            }
+        }
+        // Adjust last gap (hint label gets 8pt, not 16)
+        CGFloat totalH = 0;
+        for (UIView *sub in self.loginContainer.subviews) {
+            CGFloat bottom = CGRectGetMaxY(sub.frame);
+            if (bottom > totalH) totalH = bottom;
+        }
+        self.loginContainer.frame = CGRectMake(self.loginContainer.frame.origin.x,
+                                                self.loginContainer.frame.origin.y,
+                                                w, totalH);
+    }
+
+    // ── Token container ───────────────────────────────────────────────
+    if (!self.tokenContainer.hidden) {
+        CGFloat y = 0;
+        for (UIView *sub in self.tokenContainer.subviews) {
+            if ([sub isKindOfClass:[UILabel class]]) {
+                CGSize s = [sub sizeThatFits:CGSizeMake(w, CGFLOAT_MAX)];
+                sub.frame = CGRectMake(0, y, w, s.height);
+                y = CGRectGetMaxY(sub.frame) + labelGap;
+            } else if ([sub isKindOfClass:[UITextField class]]) {
+                sub.frame = CGRectMake(0, y, w, fieldHeight);
+                y = CGRectGetMaxY(sub.frame) + 8;
+            }
+        }
+        CGFloat totalH = 0;
+        for (UIView *sub in self.tokenContainer.subviews) {
+            CGFloat bottom = CGRectGetMaxY(sub.frame);
+            if (bottom > totalH) totalH = bottom;
+        }
+        self.tokenContainer.frame = CGRectMake(self.tokenContainer.frame.origin.x,
+                                                self.tokenContainer.frame.origin.y,
+                                                w, totalH);
+    }
+
+    // ── Trusted container ─────────────────────────────────────────────
+    if (!self.trustedContainer.hidden) {
+        UIView *hint = self.trustedContainer.subviews.firstObject;
+        if (hint) {
+            CGSize s = [hint sizeThatFits:CGSizeMake(w, CGFLOAT_MAX)];
+            hint.frame = CGRectMake(0, 8, w, s.height);
+            self.trustedContainer.frame = CGRectMake(self.trustedContainer.frame.origin.x,
+                                                      self.trustedContainer.frame.origin.y,
+                                                      w, s.height + 12);
+        }
+    }
+}
+
+- (CGSize)sizeThatFits:(CGSize)size {
+    if (!HAAutoLayoutAvailable()) {
+        // Trigger layout to get actual height
+        CGRect savedFrame = self.frame;
+        self.frame = CGRectMake(0, 0, size.width, 0);
+        [self layoutSubviews];
+        CGFloat bottom = CGRectGetMaxY(self.connectButton.frame);
+        self.frame = savedFrame;
+        return CGSizeMake(size.width, bottom);
+    }
+    return [super sizeThatFits:size];
 }
 
 #pragma mark - Public
@@ -456,6 +600,8 @@ static NSString *const kModeToken   = @"token";
     self.trustedContainer.hidden = ![mode isEqualToString:kModeTrusted];
     self.loginContainer.hidden   = ![mode isEqualToString:kModeLogin];
     self.tokenContainer.hidden   = ![mode isEqualToString:kModeToken];
+    // In frame-based mode the stack doesn't auto-relayout on hidden changes
+    [self setNeedsLayout];
 }
 
 #pragma mark - Discovery
@@ -500,7 +646,7 @@ static NSString *const kModeToken   = @"token";
 
     UILabel *nameLabel = [[UILabel alloc] init];
     nameLabel.text = server.name ?: @"Home Assistant";
-    nameLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightMedium];
+    nameLabel.font = [UIFont ha_systemFontOfSize:15 weight:HAFontWeightMedium];
     nameLabel.textColor = [HATheme primaryTextColor];
     nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
     nameLabel.userInteractionEnabled = NO;
@@ -525,20 +671,20 @@ static NSString *const kModeToken   = @"token";
     chevron.userInteractionEnabled = NO;
     [row addSubview:chevron];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [row.heightAnchor constraintEqualToConstant:48],
-        [icon.leadingAnchor constraintEqualToAnchor:row.leadingAnchor constant:12],
-        [icon.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
-        [icon.widthAnchor constraintEqualToConstant:24],
-        [nameLabel.leadingAnchor constraintEqualToAnchor:icon.trailingAnchor constant:10],
-        [nameLabel.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
-        [versionLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:nameLabel.trailingAnchor constant:8],
-        [versionLabel.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
-        [chevron.leadingAnchor constraintEqualToAnchor:versionLabel.trailingAnchor constant:8],
-        [chevron.trailingAnchor constraintEqualToAnchor:row.trailingAnchor constant:-12],
-        [chevron.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
-        [chevron.widthAnchor constraintEqualToConstant:12],
-    ]];
+    HAActivateConstraints(@[
+        HACon([row.heightAnchor constraintEqualToConstant:48]),
+        HACon([icon.leadingAnchor constraintEqualToAnchor:row.leadingAnchor constant:12]),
+        HACon([icon.centerYAnchor constraintEqualToAnchor:row.centerYAnchor]),
+        HACon([icon.widthAnchor constraintEqualToConstant:24]),
+        HACon([nameLabel.leadingAnchor constraintEqualToAnchor:icon.trailingAnchor constant:10]),
+        HACon([nameLabel.centerYAnchor constraintEqualToAnchor:row.centerYAnchor]),
+        HACon([versionLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:nameLabel.trailingAnchor constant:8]),
+        HACon([versionLabel.centerYAnchor constraintEqualToAnchor:row.centerYAnchor]),
+        HACon([chevron.leadingAnchor constraintEqualToAnchor:versionLabel.trailingAnchor constant:8]),
+        HACon([chevron.trailingAnchor constraintEqualToAnchor:row.trailingAnchor constant:-12]),
+        HACon([chevron.centerYAnchor constraintEqualToAnchor:row.centerYAnchor]),
+        HACon([chevron.widthAnchor constraintEqualToConstant:12]),
+    ]);
 
     return row;
 }
@@ -614,17 +760,29 @@ static NSString *const kModeToken   = @"token";
                    flowId:(NSString *)flowId
               oauthClient:(HAOAuthClient *)oauth
                 serverURL:(NSString *)urlString {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Select User"
-                                                                  message:@"Choose which user to log in as"
-                                                           preferredStyle:UIAlertControllerStyleActionSheet];
-
+    NSMutableArray *userIds = [NSMutableArray arrayWithCapacity:users.count];
+    NSMutableArray *titles = [NSMutableArray arrayWithCapacity:users.count];
     for (NSString *userId in users) {
-        NSString *displayName = users[userId];
-        [alert addAction:[UIAlertAction actionWithTitle:displayName style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        [userIds addObject:userId];
+        [titles addObject:users[userId]];
+    }
+
+    UIViewController *presenter = [self firstAvailableViewController];
+    if (presenter) {
+        [presenter ha_showActionSheetWithTitle:@"Select User"
+                                  cancelTitle:@"Cancel"
+                                 actionTitles:titles
+                                   sourceView:self.connectButton
+                                      handler:^(NSInteger index) {
+            if (index < 0) {
+                self.connectButton.enabled = YES;
+                return;
+            }
+            NSString *selectedUserId = userIds[(NSUInteger)index];
             [self.spinner startAnimating];
             [self showStatus:@"Logging in..." isError:NO];
 
-            [oauth loginWithTrustedNetworkUser:userId flowId:flowId completion:^(NSString *authCode, NSDictionary *usersOrNil, NSString *flowIdOrNil, NSError *error) {
+            [oauth loginWithTrustedNetworkUser:selectedUserId flowId:flowId completion:^(NSString *authCode, NSDictionary *usersOrNil, NSString *flowIdOrNil, NSError *error) {
                 if (error || !authCode) {
                     self.connectButton.enabled = YES;
                     [self.spinner stopAnimating];
@@ -634,20 +792,7 @@ static NSString *const kModeToken   = @"token";
                 }
                 [self exchangeAuthCode:authCode withOAuthClient:oauth serverURL:urlString];
             }];
-        }]];
-    }
-
-    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:^(UIAlertAction *action) {
-        self.connectButton.enabled = YES;
-    }]];
-
-    UIViewController *presenter = [self firstAvailableViewController];
-    if (presenter) {
-        if (alert.popoverPresentationController) {
-            alert.popoverPresentationController.sourceView = self.connectButton;
-            alert.popoverPresentationController.sourceRect = self.connectButton.bounds;
-        }
-        [presenter presentViewController:alert animated:YES completion:nil];
+        }];
     }
 }
 

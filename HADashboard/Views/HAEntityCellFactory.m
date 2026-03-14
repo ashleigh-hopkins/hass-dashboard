@@ -276,7 +276,7 @@ static NSString *const kLogbookCardCellId   = @"HALogbookCardCell";
     if ([cardType isEqualToString:@"heading"]) {
         return kHeadingCellId;
     }
-    if ([cardType containsString:@"clock-weather"]) {
+    if (([cardType rangeOfString:@"clock-weather"].location != NSNotFound)) {
         return kClockWeatherCellId;
     }
     if ([cardType isEqualToString:@"gauge"]) {

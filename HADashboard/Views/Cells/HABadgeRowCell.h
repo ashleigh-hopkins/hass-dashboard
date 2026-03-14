@@ -1,11 +1,12 @@
 #import <UIKit/UIKit.h>
+#import "HACellCompat.h"
 
 @class HADashboardConfigSection;
 @class HAEntity;
 
 /// Renders multiple entities as compact badge chips in a horizontal flow.
 /// Used for custom:badge-card rendering.
-@interface HABadgeRowCell : UICollectionViewCell
+@interface HABadgeRowCell : HACollectionViewCellBase
 
 - (void)configureWithSection:(HADashboardConfigSection *)section entities:(NSDictionary *)entityDict;
 

@@ -1,11 +1,13 @@
 #import <UIKit/UIKit.h>
+#import "HAStackView.h"
+#import "HACellCompat.h"
 
 @class HADashboardConfigSection;
 @class HADashboardConfigItem;
 @class HAEntity;
 @class HAEntityRowView;
 
-@interface HAEntitiesCardCell : UICollectionViewCell
+@interface HAEntitiesCardCell : HACollectionViewCellBase
 
 - (void)configureWithSection:(HADashboardConfigSection *)section
                     entities:(NSDictionary *)entityDict
@@ -23,6 +25,6 @@
 
 /// Entity row views (for hit-testing from dashboard VC).
 @property (nonatomic, strong, readonly) NSMutableArray<HAEntityRowView *> *rowViews;
-@property (nonatomic, strong, readonly) UIStackView *stackView;
+@property (nonatomic, strong, readonly) HAStackView *stackView;
 
 @end

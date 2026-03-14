@@ -2,8 +2,12 @@
 #import "HALog.h"
 #import <CommonCrypto/CommonDigest.h>
 
-@interface HACacheManager ()
-@property (nonatomic, strong) dispatch_queue_t writeQueue;
+@interface HACacheManager () {
+    // dispatch_queue_t is an ObjC object under ARC on iOS 6+ but a plain C type
+    // on iOS 5. Using a raw ivar with __strong avoids the property attribute
+    // error when compiling for iOS 5.1, while still retaining the queue on iOS 6+.
+    dispatch_queue_t _writeQueue;
+}
 @property (nonatomic, copy) NSString *cachedServerHash;
 @end
 
@@ -105,7 +109,7 @@
         return;
     }
 
-    dispatch_async(self.writeQueue, ^{
+    dispatch_async(_writeQueue, ^{
         BOOL ok = [data writeToFile:path atomically:YES];
         if (!ok) {
             HALogE(@"cache", @"Failed to write %@", path);

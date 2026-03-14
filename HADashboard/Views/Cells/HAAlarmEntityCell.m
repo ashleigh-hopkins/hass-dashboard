@@ -1,3 +1,5 @@
+#import "HAAutoLayout.h"
+#import "HAStackView.h"
 #import "HAAlarmEntityCell.h"
 #import "HAEntity.h"
 #import "HAEntityAttributes.h"
@@ -5,6 +7,7 @@
 #import "HADashboardConfig.h"
 #import "HATheme.h"
 #import "HAHaptics.h"
+#import "UIFont+HACompat.h"
 
 static const CGFloat kPadding = 10.0;
 static const CGFloat kActionButtonWidth = 70.0;
@@ -61,7 +64,7 @@ static const NSInteger kKeypadTagEnter = 11;
 
     // Alarm state badge (pill-shaped label with tinted background)
     self.alarmStateLabel = [[UILabel alloc] init];
-    self.alarmStateLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightSemibold];
+    self.alarmStateLabel.font = [UIFont ha_systemFontOfSize:13 weight:HAFontWeightSemibold];
     self.alarmStateLabel.textColor = [UIColor whiteColor];
     self.alarmStateLabel.textAlignment = NSTextAlignmentCenter;
     self.alarmStateLabel.layer.cornerRadius = 12;
@@ -91,7 +94,7 @@ static const NSInteger kKeypadTagEnter = 11;
 
     // Code text field (secure entry, monospaced, centered)
     self.codeTextField = [[UITextField alloc] init];
-    self.codeTextField.font = [UIFont monospacedDigitSystemFontOfSize:18 weight:UIFontWeightMedium];
+    self.codeTextField.font = [UIFont ha_monospacedDigitSystemFontOfSize:18 weight:HAFontWeightMedium];
     self.codeTextField.textColor = [HATheme primaryTextColor];
     self.codeTextField.textAlignment = NSTextAlignmentCenter;
     self.codeTextField.secureTextEntry = YES;
@@ -120,9 +123,9 @@ static const NSInteger kKeypadTagEnter = 11;
 }
 
 - (UIButton *)createActionButtonWithTitle:(NSString *)title color:(UIColor *)color action:(SEL)action {
-    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+    UIButton *button = HASystemButton();
     [button setTitle:title forState:UIControlStateNormal];
-    button.titleLabel.font = [UIFont systemFontOfSize:11 weight:UIFontWeightMedium];
+    button.titleLabel.font = [UIFont ha_systemFontOfSize:11 weight:HAFontWeightMedium];
     // Pill-shaped with tinted background instead of solid color blocks
     button.backgroundColor = [color colorWithAlphaComponent:0.15];
     [button setTitleColor:color forState:UIControlStateNormal];
@@ -148,17 +151,17 @@ static const NSInteger kKeypadTagEnter = 11;
     CGFloat totalHeight = 4.0 * kKeypadButtonSize + 3.0 * kKeypadButtonSpacing;
 
     // Size the container
-    [NSLayoutConstraint activateConstraints:@[
-        [self.keypadContainer.widthAnchor constraintEqualToConstant:totalWidth],
-        [self.keypadContainer.heightAnchor constraintEqualToConstant:totalHeight],
-    ]];
+    HAActivateConstraints(@[
+        HACon([self.keypadContainer.widthAnchor constraintEqualToConstant:totalWidth]),
+        HACon([self.keypadContainer.heightAnchor constraintEqualToConstant:totalHeight]),
+    ]);
 
     for (NSInteger row = 0; row < 4; row++) {
         for (NSInteger col = 0; col < 3; col++) {
             NSString *label = rows[row][col];
-            UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
+            UIButton *btn = HASystemButton();
             [btn setTitle:label forState:UIControlStateNormal];
-            btn.titleLabel.font = [UIFont monospacedDigitSystemFontOfSize:18 weight:UIFontWeightMedium];
+            btn.titleLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:18 weight:HAFontWeightMedium];
             btn.translatesAutoresizingMaskIntoConstraints = NO;
             btn.layer.cornerRadius = kKeypadButtonSize / 2.0;
             btn.clipsToBounds = YES;
@@ -169,13 +172,13 @@ static const NSInteger kKeypadTagEnter = 11;
                 btn.tag = kKeypadTagClear;
                 btn.backgroundColor = [HATheme controlBackgroundColor];
                 [btn setTitleColor:[HATheme destructiveColor] forState:UIControlStateNormal];
-                btn.titleLabel.font = [UIFont systemFontOfSize:18 weight:UIFontWeightBold];
+                btn.titleLabel.font = [UIFont ha_systemFontOfSize:18 weight:HAFontWeightBold];
             } else if (row == 3 && col == 2) {
                 // Enter button
                 btn.tag = kKeypadTagEnter;
                 btn.backgroundColor = [HATheme accentColor];
                 [btn setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-                btn.titleLabel.font = [UIFont systemFontOfSize:18 weight:UIFontWeightBold];
+                btn.titleLabel.font = [UIFont ha_systemFontOfSize:18 weight:HAFontWeightBold];
             } else {
                 // Digit button
                 btn.tag = [label integerValue];
@@ -190,12 +193,12 @@ static const NSInteger kKeypadTagEnter = 11;
             CGFloat x = col * (kKeypadButtonSize + kKeypadButtonSpacing);
             CGFloat y = row * (kKeypadButtonSize + kKeypadButtonSpacing);
 
-            [NSLayoutConstraint activateConstraints:@[
-                [btn.leadingAnchor constraintEqualToAnchor:self.keypadContainer.leadingAnchor constant:x],
-                [btn.topAnchor constraintEqualToAnchor:self.keypadContainer.topAnchor constant:y],
-                [btn.widthAnchor constraintEqualToConstant:kKeypadButtonSize],
-                [btn.heightAnchor constraintEqualToConstant:kKeypadButtonSize],
-            ]];
+            HAActivateConstraints(@[
+                HACon([btn.leadingAnchor constraintEqualToAnchor:self.keypadContainer.leadingAnchor constant:x]),
+                HACon([btn.topAnchor constraintEqualToAnchor:self.keypadContainer.topAnchor constant:y]),
+                HACon([btn.widthAnchor constraintEqualToConstant:kKeypadButtonSize]),
+                HACon([btn.heightAnchor constraintEqualToConstant:kKeypadButtonSize]),
+            ]);
         }
     }
 }
@@ -204,32 +207,32 @@ static const NSInteger kKeypadTagEnter = 11;
     UIView *cv = self.contentView;
 
     // Alarm state badge: below name, left-aligned pill
-    [NSLayoutConstraint activateConstraints:@[
-        [self.alarmStateLabel.leadingAnchor constraintEqualToAnchor:cv.leadingAnchor constant:kPadding],
-        [self.alarmStateLabel.topAnchor constraintEqualToAnchor:self.nameLabel.bottomAnchor constant:4],
-        [self.alarmStateLabel.heightAnchor constraintEqualToConstant:24],
-    ]];
+    HAActivateConstraints(@[
+        HACon([self.alarmStateLabel.leadingAnchor constraintEqualToAnchor:cv.leadingAnchor constant:kPadding]),
+        HACon([self.alarmStateLabel.topAnchor constraintEqualToAnchor:self.nameLabel.bottomAnchor constant:4]),
+        HACon([self.alarmStateLabel.heightAnchor constraintEqualToConstant:24]),
+    ]);
 
     // Action buttons: UIStackView row below alarm state
-    UIStackView *buttonStack = [[UIStackView alloc] initWithArrangedSubviews:@[
+    HAStackView *buttonStack = [[HAStackView alloc] initWithArrangedSubviews:@[
         self.armAwayButton, self.armHomeButton, self.armNightButton,
         self.armVacationButton, self.armBypassButton, self.disarmButton
     ]];
-    buttonStack.axis = UILayoutConstraintAxisHorizontal;
+    buttonStack.axis = 0;
     buttonStack.spacing = kActionButtonSpacing;
     buttonStack.translatesAutoresizingMaskIntoConstraints = NO;
     [cv addSubview:buttonStack];
 
     for (UIButton *btn in buttonStack.arrangedSubviews) {
-        [btn.heightAnchor constraintEqualToConstant:kActionButtonHeight].active = YES;
+        HASetConstraintActive([btn.heightAnchor constraintEqualToConstant:kActionButtonHeight], YES);
     }
 
-    [NSLayoutConstraint activateConstraints:@[
-        [buttonStack.leadingAnchor constraintGreaterThanOrEqualToAnchor:cv.leadingAnchor constant:kPadding],
-        [buttonStack.trailingAnchor constraintLessThanOrEqualToAnchor:cv.trailingAnchor constant:-kPadding],
-        [buttonStack.topAnchor constraintEqualToAnchor:self.alarmStateLabel.bottomAnchor constant:8],
-        [buttonStack.centerXAnchor constraintEqualToAnchor:cv.centerXAnchor],
-    ]];
+    HAActivateConstraints(@[
+        HACon([buttonStack.leadingAnchor constraintGreaterThanOrEqualToAnchor:cv.leadingAnchor constant:kPadding]),
+        HACon([buttonStack.trailingAnchor constraintLessThanOrEqualToAnchor:cv.trailingAnchor constant:-kPadding]),
+        HACon([buttonStack.topAnchor constraintEqualToAnchor:self.alarmStateLabel.bottomAnchor constant:8]),
+        HACon([buttonStack.centerXAnchor constraintEqualToAnchor:cv.centerXAnchor]),
+    ]);
 
     // Night, Vacation, Bypass hidden by default — shown based on supported_features
     self.armNightButton.hidden = YES;
@@ -238,18 +241,18 @@ static const NSInteger kKeypadTagEnter = 11;
 
     // Code text field: centered below buttons
     CGFloat codeFieldWidth = 3.0 * kKeypadButtonSize + 2.0 * kKeypadButtonSpacing;
-    [NSLayoutConstraint activateConstraints:@[
-        [self.codeTextField.centerXAnchor constraintEqualToAnchor:cv.centerXAnchor],
-        [self.codeTextField.topAnchor constraintEqualToAnchor:buttonStack.bottomAnchor constant:8],
-        [self.codeTextField.widthAnchor constraintEqualToConstant:codeFieldWidth],
-        [self.codeTextField.heightAnchor constraintEqualToConstant:kCodeFieldHeight],
-    ]];
+    HAActivateConstraints(@[
+        HACon([self.codeTextField.centerXAnchor constraintEqualToAnchor:cv.centerXAnchor]),
+        HACon([self.codeTextField.topAnchor constraintEqualToAnchor:buttonStack.bottomAnchor constant:8]),
+        HACon([self.codeTextField.widthAnchor constraintEqualToConstant:codeFieldWidth]),
+        HACon([self.codeTextField.heightAnchor constraintEqualToConstant:kCodeFieldHeight]),
+    ]);
 
     // Keypad container: centered below code field
-    [NSLayoutConstraint activateConstraints:@[
-        [self.keypadContainer.centerXAnchor constraintEqualToAnchor:cv.centerXAnchor],
-        [self.keypadContainer.topAnchor constraintEqualToAnchor:self.codeTextField.bottomAnchor constant:8],
-    ]];
+    HAActivateConstraints(@[
+        HACon([self.keypadContainer.centerXAnchor constraintEqualToAnchor:cv.centerXAnchor]),
+        HACon([self.keypadContainer.topAnchor constraintEqualToAnchor:self.codeTextField.bottomAnchor constant:8]),
+    ]);
 }
 
 #pragma mark - Configuration
@@ -464,6 +467,62 @@ static const NSInteger kKeypadTagEnter = 11;
     [self submitCodeForService:self.pendingService ?: @"alarm_disarm"];
     [textField resignFirstResponder];
     return YES;
+}
+
+#pragma mark - Layout
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    if (!HAAutoLayoutAvailable()) {
+        CGFloat w = self.contentView.bounds.size.width;
+        CGFloat padding = kPadding;
+
+        // alarmStateLabel: below nameLabel, left-aligned
+        CGSize alarmSize = [self.alarmStateLabel sizeThatFits:CGSizeMake(w - padding * 2, CGFLOAT_MAX)];
+        self.alarmStateLabel.frame = CGRectMake(padding, CGRectGetMaxY(self.nameLabel.frame) + 4, alarmSize.width + 4, 24);
+
+        // Action buttons: find the HAStackView containing them and set its frame
+        CGFloat btnY = CGRectGetMaxY(self.alarmStateLabel.frame) + 8;
+        UIView *cv = self.contentView;
+        for (UIView *sub in cv.subviews) {
+            if ([sub isKindOfClass:[HAStackView class]] && sub != self.nameLabel.superview) {
+                // This is the button stack
+                NSMutableArray *visibleBtns = [NSMutableArray array];
+                for (UIButton *btn in @[self.armAwayButton, self.armHomeButton, self.armNightButton,
+                                         self.armVacationButton, self.armBypassButton, self.disarmButton]) {
+                    if (!btn.hidden) [visibleBtns addObject:btn];
+                }
+                CGFloat totalBtnW = visibleBtns.count * kActionButtonWidth + MAX(0, (CGFloat)visibleBtns.count - 1) * kActionButtonSpacing;
+                CGFloat stackX = (w - totalBtnW) / 2.0;
+                sub.frame = CGRectMake(stackX, btnY, totalBtnW, kActionButtonHeight);
+                break;
+            }
+        }
+
+        // Code text field: centered below buttons
+        CGFloat codeFieldWidth = 3.0 * kKeypadButtonSize + 2.0 * kKeypadButtonSpacing;
+        CGFloat codeY = btnY + kActionButtonHeight + 8;
+        self.codeTextField.frame = CGRectMake((w - codeFieldWidth) / 2.0, codeY, codeFieldWidth, kCodeFieldHeight);
+
+        // Keypad container: centered below code field
+        CGFloat keypadW = 3.0 * kKeypadButtonSize + 2.0 * kKeypadButtonSpacing;
+        CGFloat keypadH = 4.0 * kKeypadButtonSize + 3.0 * kKeypadButtonSpacing;
+        CGFloat keypadY = CGRectGetMaxY(self.codeTextField.frame) + 8;
+        self.keypadContainer.frame = CGRectMake((w - keypadW) / 2.0, keypadY, keypadW, keypadH);
+
+        // Keypad buttons inside container
+        NSInteger btnIdx = 0;
+        for (NSInteger row = 0; row < 4; row++) {
+            for (NSInteger col = 0; col < 3; col++) {
+                if (btnIdx < (NSInteger)self.keypadButtons.count) {
+                    CGFloat x = col * (kKeypadButtonSize + kKeypadButtonSpacing);
+                    CGFloat y = row * (kKeypadButtonSize + kKeypadButtonSpacing);
+                    self.keypadButtons[btnIdx].frame = CGRectMake(x, y, kKeypadButtonSize, kKeypadButtonSize);
+                }
+                btnIdx++;
+            }
+        }
+    }
 }
 
 #pragma mark - Reuse

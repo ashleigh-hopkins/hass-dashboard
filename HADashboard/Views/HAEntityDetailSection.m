@@ -1,3 +1,5 @@
+#import "HAAutoLayout.h"
+#import "HAStackView.h"
 #import "HAEntityDetailSection.h"
 #import "HADateUtils.h"
 #import "HAEntity.h"
@@ -8,6 +10,8 @@
 #import "HAColorWheelView.h"
 #import "HAConnectionManager.h"
 #import "UIView+HAUtilities.h"
+#import "UIViewController+HAAlert.h"
+#import "UIFont+HACompat.h"
 
 #pragma mark - Light Detail Section
 
@@ -68,8 +72,8 @@
     UIView *prevAnchor = nil;
 
     // Toggle button
-    self.toggleButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.toggleButton.titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightMedium];
+    self.toggleButton = HASystemButton();
+    self.toggleButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:HAFontWeightMedium];
     self.toggleButton.layer.cornerRadius = 8;
     self.toggleButton.clipsToBounds = YES;
     self.toggleButton.translatesAutoresizingMaskIntoConstraints = NO;
@@ -78,7 +82,7 @@
 
     // Brightness label
     self.brightnessLabel = [[UILabel alloc] init];
-    self.brightnessLabel.font = [UIFont monospacedDigitSystemFontOfSize:13 weight:UIFontWeightRegular];
+    self.brightnessLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:13 weight:HAFontWeightRegular];
     self.brightnessLabel.textColor = [HATheme secondaryTextColor];
     self.brightnessLabel.textAlignment = NSTextAlignmentRight;
     self.brightnessLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -93,27 +97,38 @@
     [self.brightnessSlider addTarget:self action:@selector(sliderReleased:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside];
     [container addSubview:self.brightnessSlider];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.toggleButton.topAnchor constraintEqualToAnchor:container.topAnchor],
-        [self.toggleButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [self.toggleButton.heightAnchor constraintEqualToConstant:36],
-        [self.toggleButton.widthAnchor constraintEqualToConstant:80],
+    HAActivateConstraints(@[
 
-        [self.brightnessSlider.topAnchor constraintEqualToAnchor:self.toggleButton.bottomAnchor constant:12],
-        [self.brightnessSlider.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [self.brightnessSlider.trailingAnchor constraintEqualToAnchor:self.brightnessLabel.leadingAnchor constant:-8],
+        HACon([self.toggleButton.topAnchor constraintEqualToAnchor:container.topAnchor]),
 
-        [self.brightnessLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-        [self.brightnessLabel.centerYAnchor constraintEqualToAnchor:self.brightnessSlider.centerYAnchor],
-        [self.brightnessLabel.widthAnchor constraintEqualToConstant:44],
-    ]];
+        HACon([self.toggleButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+        HACon([self.toggleButton.heightAnchor constraintEqualToConstant:36]),
+
+        HACon([self.toggleButton.widthAnchor constraintEqualToConstant:80]),
+
+
+        HACon([self.brightnessSlider.topAnchor constraintEqualToAnchor:self.toggleButton.bottomAnchor constant:12]),
+
+        HACon([self.brightnessSlider.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+        HACon([self.brightnessSlider.trailingAnchor constraintEqualToAnchor:self.brightnessLabel.leadingAnchor constant:-8]),
+
+
+        HACon([self.brightnessLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+        HACon([self.brightnessLabel.centerYAnchor constraintEqualToAnchor:self.brightnessSlider.centerYAnchor]),
+
+        HACon([self.brightnessLabel.widthAnchor constraintEqualToConstant:44])
+
+    ]);
     prevAnchor = self.brightnessSlider;
 
     // Color wheel (when HS/RGB/XY color is supported)
     if (self.hasHSColor) {
         self.colorLabel = [[UILabel alloc] init];
         self.colorLabel.text = @"Color";
-        self.colorLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
+        self.colorLabel.font = [UIFont ha_systemFontOfSize:13 weight:HAFontWeightMedium];
         self.colorLabel.textColor = [HATheme secondaryTextColor];
         self.colorLabel.translatesAutoresizingMaskIntoConstraints = NO;
         [container addSubview:self.colorLabel];
@@ -123,15 +138,22 @@
         self.colorWheel.translatesAutoresizingMaskIntoConstraints = NO;
         [container addSubview:self.colorWheel];
 
-        [NSLayoutConstraint activateConstraints:@[
-            [self.colorLabel.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:16],
-            [self.colorLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
+        HAActivateConstraints(@[
 
-            [self.colorWheel.topAnchor constraintEqualToAnchor:self.colorLabel.bottomAnchor constant:8],
-            [self.colorWheel.centerXAnchor constraintEqualToAnchor:container.centerXAnchor],
-            [self.colorWheel.widthAnchor constraintEqualToConstant:200],
-            [self.colorWheel.heightAnchor constraintEqualToConstant:200],
-        ]];
+            HACon([self.colorLabel.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:16]),
+
+            HACon([self.colorLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+
+            HACon([self.colorWheel.topAnchor constraintEqualToAnchor:self.colorLabel.bottomAnchor constant:8]),
+
+            HACon([self.colorWheel.centerXAnchor constraintEqualToAnchor:container.centerXAnchor]),
+
+            HACon([self.colorWheel.widthAnchor constraintEqualToConstant:200]),
+
+            HACon([self.colorWheel.heightAnchor constraintEqualToConstant:200])
+
+        ]);
         prevAnchor = self.colorWheel;
     }
 
@@ -139,13 +161,13 @@
     if (self.hasColorTemp) {
         UILabel *ctLabel = [[UILabel alloc] init];
         ctLabel.text = @"Color Temp";
-        ctLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
+        ctLabel.font = [UIFont ha_systemFontOfSize:13 weight:HAFontWeightMedium];
         ctLabel.textColor = [HATheme secondaryTextColor];
         ctLabel.translatesAutoresizingMaskIntoConstraints = NO;
         [container addSubview:ctLabel];
 
         self.colorTempLabel = [[UILabel alloc] init];
-        self.colorTempLabel.font = [UIFont monospacedDigitSystemFontOfSize:13 weight:UIFontWeightRegular];
+        self.colorTempLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:13 weight:HAFontWeightRegular];
         self.colorTempLabel.textColor = [HATheme secondaryTextColor];
         self.colorTempLabel.textAlignment = NSTextAlignmentRight;
         self.colorTempLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -186,24 +208,38 @@
         [self.colorTempSlider addTarget:self action:@selector(colorTempReleased:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside];
         [container addSubview:self.colorTempSlider];
 
-        [NSLayoutConstraint activateConstraints:@[
-            [ctLabel.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:12],
-            [ctLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
+        HAActivateConstraints(@[
 
-            [self.colorTempSlider.topAnchor constraintEqualToAnchor:ctLabel.bottomAnchor constant:4],
-            [self.colorTempSlider.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-            [self.colorTempSlider.trailingAnchor constraintEqualToAnchor:self.colorTempLabel.leadingAnchor constant:-8],
+            HACon([ctLabel.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:12]),
 
-            [self.colorTempLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-            [self.colorTempLabel.centerYAnchor constraintEqualToAnchor:self.colorTempSlider.centerYAnchor],
-            [self.colorTempLabel.widthAnchor constraintEqualToConstant:52],
+            HACon([ctLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
 
-            // Gradient track sits behind the slider
-            [self.tempTrackContainer.leadingAnchor constraintEqualToAnchor:self.colorTempSlider.leadingAnchor constant:2],
-            [self.tempTrackContainer.trailingAnchor constraintEqualToAnchor:self.colorTempSlider.trailingAnchor constant:-2],
-            [self.tempTrackContainer.centerYAnchor constraintEqualToAnchor:self.colorTempSlider.centerYAnchor],
-            [self.tempTrackContainer.heightAnchor constraintEqualToConstant:6],
-        ]];
+
+            HACon([self.colorTempSlider.topAnchor constraintEqualToAnchor:ctLabel.bottomAnchor constant:4]),
+
+            HACon([self.colorTempSlider.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+            HACon([self.colorTempSlider.trailingAnchor constraintEqualToAnchor:self.colorTempLabel.leadingAnchor constant:-8]),
+
+
+            HACon([self.colorTempLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+            HACon([self.colorTempLabel.centerYAnchor constraintEqualToAnchor:self.colorTempSlider.centerYAnchor]),
+
+            HACon([self.colorTempLabel.widthAnchor constraintEqualToConstant:52]),
+
+
+            // Gradient track sits behind the slider,
+
+            HACon([self.tempTrackContainer.leadingAnchor constraintEqualToAnchor:self.colorTempSlider.leadingAnchor constant:2]),
+
+            HACon([self.tempTrackContainer.trailingAnchor constraintEqualToAnchor:self.colorTempSlider.trailingAnchor constant:-2]),
+
+            HACon([self.tempTrackContainer.centerYAnchor constraintEqualToAnchor:self.colorTempSlider.centerYAnchor]),
+
+            HACon([self.tempTrackContainer.heightAnchor constraintEqualToConstant:6])
+
+        ]);
         prevAnchor = self.colorTempSlider;
 
         // Update gradient frame after layout
@@ -214,8 +250,8 @@
 
     // Effects picker button (when effect_list is non-empty)
     if (self.hasEffects) {
-        self.effectButton = [UIButton buttonWithType:UIButtonTypeSystem];
-        self.effectButton.titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightMedium];
+        self.effectButton = HASystemButton();
+        self.effectButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:HAFontWeightMedium];
         self.effectButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
         self.effectButton.backgroundColor = [HATheme buttonBackgroundColor];
         self.effectButton.layer.cornerRadius = 8;
@@ -225,19 +261,24 @@
         [self.effectButton addTarget:self action:@selector(effectTapped) forControlEvents:UIControlEventTouchUpInside];
         [container addSubview:self.effectButton];
 
-        [NSLayoutConstraint activateConstraints:@[
-            [self.effectButton.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:12],
-            [self.effectButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-            [self.effectButton.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-            [self.effectButton.heightAnchor constraintEqualToConstant:36],
-        ]];
+        HAActivateConstraints(@[
+
+            HACon([self.effectButton.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:12]),
+
+            HACon([self.effectButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+            HACon([self.effectButton.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+            HACon([self.effectButton.heightAnchor constraintEqualToConstant:36])
+
+        ]);
         prevAnchor = self.effectButton;
     }
 
     // Flash button (quick identify blink)
-    self.flashButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.flashButton = HASystemButton();
     [self.flashButton setTitle:@"\u26A1 Flash" forState:UIControlStateNormal];
-    self.flashButton.titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightMedium];
+    self.flashButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:HAFontWeightMedium];
     self.flashButton.backgroundColor = [HATheme buttonBackgroundColor];
     self.flashButton.layer.cornerRadius = 8;
     self.flashButton.clipsToBounds = YES;
@@ -245,16 +286,21 @@
     [self.flashButton addTarget:self action:@selector(flashTapped) forControlEvents:UIControlEventTouchUpInside];
     [container addSubview:self.flashButton];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.flashButton.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:12],
-        [self.flashButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [self.flashButton.widthAnchor constraintEqualToConstant:100],
-        [self.flashButton.heightAnchor constraintEqualToConstant:36],
-    ]];
+    HAActivateConstraints(@[
+
+        HACon([self.flashButton.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:12]),
+
+        HACon([self.flashButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+        HACon([self.flashButton.widthAnchor constraintEqualToConstant:100]),
+
+        HACon([self.flashButton.heightAnchor constraintEqualToConstant:36])
+
+    ]);
     // Transition control
     self.transitionLabel = [[UILabel alloc] init];
     self.transitionLabel.text = @"Transition";
-    self.transitionLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
+    self.transitionLabel.font = [UIFont ha_systemFontOfSize:13 weight:HAFontWeightMedium];
     self.transitionLabel.textColor = [HATheme secondaryTextColor];
     self.transitionLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [container addSubview:self.transitionLabel];
@@ -264,20 +310,26 @@
     self.transitionSegment.translatesAutoresizingMaskIntoConstraints = NO;
     [container addSubview:self.transitionSegment];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.transitionLabel.topAnchor constraintEqualToAnchor:self.flashButton.bottomAnchor constant:12],
-        [self.transitionLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [self.transitionSegment.topAnchor constraintEqualToAnchor:self.transitionLabel.bottomAnchor constant:6],
-        [self.transitionSegment.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [self.transitionSegment.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-    ]];
+    HAActivateConstraints(@[
+
+        HACon([self.transitionLabel.topAnchor constraintEqualToAnchor:self.flashButton.bottomAnchor constant:12]),
+
+        HACon([self.transitionLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+        HACon([self.transitionSegment.topAnchor constraintEqualToAnchor:self.transitionLabel.bottomAnchor constant:6]),
+
+        HACon([self.transitionSegment.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+        HACon([self.transitionSegment.trailingAnchor constraintEqualToAnchor:container.trailingAnchor])
+
+    ]);
     prevAnchor = self.transitionSegment;
 
     // Scene chips (scenes in the same area as this light)
     if (self.areaScenes.count > 0) {
         UILabel *scenesHeader = [[UILabel alloc] init];
         scenesHeader.text = @"Scenes";
-        scenesHeader.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
+        scenesHeader.font = [UIFont ha_systemFontOfSize:13 weight:HAFontWeightMedium];
         scenesHeader.textColor = [HATheme secondaryTextColor];
         scenesHeader.translatesAutoresizingMaskIntoConstraints = NO;
         [container addSubview:scenesHeader];
@@ -287,21 +339,28 @@
         self.sceneScrollView.translatesAutoresizingMaskIntoConstraints = NO;
         [container addSubview:self.sceneScrollView];
 
-        [NSLayoutConstraint activateConstraints:@[
-            [scenesHeader.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:16],
-            [scenesHeader.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
+        HAActivateConstraints(@[
 
-            [self.sceneScrollView.topAnchor constraintEqualToAnchor:scenesHeader.bottomAnchor constant:8],
-            [self.sceneScrollView.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-            [self.sceneScrollView.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-            [self.sceneScrollView.heightAnchor constraintEqualToConstant:36],
-        ]];
+            HACon([scenesHeader.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:16]),
+
+            HACon([scenesHeader.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+
+            HACon([self.sceneScrollView.topAnchor constraintEqualToAnchor:scenesHeader.bottomAnchor constant:8]),
+
+            HACon([self.sceneScrollView.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+            HACon([self.sceneScrollView.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+            HACon([self.sceneScrollView.heightAnchor constraintEqualToConstant:36])
+
+        ]);
         prevAnchor = self.sceneScrollView;
 
         [self layoutSceneChips];
     }
 
-    [prevAnchor.bottomAnchor constraintEqualToAnchor:container.bottomAnchor].active = YES;
+    HASetConstraintActive(HAMakeConstraint([prevAnchor.bottomAnchor constraintEqualToAnchor:container.bottomAnchor]), YES);
 
     [self updateWithEntity:entity];
     return container;
@@ -409,26 +468,19 @@
     NSArray *effects = [entity effectList];
     if (effects.count == 0) return;
 
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Effect"
-                                                                  message:nil
-                                                           preferredStyle:UIAlertControllerStyleActionSheet];
-    for (NSString *effect in effects) {
-        NSString *entityId = entity.entityId;
-        NSString *domain = [entity domain];
-        [alert addAction:[UIAlertAction actionWithTitle:effect style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
-            [HAHaptics lightImpact];
-            self.serviceBlock(@"turn_on", domain, [self mergeTransition:@{@"effect": effect}], entityId);
-        }]];
-    }
-    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+    NSString *entityId = entity.entityId;
+    NSString *domain = [entity domain];
 
     UIViewController *vc = [self.containerRef ha_parentViewController];
     if (vc) {
-        if (alert.popoverPresentationController) {
-            alert.popoverPresentationController.sourceView = self.effectButton;
-            alert.popoverPresentationController.sourceRect = self.effectButton.bounds;
-        }
-        [vc presentViewController:alert animated:YES completion:nil];
+        [vc ha_showActionSheetWithTitle:@"Effect"
+                            cancelTitle:@"Cancel"
+                           actionTitles:effects
+                             sourceView:self.effectButton
+                                handler:^(NSInteger index) {
+            [HAHaptics lightImpact];
+            self.serviceBlock(@"turn_on", domain, [self mergeTransition:@{@"effect": effects[(NSUInteger)index]}], entityId);
+        }];
     }
 }
 
@@ -511,11 +563,11 @@
 
     for (NSUInteger i = 0; i < self.areaScenes.count; i++) {
         HAEntity *scene = self.areaScenes[i];
-        UIButton *chip = [UIButton buttonWithType:UIButtonTypeSystem];
+        UIButton *chip = HASystemButton();
 
         NSString *name = [scene friendlyName] ?: scene.entityId;
         [chip setTitle:name forState:UIControlStateNormal];
-        chip.titleLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
+        chip.titleLabel.font = [UIFont ha_systemFontOfSize:13 weight:HAFontWeightMedium];
         [chip setTitleColor:[HATheme primaryTextColor] forState:UIControlStateNormal];
         chip.backgroundColor = [HATheme buttonBackgroundColor];
         chip.layer.cornerRadius = chipHeight / 2.0;
@@ -590,7 +642,7 @@
 
     // Target temperature stepper + label
     self.targetLabel = [[UILabel alloc] init];
-    self.targetLabel.font = [UIFont monospacedDigitSystemFontOfSize:16 weight:UIFontWeightMedium];
+    self.targetLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:16 weight:HAFontWeightMedium];
     self.targetLabel.textColor = [HATheme primaryTextColor];
     self.targetLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [container addSubview:self.targetLabel];
@@ -626,7 +678,7 @@
     if (fanModes.count > 0) {
         self.fanModeLabel = [[UILabel alloc] init];
         self.fanModeLabel.text = @"Fan";
-        self.fanModeLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
+        self.fanModeLabel.font = [UIFont ha_systemFontOfSize:13 weight:HAFontWeightMedium];
         self.fanModeLabel.textColor = [HATheme secondaryTextColor];
         self.fanModeLabel.translatesAutoresizingMaskIntoConstraints = NO;
         [container addSubview:self.fanModeLabel];
@@ -640,14 +692,20 @@
         [self.fanModeControl addTarget:self action:@selector(fanModeChanged:) forControlEvents:UIControlEventValueChanged];
         [container addSubview:self.fanModeControl];
 
-        [NSLayoutConstraint activateConstraints:@[
-            [self.fanModeLabel.topAnchor constraintEqualToAnchor:self.modeControl.bottomAnchor constant:12],
-            [self.fanModeLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
+        HAActivateConstraints(@[
 
-            [self.fanModeControl.topAnchor constraintEqualToAnchor:self.fanModeLabel.bottomAnchor constant:4],
-            [self.fanModeControl.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-            [self.fanModeControl.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-        ]];
+            HACon([self.fanModeLabel.topAnchor constraintEqualToAnchor:self.modeControl.bottomAnchor constant:12]),
+
+            HACon([self.fanModeLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+
+            HACon([self.fanModeControl.topAnchor constraintEqualToAnchor:self.fanModeLabel.bottomAnchor constant:4]),
+
+            HACon([self.fanModeControl.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+            HACon([self.fanModeControl.trailingAnchor constraintEqualToAnchor:container.trailingAnchor])
+
+        ]);
         bottomView = self.fanModeControl;
     }
 
@@ -666,28 +724,42 @@
         [self.auxHeatSwitch addTarget:self action:@selector(auxHeatChanged:) forControlEvents:UIControlEventValueChanged];
         [container addSubview:self.auxHeatSwitch];
 
-        [NSLayoutConstraint activateConstraints:@[
-            [self.auxHeatLabel.topAnchor constraintEqualToAnchor:bottomView.bottomAnchor constant:12],
-            [self.auxHeatLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-            [self.auxHeatSwitch.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-            [self.auxHeatSwitch.centerYAnchor constraintEqualToAnchor:self.auxHeatLabel.centerYAnchor],
-        ]];
+        HAActivateConstraints(@[
+
+            HACon([self.auxHeatLabel.topAnchor constraintEqualToAnchor:bottomView.bottomAnchor constant:12]),
+
+            HACon([self.auxHeatLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+            HACon([self.auxHeatSwitch.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+            HACon([self.auxHeatSwitch.centerYAnchor constraintEqualToAnchor:self.auxHeatLabel.centerYAnchor])
+
+        ]);
         bottomView = self.auxHeatLabel;
     }
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.targetLabel.topAnchor constraintEqualToAnchor:container.topAnchor],
-        [self.targetLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
+    HAActivateConstraints(@[
 
-        [self.tempStepper.centerYAnchor constraintEqualToAnchor:self.targetLabel.centerYAnchor],
-        [self.tempStepper.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
+        HACon([self.targetLabel.topAnchor constraintEqualToAnchor:container.topAnchor]),
 
-        [self.modeControl.topAnchor constraintEqualToAnchor:self.targetLabel.bottomAnchor constant:12],
-        [self.modeControl.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [self.modeControl.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
+        HACon([self.targetLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
 
-        [bottomView.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
-    ]];
+
+        HACon([self.tempStepper.centerYAnchor constraintEqualToAnchor:self.targetLabel.centerYAnchor]),
+
+        HACon([self.tempStepper.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+
+        HACon([self.modeControl.topAnchor constraintEqualToAnchor:self.targetLabel.bottomAnchor constant:12]),
+
+        HACon([self.modeControl.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+        HACon([self.modeControl.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+
+        HACon([bottomView.bottomAnchor constraintEqualToAnchor:container.bottomAnchor])
+
+    ]);
 
     [self updateWithEntity:entity];
     return container;
@@ -813,7 +885,7 @@
 
     if (self.supportsPosition) {
         self.positionLabel = [[UILabel alloc] init];
-        self.positionLabel.font = [UIFont monospacedDigitSystemFontOfSize:13 weight:UIFontWeightRegular];
+        self.positionLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:13 weight:HAFontWeightRegular];
         self.positionLabel.textColor = [HATheme secondaryTextColor];
         self.positionLabel.textAlignment = NSTextAlignmentRight;
         self.positionLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -827,22 +899,29 @@
         [self.positionSlider addTarget:self action:@selector(positionReleased:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside];
         [container addSubview:self.positionSlider];
 
-        [NSLayoutConstraint activateConstraints:@[
-            [self.positionSlider.topAnchor constraintEqualToAnchor:container.topAnchor],
-            [self.positionSlider.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-            [self.positionSlider.trailingAnchor constraintEqualToAnchor:self.positionLabel.leadingAnchor constant:-8],
+        HAActivateConstraints(@[
 
-            [self.positionLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-            [self.positionLabel.centerYAnchor constraintEqualToAnchor:self.positionSlider.centerYAnchor],
-            [self.positionLabel.widthAnchor constraintEqualToConstant:44],
-        ]];
+            HACon([self.positionSlider.topAnchor constraintEqualToAnchor:container.topAnchor]),
+
+            HACon([self.positionSlider.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+            HACon([self.positionSlider.trailingAnchor constraintEqualToAnchor:self.positionLabel.leadingAnchor constant:-8]),
+
+
+            HACon([self.positionLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+            HACon([self.positionLabel.centerYAnchor constraintEqualToAnchor:self.positionSlider.centerYAnchor]),
+
+            HACon([self.positionLabel.widthAnchor constraintEqualToConstant:44])
+
+        ]);
         prevAnchor = self.positionSlider;
     } else {
         // Open / Stop / Close buttons
-        UIStackView *buttonStack = [[UIStackView alloc] init];
-        buttonStack.axis = UILayoutConstraintAxisHorizontal;
+        HAStackView *buttonStack = [[HAStackView alloc] init];
+        buttonStack.axis = 0;
         buttonStack.spacing = 12;
-        buttonStack.distribution = UIStackViewDistributionFillEqually;
+        buttonStack.distribution = 1;
         buttonStack.translatesAutoresizingMaskIntoConstraints = NO;
         [container addSubview:buttonStack];
 
@@ -854,12 +933,17 @@
         [buttonStack addArrangedSubview:self.stopButton];
         [buttonStack addArrangedSubview:self.closeButton];
 
-        [NSLayoutConstraint activateConstraints:@[
-            [buttonStack.topAnchor constraintEqualToAnchor:container.topAnchor],
-            [buttonStack.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-            [buttonStack.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-            [buttonStack.heightAnchor constraintEqualToConstant:36],
-        ]];
+        HAActivateConstraints(@[
+
+            HACon([buttonStack.topAnchor constraintEqualToAnchor:container.topAnchor]),
+
+            HACon([buttonStack.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+            HACon([buttonStack.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+            HACon([buttonStack.heightAnchor constraintEqualToConstant:36])
+
+        ]);
         prevAnchor = buttonStack;
     }
 
@@ -873,7 +957,7 @@
         [container addSubview:tiltTitle];
 
         self.tiltLabel = [[UILabel alloc] init];
-        self.tiltLabel.font = [UIFont monospacedDigitSystemFontOfSize:13 weight:UIFontWeightRegular];
+        self.tiltLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:13 weight:HAFontWeightRegular];
         self.tiltLabel.textColor = [HATheme secondaryTextColor];
         self.tiltLabel.textAlignment = NSTextAlignmentRight;
         self.tiltLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -887,31 +971,40 @@
         [self.tiltSlider addTarget:self action:@selector(tiltReleased:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside];
         [container addSubview:self.tiltSlider];
 
-        [NSLayoutConstraint activateConstraints:@[
-            [tiltTitle.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:12],
-            [tiltTitle.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
+        HAActivateConstraints(@[
 
-            [self.tiltSlider.topAnchor constraintEqualToAnchor:tiltTitle.bottomAnchor constant:4],
-            [self.tiltSlider.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-            [self.tiltSlider.trailingAnchor constraintEqualToAnchor:self.tiltLabel.leadingAnchor constant:-8],
+            HACon([tiltTitle.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:12]),
 
-            [self.tiltLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-            [self.tiltLabel.centerYAnchor constraintEqualToAnchor:self.tiltSlider.centerYAnchor],
-            [self.tiltLabel.widthAnchor constraintEqualToConstant:44],
-        ]];
+            HACon([tiltTitle.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+
+            HACon([self.tiltSlider.topAnchor constraintEqualToAnchor:tiltTitle.bottomAnchor constant:4]),
+
+            HACon([self.tiltSlider.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+            HACon([self.tiltSlider.trailingAnchor constraintEqualToAnchor:self.tiltLabel.leadingAnchor constant:-8]),
+
+
+            HACon([self.tiltLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+            HACon([self.tiltLabel.centerYAnchor constraintEqualToAnchor:self.tiltSlider.centerYAnchor]),
+
+            HACon([self.tiltLabel.widthAnchor constraintEqualToConstant:44])
+
+        ]);
         prevAnchor = self.tiltSlider;
     }
 
-    [prevAnchor.bottomAnchor constraintEqualToAnchor:container.bottomAnchor].active = YES;
+    HASetConstraintActive(HAMakeConstraint([prevAnchor.bottomAnchor constraintEqualToAnchor:container.bottomAnchor]), YES);
 
     [self updateWithEntity:entity];
     return container;
 }
 
 - (UIButton *)makeButton:(NSString *)title action:(SEL)action {
-    UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
+    UIButton *btn = HASystemButton();
     [btn setTitle:title forState:UIControlStateNormal];
-    btn.titleLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
+    btn.titleLabel.font = [UIFont ha_systemFontOfSize:14 weight:HAFontWeightMedium];
     btn.backgroundColor = [HATheme buttonBackgroundColor];
     btn.layer.cornerRadius = 8;
     btn.clipsToBounds = YES;
@@ -1004,15 +1097,22 @@
     label.translatesAutoresizingMaskIntoConstraints = NO;
     [container addSubview:label];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [label.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [label.centerYAnchor constraintEqualToAnchor:container.centerYAnchor],
+    HAActivateConstraints(@[
 
-        [self.toggleSwitch.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-        [self.toggleSwitch.centerYAnchor constraintEqualToAnchor:container.centerYAnchor],
-        [self.toggleSwitch.topAnchor constraintEqualToAnchor:container.topAnchor],
-        [self.toggleSwitch.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
-    ]];
+        HACon([label.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+        HACon([label.centerYAnchor constraintEqualToAnchor:container.centerYAnchor]),
+
+
+        HACon([self.toggleSwitch.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+        HACon([self.toggleSwitch.centerYAnchor constraintEqualToAnchor:container.centerYAnchor]),
+
+        HACon([self.toggleSwitch.topAnchor constraintEqualToAnchor:container.topAnchor]),
+
+        HACon([self.toggleSwitch.bottomAnchor constraintEqualToAnchor:container.bottomAnchor])
+
+    ]);
 
     [self updateWithEntity:entity];
     return container;
@@ -1049,18 +1149,23 @@
     UIView *container = [[UIView alloc] init];
 
     self.valueLabel = [[UILabel alloc] init];
-    self.valueLabel.font = [UIFont monospacedDigitSystemFontOfSize:36 weight:UIFontWeightBold];
+    self.valueLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:36 weight:HAFontWeightBold];
     self.valueLabel.textColor = [HATheme primaryTextColor];
     self.valueLabel.textAlignment = NSTextAlignmentCenter;
     self.valueLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [container addSubview:self.valueLabel];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.valueLabel.topAnchor constraintEqualToAnchor:container.topAnchor constant:8],
-        [self.valueLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [self.valueLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-        [self.valueLabel.bottomAnchor constraintEqualToAnchor:container.bottomAnchor constant:-8],
-    ]];
+    HAActivateConstraints(@[
+
+        HACon([self.valueLabel.topAnchor constraintEqualToAnchor:container.topAnchor constant:8]),
+
+        HACon([self.valueLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+        HACon([self.valueLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+        HACon([self.valueLabel.bottomAnchor constraintEqualToAnchor:container.bottomAnchor constant:-8])
+
+    ]);
 
     [self updateWithEntity:entity];
     return container;
@@ -1121,7 +1226,7 @@
 
     // Media info: title + source
     self.mediaInfoLabel = [[UILabel alloc] init];
-    self.mediaInfoLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightMedium];
+    self.mediaInfoLabel.font = [UIFont ha_systemFontOfSize:15 weight:HAFontWeightMedium];
     self.mediaInfoLabel.textColor = [HATheme primaryTextColor];
     self.mediaInfoLabel.textAlignment = NSTextAlignmentCenter;
     self.mediaInfoLabel.numberOfLines = 2;
@@ -1135,26 +1240,33 @@
     self.sourceLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [container addSubview:self.sourceLabel];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.mediaInfoLabel.topAnchor constraintEqualToAnchor:container.topAnchor],
-        [self.mediaInfoLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [self.mediaInfoLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-        [self.sourceLabel.topAnchor constraintEqualToAnchor:self.mediaInfoLabel.bottomAnchor constant:2],
-        [self.sourceLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [self.sourceLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-    ]];
+    HAActivateConstraints(@[
+
+        HACon([self.mediaInfoLabel.topAnchor constraintEqualToAnchor:container.topAnchor]),
+
+        HACon([self.mediaInfoLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+        HACon([self.mediaInfoLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+        HACon([self.sourceLabel.topAnchor constraintEqualToAnchor:self.mediaInfoLabel.bottomAnchor constant:2]),
+
+        HACon([self.sourceLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+        HACon([self.sourceLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor])
+
+    ]);
     prevAnchor = self.sourceLabel;
 
     // Seek slider (if SEEK supported, bit 1 = 2)
     if (features & 2) {
         self.positionTimeLabel = [[UILabel alloc] init];
-        self.positionTimeLabel.font = [UIFont monospacedDigitSystemFontOfSize:11 weight:UIFontWeightRegular];
+        self.positionTimeLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:11 weight:HAFontWeightRegular];
         self.positionTimeLabel.textColor = [HATheme secondaryTextColor];
         self.positionTimeLabel.translatesAutoresizingMaskIntoConstraints = NO;
         [container addSubview:self.positionTimeLabel];
 
         self.durationTimeLabel = [[UILabel alloc] init];
-        self.durationTimeLabel.font = [UIFont monospacedDigitSystemFontOfSize:11 weight:UIFontWeightRegular];
+        self.durationTimeLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:11 weight:HAFontWeightRegular];
         self.durationTimeLabel.textColor = [HATheme secondaryTextColor];
         self.durationTimeLabel.textAlignment = NSTextAlignmentRight;
         self.durationTimeLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1166,23 +1278,31 @@
         [self.seekSlider addTarget:self action:@selector(seekReleased:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside];
         [container addSubview:self.seekSlider];
 
-        [NSLayoutConstraint activateConstraints:@[
-            [self.seekSlider.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:10],
-            [self.seekSlider.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-            [self.seekSlider.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-            [self.positionTimeLabel.topAnchor constraintEqualToAnchor:self.seekSlider.bottomAnchor constant:2],
-            [self.positionTimeLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-            [self.durationTimeLabel.topAnchor constraintEqualToAnchor:self.seekSlider.bottomAnchor constant:2],
-            [self.durationTimeLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-        ]];
+        HAActivateConstraints(@[
+
+            HACon([self.seekSlider.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:10]),
+
+            HACon([self.seekSlider.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+            HACon([self.seekSlider.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+            HACon([self.positionTimeLabel.topAnchor constraintEqualToAnchor:self.seekSlider.bottomAnchor constant:2]),
+
+            HACon([self.positionTimeLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+            HACon([self.durationTimeLabel.topAnchor constraintEqualToAnchor:self.seekSlider.bottomAnchor constant:2]),
+
+            HACon([self.durationTimeLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor])
+
+        ]);
         prevAnchor = self.positionTimeLabel;
     }
 
     // Transport buttons: prev | play/pause | next
-    UIStackView *transportStack = [[UIStackView alloc] init];
-    transportStack.axis = UILayoutConstraintAxisHorizontal;
+    HAStackView *transportStack = [[HAStackView alloc] init];
+    transportStack.axis = 0;
     transportStack.spacing = 24;
-    transportStack.alignment = UIStackViewAlignmentCenter;
+    transportStack.alignment = 3;
     transportStack.translatesAutoresizingMaskIntoConstraints = NO;
     [container addSubview:transportStack];
 
@@ -1199,25 +1319,28 @@
         [transportStack addArrangedSubview:self.nextButton];
     }
 
-    [NSLayoutConstraint activateConstraints:@[
-        [transportStack.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:10],
-        [transportStack.centerXAnchor constraintEqualToAnchor:container.centerXAnchor],
-    ]];
+    HAActivateConstraints(@[
+
+        HACon([transportStack.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:10]),
+
+        HACon([transportStack.centerXAnchor constraintEqualToAnchor:container.centerXAnchor])
+
+    ]);
     prevAnchor = transportStack;
 
     // Volume row: mute button + slider
-    UIStackView *volumeRow = [[UIStackView alloc] init];
-    volumeRow.axis = UILayoutConstraintAxisHorizontal;
+    HAStackView *volumeRow = [[HAStackView alloc] init];
+    volumeRow.axis = 0;
     volumeRow.spacing = 8;
-    volumeRow.alignment = UIStackViewAlignmentCenter;
+    volumeRow.alignment = 3;
     volumeRow.translatesAutoresizingMaskIntoConstraints = NO;
     [container addSubview:volumeRow];
 
     if (features & 8) { // VOLUME_MUTE
-        self.muteButton = [UIButton buttonWithType:UIButtonTypeSystem];
+        self.muteButton = HASystemButton();
         self.muteButton.titleLabel.font = [UIFont systemFontOfSize:18];
         [self.muteButton addTarget:self action:@selector(muteTapped) forControlEvents:UIControlEventTouchUpInside];
-        [self.muteButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+        [self.muteButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:0];
         [volumeRow addArrangedSubview:self.muteButton];
     }
 
@@ -1229,25 +1352,29 @@
         [volumeRow addArrangedSubview:self.volumeSlider];
     }
 
-    [NSLayoutConstraint activateConstraints:@[
-        [volumeRow.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:12],
-        [volumeRow.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [volumeRow.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-    ]];
+    HAActivateConstraints(@[
+
+        HACon([volumeRow.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:12]),
+
+        HACon([volumeRow.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+        HACon([volumeRow.trailingAnchor constraintEqualToAnchor:container.trailingAnchor])
+
+    ]);
     prevAnchor = volumeRow;
 
     // Bottom row: source selector + power
-    UIStackView *bottomRow = [[UIStackView alloc] init];
-    bottomRow.axis = UILayoutConstraintAxisHorizontal;
+    HAStackView *bottomRow = [[HAStackView alloc] init];
+    bottomRow.axis = 0;
     bottomRow.spacing = 12;
-    bottomRow.distribution = UIStackViewDistributionFillEqually;
+    bottomRow.distribution = 1;
     bottomRow.translatesAutoresizingMaskIntoConstraints = NO;
     [container addSubview:bottomRow];
 
     NSArray *soundModes = [entity mediaSoundModes];
     if (soundModes.count > 0 && (features & 65536)) {
-        self.sourceButton = [UIButton buttonWithType:UIButtonTypeSystem];
-        self.sourceButton.titleLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
+        self.sourceButton = HASystemButton();
+        self.sourceButton.titleLabel.font = [UIFont ha_systemFontOfSize:14 weight:HAFontWeightMedium];
         self.sourceButton.backgroundColor = [HATheme buttonBackgroundColor];
         self.sourceButton.layer.cornerRadius = 8;
         self.sourceButton.clipsToBounds = YES;
@@ -1256,7 +1383,7 @@
     }
 
     if ((features & 128) || (features & 256)) { // TURN_ON or TURN_OFF
-        self.powerButton = [UIButton buttonWithType:UIButtonTypeSystem];
+        self.powerButton = HASystemButton();
         [self.powerButton setTitle:@"\u23FB" forState:UIControlStateNormal]; // power symbol
         self.powerButton.titleLabel.font = [UIFont systemFontOfSize:20];
         self.powerButton.backgroundColor = [HATheme buttonBackgroundColor];
@@ -1267,15 +1394,15 @@
     }
 
     if (bottomRow.arrangedSubviews.count > 0) {
-        [NSLayoutConstraint activateConstraints:@[
-            [bottomRow.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:12],
-            [bottomRow.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-            [bottomRow.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-            [bottomRow.heightAnchor constraintEqualToConstant:36],
-            [bottomRow.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
-        ]];
+        HAActivateConstraints(@[
+            HACon([bottomRow.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:12]),
+            HACon([bottomRow.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+            HACon([bottomRow.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+            HACon([bottomRow.heightAnchor constraintEqualToConstant:36]),
+            HACon([bottomRow.bottomAnchor constraintEqualToAnchor:container.bottomAnchor])
+        ]);
     } else {
-        [prevAnchor.bottomAnchor constraintEqualToAnchor:container.bottomAnchor].active = YES;
+        HASetConstraintActive(HAMakeConstraint([prevAnchor.bottomAnchor constraintEqualToAnchor:container.bottomAnchor]), YES);
     }
 
     [self updateWithEntity:entity];
@@ -1283,7 +1410,7 @@
 }
 
 - (UIButton *)makeTransportButton:(NSString *)symbol size:(CGFloat)size action:(SEL)action {
-    UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
+    UIButton *btn = HASystemButton();
     [btn setTitle:symbol forState:UIControlStateNormal];
     btn.titleLabel.font = [UIFont systemFontOfSize:size];
     [btn addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
@@ -1404,24 +1531,16 @@
     NSArray *modes = [self.entity mediaSoundModes];
     if (modes.count == 0) return;
 
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Sound Mode"
-                                                                  message:nil
-                                                           preferredStyle:UIAlertControllerStyleActionSheet];
-    for (NSString *mode in modes) {
-        [alert addAction:[UIAlertAction actionWithTitle:mode style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
-            [HAHaptics lightImpact];
-            self.serviceBlock(@"select_sound_mode", @"media_player", @{@"sound_mode": mode}, self.entity.entityId);
-        }]];
-    }
-    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
-
     UIViewController *vc = [self.containerRef ha_parentViewController];
     if (vc) {
-        if (alert.popoverPresentationController) {
-            alert.popoverPresentationController.sourceView = self.sourceButton;
-            alert.popoverPresentationController.sourceRect = self.sourceButton.bounds;
-        }
-        [vc presentViewController:alert animated:YES completion:nil];
+        [vc ha_showActionSheetWithTitle:@"Sound Mode"
+                            cancelTitle:@"Cancel"
+                           actionTitles:modes
+                             sourceView:self.sourceButton
+                                handler:^(NSInteger index) {
+            [HAHaptics lightImpact];
+            self.serviceBlock(@"select_sound_mode", @"media_player", @{@"sound_mode": modes[(NSUInteger)index]}, self.entity.entityId);
+        }];
     }
 }
 
@@ -1466,8 +1585,8 @@
     UIView *prevAnchor = nil;
 
     // Toggle button
-    self.toggleButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.toggleButton.titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightMedium];
+    self.toggleButton = HASystemButton();
+    self.toggleButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:HAFontWeightMedium];
     self.toggleButton.layer.cornerRadius = 8;
     self.toggleButton.clipsToBounds = YES;
     self.toggleButton.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1476,7 +1595,7 @@
 
     // Speed slider + label
     self.speedLabel = [[UILabel alloc] init];
-    self.speedLabel.font = [UIFont monospacedDigitSystemFontOfSize:13 weight:UIFontWeightRegular];
+    self.speedLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:13 weight:HAFontWeightRegular];
     self.speedLabel.textColor = [HATheme secondaryTextColor];
     self.speedLabel.textAlignment = NSTextAlignmentRight;
     self.speedLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1503,32 +1622,47 @@
     [self.oscillateSwitch addTarget:self action:@selector(oscillateChanged:) forControlEvents:UIControlEventValueChanged];
     [container addSubview:self.oscillateSwitch];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.toggleButton.topAnchor constraintEqualToAnchor:container.topAnchor],
-        [self.toggleButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [self.toggleButton.heightAnchor constraintEqualToConstant:36],
-        [self.toggleButton.widthAnchor constraintEqualToConstant:80],
+    HAActivateConstraints(@[
 
-        [self.speedSlider.topAnchor constraintEqualToAnchor:self.toggleButton.bottomAnchor constant:12],
-        [self.speedSlider.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [self.speedSlider.trailingAnchor constraintEqualToAnchor:self.speedLabel.leadingAnchor constant:-8],
+        HACon([self.toggleButton.topAnchor constraintEqualToAnchor:container.topAnchor]),
 
-        [self.speedLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-        [self.speedLabel.centerYAnchor constraintEqualToAnchor:self.speedSlider.centerYAnchor],
-        [self.speedLabel.widthAnchor constraintEqualToConstant:44],
+        HACon([self.toggleButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
 
-        [self.oscillateLabel.topAnchor constraintEqualToAnchor:self.speedSlider.bottomAnchor constant:12],
-        [self.oscillateLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
+        HACon([self.toggleButton.heightAnchor constraintEqualToConstant:36]),
 
-        [self.oscillateSwitch.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-        [self.oscillateSwitch.centerYAnchor constraintEqualToAnchor:self.oscillateLabel.centerYAnchor],
-    ]];
+        HACon([self.toggleButton.widthAnchor constraintEqualToConstant:80]),
+
+
+        HACon([self.speedSlider.topAnchor constraintEqualToAnchor:self.toggleButton.bottomAnchor constant:12]),
+
+        HACon([self.speedSlider.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+        HACon([self.speedSlider.trailingAnchor constraintEqualToAnchor:self.speedLabel.leadingAnchor constant:-8]),
+
+
+        HACon([self.speedLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+        HACon([self.speedLabel.centerYAnchor constraintEqualToAnchor:self.speedSlider.centerYAnchor]),
+
+        HACon([self.speedLabel.widthAnchor constraintEqualToConstant:44]),
+
+
+        HACon([self.oscillateLabel.topAnchor constraintEqualToAnchor:self.speedSlider.bottomAnchor constant:12]),
+
+        HACon([self.oscillateLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+
+        HACon([self.oscillateSwitch.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+        HACon([self.oscillateSwitch.centerYAnchor constraintEqualToAnchor:self.oscillateLabel.centerYAnchor])
+
+    ]);
     prevAnchor = self.oscillateLabel;
 
     // Preset mode dropdown
     if (self.hasPresetModes) {
-        self.presetModeButton = [UIButton buttonWithType:UIButtonTypeSystem];
-        self.presetModeButton.titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightMedium];
+        self.presetModeButton = HASystemButton();
+        self.presetModeButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:HAFontWeightMedium];
         self.presetModeButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
         self.presetModeButton.backgroundColor = [HATheme buttonBackgroundColor];
         self.presetModeButton.layer.cornerRadius = 8;
@@ -1538,12 +1672,17 @@
         [self.presetModeButton addTarget:self action:@selector(presetModeTapped) forControlEvents:UIControlEventTouchUpInside];
         [container addSubview:self.presetModeButton];
 
-        [NSLayoutConstraint activateConstraints:@[
-            [self.presetModeButton.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:12],
-            [self.presetModeButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-            [self.presetModeButton.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-            [self.presetModeButton.heightAnchor constraintEqualToConstant:36],
-        ]];
+        HAActivateConstraints(@[
+
+            HACon([self.presetModeButton.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:12]),
+
+            HACon([self.presetModeButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+            HACon([self.presetModeButton.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+            HACon([self.presetModeButton.heightAnchor constraintEqualToConstant:36])
+
+        ]);
         prevAnchor = self.presetModeButton;
     }
 
@@ -1556,10 +1695,10 @@
         dirLabel.translatesAutoresizingMaskIntoConstraints = NO;
         [container addSubview:dirLabel];
 
-        UIStackView *dirStack = [[UIStackView alloc] init];
-        dirStack.axis = UILayoutConstraintAxisHorizontal;
+        HAStackView *dirStack = [[HAStackView alloc] init];
+        dirStack.axis = 0;
         dirStack.spacing = 12;
-        dirStack.distribution = UIStackViewDistributionFillEqually;
+        dirStack.distribution = 1;
         dirStack.translatesAutoresizingMaskIntoConstraints = NO;
         [container addSubview:dirStack];
 
@@ -1568,28 +1707,35 @@
         [dirStack addArrangedSubview:self.forwardButton];
         [dirStack addArrangedSubview:self.reverseButton];
 
-        [NSLayoutConstraint activateConstraints:@[
-            [dirLabel.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:12],
-            [dirLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
+        HAActivateConstraints(@[
 
-            [dirStack.topAnchor constraintEqualToAnchor:dirLabel.bottomAnchor constant:6],
-            [dirStack.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-            [dirStack.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-            [dirStack.heightAnchor constraintEqualToConstant:36],
-        ]];
+            HACon([dirLabel.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:12]),
+
+            HACon([dirLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+
+            HACon([dirStack.topAnchor constraintEqualToAnchor:dirLabel.bottomAnchor constant:6]),
+
+            HACon([dirStack.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+            HACon([dirStack.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+            HACon([dirStack.heightAnchor constraintEqualToConstant:36])
+
+        ]);
         prevAnchor = dirStack;
     }
 
-    [prevAnchor.bottomAnchor constraintEqualToAnchor:container.bottomAnchor].active = YES;
+    HASetConstraintActive(HAMakeConstraint([prevAnchor.bottomAnchor constraintEqualToAnchor:container.bottomAnchor]), YES);
 
     [self updateWithEntity:entity];
     return container;
 }
 
 - (UIButton *)makeDirButton:(NSString *)title action:(SEL)action {
-    UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
+    UIButton *btn = HASystemButton();
     [btn setTitle:title forState:UIControlStateNormal];
-    btn.titleLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
+    btn.titleLabel.font = [UIFont ha_systemFontOfSize:14 weight:HAFontWeightMedium];
     btn.backgroundColor = [HATheme buttonBackgroundColor];
     btn.layer.cornerRadius = 8;
     btn.clipsToBounds = YES;
@@ -1671,24 +1817,16 @@
     NSArray *modes = [self.entity fanPresetModes];
     if (modes.count == 0) return;
 
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Preset Mode"
-                                                                  message:nil
-                                                           preferredStyle:UIAlertControllerStyleActionSheet];
-    for (NSString *mode in modes) {
-        [alert addAction:[UIAlertAction actionWithTitle:mode style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
-            [HAHaptics lightImpact];
-            self.serviceBlock(@"set_preset_mode", @"fan", @{@"preset_mode": mode}, self.entity.entityId);
-        }]];
-    }
-    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
-
     UIViewController *vc = [self.containerRef ha_parentViewController];
     if (vc) {
-        if (alert.popoverPresentationController) {
-            alert.popoverPresentationController.sourceView = self.presetModeButton;
-            alert.popoverPresentationController.sourceRect = self.presetModeButton.bounds;
-        }
-        [vc presentViewController:alert animated:YES completion:nil];
+        [vc ha_showActionSheetWithTitle:@"Preset Mode"
+                            cancelTitle:@"Cancel"
+                           actionTitles:modes
+                             sourceView:self.presetModeButton
+                                handler:^(NSInteger index) {
+            [HAHaptics lightImpact];
+            self.serviceBlock(@"set_preset_mode", @"fan", @{@"preset_mode": modes[(NSUInteger)index]}, self.entity.entityId);
+        }];
     }
 }
 
@@ -1728,8 +1866,8 @@
     NSInteger features = [entity supportedFeatures];
     self.supportsOpen = (features & 1) != 0;
 
-    self.lockButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.lockButton.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
+    self.lockButton = HASystemButton();
+    self.lockButton.titleLabel.font = [UIFont ha_systemFontOfSize:16 weight:HAFontWeightSemibold];
     self.lockButton.layer.cornerRadius = 8;
     self.lockButton.clipsToBounds = YES;
     self.lockButton.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1737,9 +1875,9 @@
     [container addSubview:self.lockButton];
 
     if (self.supportsOpen) {
-        self.openButton = [UIButton buttonWithType:UIButtonTypeSystem];
+        self.openButton = HASystemButton();
         [self.openButton setTitle:@"Open" forState:UIControlStateNormal];
-        self.openButton.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
+        self.openButton.titleLabel.font = [UIFont ha_systemFontOfSize:16 weight:HAFontWeightSemibold];
         self.openButton.layer.cornerRadius = 8;
         self.openButton.clipsToBounds = YES;
         self.openButton.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1748,26 +1886,36 @@
         [self.openButton addTarget:self action:@selector(openTapped) forControlEvents:UIControlEventTouchUpInside];
         [container addSubview:self.openButton];
 
-        [NSLayoutConstraint activateConstraints:@[
-            [self.lockButton.topAnchor constraintEqualToAnchor:container.topAnchor],
-            [self.lockButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-            [self.lockButton.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-            [self.lockButton.heightAnchor constraintEqualToConstant:44],
+        HAActivateConstraints(@[
 
-            [self.openButton.topAnchor constraintEqualToAnchor:self.lockButton.bottomAnchor constant:8],
-            [self.openButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-            [self.openButton.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-            [self.openButton.heightAnchor constraintEqualToConstant:44],
-            [self.openButton.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
-        ]];
+            HACon([self.lockButton.topAnchor constraintEqualToAnchor:container.topAnchor]),
+
+            HACon([self.lockButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+            HACon([self.lockButton.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+            HACon([self.lockButton.heightAnchor constraintEqualToConstant:44]),
+
+
+            HACon([self.openButton.topAnchor constraintEqualToAnchor:self.lockButton.bottomAnchor constant:8]),
+
+            HACon([self.openButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+            HACon([self.openButton.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+            HACon([self.openButton.heightAnchor constraintEqualToConstant:44]),
+
+            HACon([self.openButton.bottomAnchor constraintEqualToAnchor:container.bottomAnchor])
+
+        ]);
     } else {
-        [NSLayoutConstraint activateConstraints:@[
-            [self.lockButton.topAnchor constraintEqualToAnchor:container.topAnchor],
-            [self.lockButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-            [self.lockButton.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-            [self.lockButton.heightAnchor constraintEqualToConstant:44],
-            [self.lockButton.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
-        ]];
+        HAActivateConstraints(@[
+            HACon([self.lockButton.topAnchor constraintEqualToAnchor:container.topAnchor]),
+            HACon([self.lockButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+            HACon([self.lockButton.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+            HACon([self.lockButton.heightAnchor constraintEqualToConstant:44]),
+            HACon([self.lockButton.bottomAnchor constraintEqualToAnchor:container.bottomAnchor])
+        ]);
     }
 
     [self updateWithEntity:entity];
@@ -1886,17 +2034,17 @@
     [container addSubview:self.statusLabel];
 
     self.batteryLabel = [[UILabel alloc] init];
-    self.batteryLabel.font = [UIFont monospacedDigitSystemFontOfSize:14 weight:UIFontWeightRegular];
+    self.batteryLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:14 weight:HAFontWeightRegular];
     self.batteryLabel.textColor = [HATheme secondaryTextColor];
     self.batteryLabel.textAlignment = NSTextAlignmentRight;
     self.batteryLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [container addSubview:self.batteryLabel];
 
     // Primary action buttons: start / pause / return
-    UIStackView *buttonStack = [[UIStackView alloc] init];
-    buttonStack.axis = UILayoutConstraintAxisHorizontal;
+    HAStackView *buttonStack = [[HAStackView alloc] init];
+    buttonStack.axis = 0;
     buttonStack.spacing = 12;
-    buttonStack.distribution = UIStackViewDistributionFillEqually;
+    buttonStack.distribution = 1;
     buttonStack.translatesAutoresizingMaskIntoConstraints = NO;
     [container addSubview:buttonStack];
 
@@ -1908,26 +2056,35 @@
     [buttonStack addArrangedSubview:self.pauseButton];
     [buttonStack addArrangedSubview:self.returnButton];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.statusLabel.topAnchor constraintEqualToAnchor:container.topAnchor],
-        [self.statusLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
+    HAActivateConstraints(@[
 
-        [self.batteryLabel.topAnchor constraintEqualToAnchor:container.topAnchor],
-        [self.batteryLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
+        HACon([self.statusLabel.topAnchor constraintEqualToAnchor:container.topAnchor]),
 
-        [buttonStack.topAnchor constraintEqualToAnchor:self.statusLabel.bottomAnchor constant:10],
-        [buttonStack.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [buttonStack.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-        [buttonStack.heightAnchor constraintEqualToConstant:36],
-    ]];
+        HACon([self.statusLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+
+        HACon([self.batteryLabel.topAnchor constraintEqualToAnchor:container.topAnchor]),
+
+        HACon([self.batteryLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+
+        HACon([buttonStack.topAnchor constraintEqualToAnchor:self.statusLabel.bottomAnchor constant:10]),
+
+        HACon([buttonStack.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+        HACon([buttonStack.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+        HACon([buttonStack.heightAnchor constraintEqualToConstant:36])
+
+    ]);
     UIView *prevAnchor = buttonStack;
 
     // Extra action buttons: stop / locate / clean spot (conditional)
     if (self.hasExtras) {
-        UIStackView *extraStack = [[UIStackView alloc] init];
-        extraStack.axis = UILayoutConstraintAxisHorizontal;
+        HAStackView *extraStack = [[HAStackView alloc] init];
+        extraStack.axis = 0;
         extraStack.spacing = 12;
-        extraStack.distribution = UIStackViewDistributionFillEqually;
+        extraStack.distribution = 1;
         extraStack.translatesAutoresizingMaskIntoConstraints = NO;
         [container addSubview:extraStack];
 
@@ -1944,19 +2101,24 @@
             [extraStack addArrangedSubview:self.cleanSpotButton];
         }
 
-        [NSLayoutConstraint activateConstraints:@[
-            [extraStack.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:8],
-            [extraStack.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-            [extraStack.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-            [extraStack.heightAnchor constraintEqualToConstant:36],
-        ]];
+        HAActivateConstraints(@[
+
+            HACon([extraStack.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:8]),
+
+            HACon([extraStack.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+            HACon([extraStack.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+            HACon([extraStack.heightAnchor constraintEqualToConstant:36])
+
+        ]);
         prevAnchor = extraStack;
     }
 
     // Fan speed dropdown
     if (self.hasFanSpeed) {
-        self.fanSpeedButton = [UIButton buttonWithType:UIButtonTypeSystem];
-        self.fanSpeedButton.titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightMedium];
+        self.fanSpeedButton = HASystemButton();
+        self.fanSpeedButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:HAFontWeightMedium];
         self.fanSpeedButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
         self.fanSpeedButton.backgroundColor = [HATheme buttonBackgroundColor];
         self.fanSpeedButton.layer.cornerRadius = 8;
@@ -1966,25 +2128,30 @@
         [self.fanSpeedButton addTarget:self action:@selector(fanSpeedTapped) forControlEvents:UIControlEventTouchUpInside];
         [container addSubview:self.fanSpeedButton];
 
-        [NSLayoutConstraint activateConstraints:@[
-            [self.fanSpeedButton.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:8],
-            [self.fanSpeedButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-            [self.fanSpeedButton.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-            [self.fanSpeedButton.heightAnchor constraintEqualToConstant:36],
-        ]];
+        HAActivateConstraints(@[
+
+            HACon([self.fanSpeedButton.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:8]),
+
+            HACon([self.fanSpeedButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+            HACon([self.fanSpeedButton.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+            HACon([self.fanSpeedButton.heightAnchor constraintEqualToConstant:36])
+
+        ]);
         prevAnchor = self.fanSpeedButton;
     }
 
-    [prevAnchor.bottomAnchor constraintEqualToAnchor:container.bottomAnchor].active = YES;
+    HASetConstraintActive(HAMakeConstraint([prevAnchor.bottomAnchor constraintEqualToAnchor:container.bottomAnchor]), YES);
 
     [self updateWithEntity:entity];
     return container;
 }
 
 - (UIButton *)makeButton:(NSString *)title action:(SEL)action {
-    UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
+    UIButton *btn = HASystemButton();
     [btn setTitle:title forState:UIControlStateNormal];
-    btn.titleLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
+    btn.titleLabel.font = [UIFont ha_systemFontOfSize:14 weight:HAFontWeightMedium];
     btn.backgroundColor = [HATheme buttonBackgroundColor];
     btn.layer.cornerRadius = 8;
     btn.clipsToBounds = YES;
@@ -2066,24 +2233,16 @@
     NSArray *speeds = [self.entity vacuumFanSpeedList];
     if (speeds.count == 0) return;
 
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Fan Speed"
-                                                                  message:nil
-                                                           preferredStyle:UIAlertControllerStyleActionSheet];
-    for (NSString *speed in speeds) {
-        [alert addAction:[UIAlertAction actionWithTitle:speed style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
-            [HAHaptics lightImpact];
-            self.serviceBlock(@"set_fan_speed", @"vacuum", @{@"fan_speed": speed}, self.entity.entityId);
-        }]];
-    }
-    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
-
     UIViewController *vc = [self.containerRef ha_parentViewController];
     if (vc) {
-        if (alert.popoverPresentationController) {
-            alert.popoverPresentationController.sourceView = self.fanSpeedButton;
-            alert.popoverPresentationController.sourceRect = self.fanSpeedButton.bounds;
-        }
-        [vc presentViewController:alert animated:YES completion:nil];
+        [vc ha_showActionSheetWithTitle:@"Fan Speed"
+                            cancelTitle:@"Cancel"
+                           actionTitles:speeds
+                             sourceView:self.fanSpeedButton
+                                handler:^(NSInteger index) {
+            [HAHaptics lightImpact];
+            self.serviceBlock(@"set_fan_speed", @"vacuum", @{@"fan_speed": speeds[(NSUInteger)index]}, self.entity.entityId);
+        }];
     }
 }
 
@@ -2109,17 +2268,17 @@
 
     // Countdown display
     self.countdownLabel = [[UILabel alloc] init];
-    self.countdownLabel.font = [UIFont monospacedDigitSystemFontOfSize:32 weight:UIFontWeightBold];
+    self.countdownLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:32 weight:HAFontWeightBold];
     self.countdownLabel.textColor = [HATheme primaryTextColor];
     self.countdownLabel.textAlignment = NSTextAlignmentCenter;
     self.countdownLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [container addSubview:self.countdownLabel];
 
     // Action buttons
-    UIStackView *buttonStack = [[UIStackView alloc] init];
-    buttonStack.axis = UILayoutConstraintAxisHorizontal;
+    HAStackView *buttonStack = [[HAStackView alloc] init];
+    buttonStack.axis = 0;
     buttonStack.spacing = 12;
-    buttonStack.distribution = UIStackViewDistributionFillEqually;
+    buttonStack.distribution = 1;
     buttonStack.translatesAutoresizingMaskIntoConstraints = NO;
     [container addSubview:buttonStack];
 
@@ -2131,26 +2290,35 @@
     [buttonStack addArrangedSubview:self.pauseButton];
     [buttonStack addArrangedSubview:self.cancelButton];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.countdownLabel.topAnchor constraintEqualToAnchor:container.topAnchor constant:4],
-        [self.countdownLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [self.countdownLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
+    HAActivateConstraints(@[
 
-        [buttonStack.topAnchor constraintEqualToAnchor:self.countdownLabel.bottomAnchor constant:10],
-        [buttonStack.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [buttonStack.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-        [buttonStack.heightAnchor constraintEqualToConstant:36],
-        [buttonStack.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
-    ]];
+        HACon([self.countdownLabel.topAnchor constraintEqualToAnchor:container.topAnchor constant:4]),
+
+        HACon([self.countdownLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+        HACon([self.countdownLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+
+        HACon([buttonStack.topAnchor constraintEqualToAnchor:self.countdownLabel.bottomAnchor constant:10]),
+
+        HACon([buttonStack.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+        HACon([buttonStack.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+        HACon([buttonStack.heightAnchor constraintEqualToConstant:36]),
+
+        HACon([buttonStack.bottomAnchor constraintEqualToAnchor:container.bottomAnchor])
+
+    ]);
 
     [self updateWithEntity:entity];
     return container;
 }
 
 - (UIButton *)makeButton:(NSString *)title action:(SEL)action {
-    UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
+    UIButton *btn = HASystemButton();
     [btn setTitle:title forState:UIControlStateNormal];
-    btn.titleLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
+    btn.titleLabel.font = [UIFont ha_systemFontOfSize:14 weight:HAFontWeightMedium];
     btn.backgroundColor = [HATheme buttonBackgroundColor];
     btn.layer.cornerRadius = 8;
     btn.clipsToBounds = YES;
@@ -2265,9 +2433,9 @@
     self.entity = entity;
     UIView *container = [[UIView alloc] init];
 
-    self.activateButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.activateButton = HASystemButton();
     [self.activateButton setTitle:@"Activate" forState:UIControlStateNormal];
-    self.activateButton.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
+    self.activateButton.titleLabel.font = [UIFont ha_systemFontOfSize:16 weight:HAFontWeightSemibold];
     [self.activateButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
     self.activateButton.backgroundColor = [HATheme onTintColor];
     self.activateButton.layer.cornerRadius = 8;
@@ -2276,13 +2444,19 @@
     [self.activateButton addTarget:self action:@selector(activateTapped) forControlEvents:UIControlEventTouchUpInside];
     [container addSubview:self.activateButton];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.activateButton.topAnchor constraintEqualToAnchor:container.topAnchor],
-        [self.activateButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [self.activateButton.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-        [self.activateButton.heightAnchor constraintEqualToConstant:44],
-        [self.activateButton.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
-    ]];
+    HAActivateConstraints(@[
+
+        HACon([self.activateButton.topAnchor constraintEqualToAnchor:container.topAnchor]),
+
+        HACon([self.activateButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+        HACon([self.activateButton.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+        HACon([self.activateButton.heightAnchor constraintEqualToConstant:44]),
+
+        HACon([self.activateButton.bottomAnchor constraintEqualToAnchor:container.bottomAnchor])
+
+    ]);
 
     return container;
 }
@@ -2305,7 +2479,7 @@
 
 @interface HAAlarmDetailSection : NSObject <HAEntityDetailSection>
 @property (nonatomic, copy) HADetailServiceBlock serviceBlock;
-@property (nonatomic, strong) UIStackView *modesStack;
+@property (nonatomic, strong) HAStackView *modesStack;
 @property (nonatomic, strong) UIButton *disarmButton;
 @property (nonatomic, strong) UITextField *codeField;
 @property (nonatomic, weak) HAEntity *entity;
@@ -2321,8 +2495,8 @@
     BOOL codeRequired = [entity alarmCodeArmRequired];
 
     // Arm mode buttons — vertical stack matching HA's layout
-    self.modesStack = [[UIStackView alloc] init];
-    self.modesStack.axis = UILayoutConstraintAxisVertical;
+    self.modesStack = [[HAStackView alloc] init];
+    self.modesStack.axis = 1;
     self.modesStack.spacing = 8;
     self.modesStack.translatesAutoresizingMaskIntoConstraints = NO;
     [container addSubview:self.modesStack];
@@ -2334,9 +2508,9 @@
     if (features & 16) [self addModeButton:@"Arm Custom"   service:@"alarm_arm_custom_bypass"];
 
     // Disarm button
-    self.disarmButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.disarmButton = HASystemButton();
     [self.disarmButton setTitle:@"Disarm" forState:UIControlStateNormal];
-    self.disarmButton.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
+    self.disarmButton.titleLabel.font = [UIFont ha_systemFontOfSize:16 weight:HAFontWeightSemibold];
     [self.disarmButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
     self.disarmButton.backgroundColor = [UIColor colorWithRed:0.3 green:0.7 blue:0.3 alpha:1.0];
     self.disarmButton.layer.cornerRadius = 8;
@@ -2344,13 +2518,13 @@
     self.disarmButton.translatesAutoresizingMaskIntoConstraints = NO;
     [self.disarmButton addTarget:self action:@selector(disarmTapped) forControlEvents:UIControlEventTouchUpInside];
     [self.modesStack addArrangedSubview:self.disarmButton];
-    [self.disarmButton.heightAnchor constraintEqualToConstant:44].active = YES;
+    HASetConstraintActive(HAMakeConstraint([self.disarmButton.heightAnchor constraintEqualToConstant:44]), YES);
 
     // Code input field (if code required)
     if (codeRequired) {
         self.codeField = [[UITextField alloc] init];
         self.codeField.placeholder = @"Enter code";
-        self.codeField.font = [UIFont monospacedDigitSystemFontOfSize:18 weight:UIFontWeightMedium];
+        self.codeField.font = [UIFont ha_monospacedDigitSystemFontOfSize:18 weight:HAFontWeightMedium];
         self.codeField.textAlignment = NSTextAlignmentCenter;
         self.codeField.borderStyle = UITextBorderStyleRoundedRect;
         self.codeField.keyboardType = UIKeyboardTypeNumberPad;
@@ -2358,38 +2532,48 @@
         self.codeField.translatesAutoresizingMaskIntoConstraints = NO;
         [container addSubview:self.codeField];
 
-        [NSLayoutConstraint activateConstraints:@[
-            [self.codeField.topAnchor constraintEqualToAnchor:container.topAnchor],
-            [self.codeField.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:40],
-            [self.codeField.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-40],
-            [self.codeField.heightAnchor constraintEqualToConstant:44],
-            [self.modesStack.topAnchor constraintEqualToAnchor:self.codeField.bottomAnchor constant:12],
-        ]];
+        HAActivateConstraints(@[
+
+            HACon([self.codeField.topAnchor constraintEqualToAnchor:container.topAnchor]),
+
+            HACon([self.codeField.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:40]),
+
+            HACon([self.codeField.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-40]),
+
+            HACon([self.codeField.heightAnchor constraintEqualToConstant:44]),
+
+            HACon([self.modesStack.topAnchor constraintEqualToAnchor:self.codeField.bottomAnchor constant:12])
+
+        ]);
     } else {
-        [self.modesStack.topAnchor constraintEqualToAnchor:container.topAnchor].active = YES;
+        HASetConstraintActive(HAMakeConstraint([self.modesStack.topAnchor constraintEqualToAnchor:container.topAnchor]), YES);
     }
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.modesStack.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [self.modesStack.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-        [self.modesStack.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
-    ]];
+    HAActivateConstraints(@[
+
+        HACon([self.modesStack.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+        HACon([self.modesStack.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+        HACon([self.modesStack.bottomAnchor constraintEqualToAnchor:container.bottomAnchor])
+
+    ]);
 
     [self updateWithEntity:entity];
     return container;
 }
 
 - (void)addModeButton:(NSString *)title service:(NSString *)service {
-    UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
+    UIButton *btn = HASystemButton();
     [btn setTitle:title forState:UIControlStateNormal];
-    btn.titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightMedium];
+    btn.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:HAFontWeightMedium];
     btn.backgroundColor = [HATheme buttonBackgroundColor];
     btn.layer.cornerRadius = 8;
     btn.clipsToBounds = YES;
     btn.accessibilityIdentifier = service;
     [btn addTarget:self action:@selector(armModeTapped:) forControlEvents:UIControlEventTouchUpInside];
     [self.modesStack addArrangedSubview:btn];
-    [btn.heightAnchor constraintEqualToConstant:44].active = YES;
+    HASetConstraintActive(HAMakeConstraint([btn.heightAnchor constraintEqualToConstant:44]), YES);
 }
 
 - (CGFloat)preferredHeight {
@@ -2454,9 +2638,9 @@
     self.entity = entity;
     UIView *container = [[UIView alloc] init];
 
-    self.pressButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.pressButton = HASystemButton();
     [self.pressButton setTitle:@"Press" forState:UIControlStateNormal];
-    self.pressButton.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
+    self.pressButton.titleLabel.font = [UIFont ha_systemFontOfSize:16 weight:HAFontWeightSemibold];
     [self.pressButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
     self.pressButton.backgroundColor = [HATheme onTintColor];
     self.pressButton.layer.cornerRadius = 8;
@@ -2465,13 +2649,19 @@
     [self.pressButton addTarget:self action:@selector(pressTapped) forControlEvents:UIControlEventTouchUpInside];
     [container addSubview:self.pressButton];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.pressButton.topAnchor constraintEqualToAnchor:container.topAnchor],
-        [self.pressButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [self.pressButton.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-        [self.pressButton.heightAnchor constraintEqualToConstant:44],
-        [self.pressButton.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
-    ]];
+    HAActivateConstraints(@[
+
+        HACon([self.pressButton.topAnchor constraintEqualToAnchor:container.topAnchor]),
+
+        HACon([self.pressButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+        HACon([self.pressButton.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+        HACon([self.pressButton.heightAnchor constraintEqualToConstant:44]),
+
+        HACon([self.pressButton.bottomAnchor constraintEqualToAnchor:container.bottomAnchor])
+
+    ]);
 
     return container;
 }
@@ -2503,10 +2693,10 @@
     self.entity = entity;
     UIView *container = [[UIView alloc] init];
 
-    UIStackView *buttonStack = [[UIStackView alloc] init];
-    buttonStack.axis = UILayoutConstraintAxisHorizontal;
+    HAStackView *buttonStack = [[HAStackView alloc] init];
+    buttonStack.axis = 0;
     buttonStack.spacing = 12;
-    buttonStack.distribution = UIStackViewDistributionFillEqually;
+    buttonStack.distribution = 1;
     buttonStack.translatesAutoresizingMaskIntoConstraints = NO;
     [container addSubview:buttonStack];
 
@@ -2518,22 +2708,28 @@
     [buttonStack addArrangedSubview:self.resetButton];
     [buttonStack addArrangedSubview:self.incrementButton];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [buttonStack.topAnchor constraintEqualToAnchor:container.topAnchor],
-        [buttonStack.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [buttonStack.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-        [buttonStack.heightAnchor constraintEqualToConstant:44],
-        [buttonStack.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
-    ]];
+    HAActivateConstraints(@[
+
+        HACon([buttonStack.topAnchor constraintEqualToAnchor:container.topAnchor]),
+
+        HACon([buttonStack.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+        HACon([buttonStack.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+        HACon([buttonStack.heightAnchor constraintEqualToConstant:44]),
+
+        HACon([buttonStack.bottomAnchor constraintEqualToAnchor:container.bottomAnchor])
+
+    ]);
 
     [self updateWithEntity:entity];
     return container;
 }
 
 - (UIButton *)makeButton:(NSString *)title action:(SEL)action {
-    UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
+    UIButton *btn = HASystemButton();
     [btn setTitle:title forState:UIControlStateNormal];
-    btn.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightMedium];
+    btn.titleLabel.font = [UIFont ha_systemFontOfSize:16 weight:HAFontWeightMedium];
     btn.backgroundColor = [HATheme buttonBackgroundColor];
     btn.layer.cornerRadius = 8;
     btn.clipsToBounds = YES;
@@ -2588,7 +2784,7 @@
     UIView *container = [[UIView alloc] init];
 
     self.valueLabel = [[UILabel alloc] init];
-    self.valueLabel.font = [UIFont monospacedDigitSystemFontOfSize:14 weight:UIFontWeightMedium];
+    self.valueLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:14 weight:HAFontWeightMedium];
     self.valueLabel.textColor = [HATheme primaryTextColor];
     self.valueLabel.textAlignment = NSTextAlignmentRight;
     self.valueLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -2604,16 +2800,24 @@
     [self.slider addTarget:self action:@selector(sliderReleased:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside];
     [container addSubview:self.slider];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.slider.topAnchor constraintEqualToAnchor:container.topAnchor],
-        [self.slider.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [self.slider.trailingAnchor constraintEqualToAnchor:self.valueLabel.leadingAnchor constant:-8],
-        [self.slider.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
+    HAActivateConstraints(@[
 
-        [self.valueLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-        [self.valueLabel.centerYAnchor constraintEqualToAnchor:self.slider.centerYAnchor],
-        [self.valueLabel.widthAnchor constraintEqualToConstant:60],
-    ]];
+        HACon([self.slider.topAnchor constraintEqualToAnchor:container.topAnchor]),
+
+        HACon([self.slider.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+        HACon([self.slider.trailingAnchor constraintEqualToAnchor:self.valueLabel.leadingAnchor constant:-8]),
+
+        HACon([self.slider.bottomAnchor constraintEqualToAnchor:container.bottomAnchor]),
+
+
+        HACon([self.valueLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+        HACon([self.valueLabel.centerYAnchor constraintEqualToAnchor:self.slider.centerYAnchor]),
+
+        HACon([self.valueLabel.widthAnchor constraintEqualToConstant:60])
+
+    ]);
 
     [self updateWithEntity:entity];
     return container;
@@ -2672,8 +2876,8 @@
     UIView *container = [[UIView alloc] init];
     self.containerRef = container;
 
-    self.selectorButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.selectorButton.titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightMedium];
+    self.selectorButton = HASystemButton();
+    self.selectorButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:HAFontWeightMedium];
     self.selectorButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
     self.selectorButton.backgroundColor = [HATheme buttonBackgroundColor];
     self.selectorButton.layer.cornerRadius = 8;
@@ -2683,13 +2887,19 @@
     [self.selectorButton addTarget:self action:@selector(selectorTapped) forControlEvents:UIControlEventTouchUpInside];
     [container addSubview:self.selectorButton];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.selectorButton.topAnchor constraintEqualToAnchor:container.topAnchor],
-        [self.selectorButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [self.selectorButton.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-        [self.selectorButton.heightAnchor constraintEqualToConstant:44],
-        [self.selectorButton.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
-    ]];
+    HAActivateConstraints(@[
+
+        HACon([self.selectorButton.topAnchor constraintEqualToAnchor:container.topAnchor]),
+
+        HACon([self.selectorButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+        HACon([self.selectorButton.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+        HACon([self.selectorButton.heightAnchor constraintEqualToConstant:44]),
+
+        HACon([self.selectorButton.bottomAnchor constraintEqualToAnchor:container.bottomAnchor])
+
+    ]);
 
     [self updateWithEntity:entity];
     return container;
@@ -2709,29 +2919,16 @@
     NSArray *options = [self.entity inputSelectOptions];
     if (options.count == 0) return;
 
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:nil
-                                                                  message:nil
-                                                           preferredStyle:UIAlertControllerStyleActionSheet];
-
-    for (NSString *option in options) {
-        UIAlertAction *action = [UIAlertAction actionWithTitle:option
-                                                        style:UIAlertActionStyleDefault
-                                                      handler:^(UIAlertAction *a) {
-            [HAHaptics lightImpact];
-            self.serviceBlock(@"select_option", [self.entity domain], @{@"option": option}, self.entity.entityId);
-        }];
-        [alert addAction:action];
-    }
-
-    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
-
     UIViewController *vc = [self.containerRef ha_parentViewController];
     if (vc) {
-        if (alert.popoverPresentationController) {
-            alert.popoverPresentationController.sourceView = self.selectorButton;
-            alert.popoverPresentationController.sourceRect = self.selectorButton.bounds;
-        }
-        [vc presentViewController:alert animated:YES completion:nil];
+        [vc ha_showActionSheetWithTitle:nil
+                            cancelTitle:@"Cancel"
+                           actionTitles:options
+                             sourceView:self.selectorButton
+                                handler:^(NSInteger index) {
+            [HAHaptics lightImpact];
+            self.serviceBlock(@"select_option", [self.entity domain], @{@"option": options[(NSUInteger)index]}, self.entity.entityId);
+        }];
     }
 }
 
@@ -2761,7 +2958,7 @@
 
     if (self.supportsPosition) {
         self.positionLabel = [[UILabel alloc] init];
-        self.positionLabel.font = [UIFont monospacedDigitSystemFontOfSize:13 weight:UIFontWeightRegular];
+        self.positionLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:13 weight:HAFontWeightRegular];
         self.positionLabel.textColor = [HATheme secondaryTextColor];
         self.positionLabel.textAlignment = NSTextAlignmentRight;
         self.positionLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -2775,21 +2972,29 @@
         [self.positionSlider addTarget:self action:@selector(positionReleased:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside];
         [container addSubview:self.positionSlider];
 
-        [NSLayoutConstraint activateConstraints:@[
-            [self.positionSlider.topAnchor constraintEqualToAnchor:container.topAnchor],
-            [self.positionSlider.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-            [self.positionSlider.trailingAnchor constraintEqualToAnchor:self.positionLabel.leadingAnchor constant:-8],
-            [self.positionSlider.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
+        HAActivateConstraints(@[
 
-            [self.positionLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-            [self.positionLabel.centerYAnchor constraintEqualToAnchor:self.positionSlider.centerYAnchor],
-            [self.positionLabel.widthAnchor constraintEqualToConstant:44],
-        ]];
+            HACon([self.positionSlider.topAnchor constraintEqualToAnchor:container.topAnchor]),
+
+            HACon([self.positionSlider.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+            HACon([self.positionSlider.trailingAnchor constraintEqualToAnchor:self.positionLabel.leadingAnchor constant:-8]),
+
+            HACon([self.positionSlider.bottomAnchor constraintEqualToAnchor:container.bottomAnchor]),
+
+
+            HACon([self.positionLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+            HACon([self.positionLabel.centerYAnchor constraintEqualToAnchor:self.positionSlider.centerYAnchor]),
+
+            HACon([self.positionLabel.widthAnchor constraintEqualToConstant:44])
+
+        ]);
     } else {
-        UIStackView *buttonStack = [[UIStackView alloc] init];
-        buttonStack.axis = UILayoutConstraintAxisHorizontal;
+        HAStackView *buttonStack = [[HAStackView alloc] init];
+        buttonStack.axis = 0;
         buttonStack.spacing = 12;
-        buttonStack.distribution = UIStackViewDistributionFillEqually;
+        buttonStack.distribution = 1;
         buttonStack.translatesAutoresizingMaskIntoConstraints = NO;
         [container addSubview:buttonStack];
 
@@ -2801,13 +3006,19 @@
         [buttonStack addArrangedSubview:self.stopButton];
         [buttonStack addArrangedSubview:self.closeButton];
 
-        [NSLayoutConstraint activateConstraints:@[
-            [buttonStack.topAnchor constraintEqualToAnchor:container.topAnchor],
-            [buttonStack.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-            [buttonStack.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-            [buttonStack.heightAnchor constraintEqualToConstant:36],
-            [buttonStack.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
-        ]];
+        HAActivateConstraints(@[
+
+            HACon([buttonStack.topAnchor constraintEqualToAnchor:container.topAnchor]),
+
+            HACon([buttonStack.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+            HACon([buttonStack.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+            HACon([buttonStack.heightAnchor constraintEqualToConstant:36]),
+
+            HACon([buttonStack.bottomAnchor constraintEqualToAnchor:container.bottomAnchor])
+
+        ]);
     }
 
     [self updateWithEntity:entity];
@@ -2815,9 +3026,9 @@
 }
 
 - (UIButton *)makeButton:(NSString *)title action:(SEL)action {
-    UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
+    UIButton *btn = HASystemButton();
     [btn setTitle:title forState:UIControlStateNormal];
-    btn.titleLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
+    btn.titleLabel.font = [UIFont ha_systemFontOfSize:14 weight:HAFontWeightMedium];
     btn.backgroundColor = [HATheme buttonBackgroundColor];
     btn.layer.cornerRadius = 8;
     btn.clipsToBounds = YES;
@@ -2879,21 +3090,27 @@
     self.entity = entity;
     UIView *container = [[UIView alloc] init];
 
-    self.toggleButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.toggleButton.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
+    self.toggleButton = HASystemButton();
+    self.toggleButton.titleLabel.font = [UIFont ha_systemFontOfSize:16 weight:HAFontWeightSemibold];
     self.toggleButton.layer.cornerRadius = 8;
     self.toggleButton.clipsToBounds = YES;
     self.toggleButton.translatesAutoresizingMaskIntoConstraints = NO;
     [self.toggleButton addTarget:self action:@selector(toggleTapped) forControlEvents:UIControlEventTouchUpInside];
     [container addSubview:self.toggleButton];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.toggleButton.topAnchor constraintEqualToAnchor:container.topAnchor],
-        [self.toggleButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [self.toggleButton.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-        [self.toggleButton.heightAnchor constraintEqualToConstant:44],
-        [self.toggleButton.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
-    ]];
+    HAActivateConstraints(@[
+
+        HACon([self.toggleButton.topAnchor constraintEqualToAnchor:container.topAnchor]),
+
+        HACon([self.toggleButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+        HACon([self.toggleButton.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+        HACon([self.toggleButton.heightAnchor constraintEqualToConstant:44]),
+
+        HACon([self.toggleButton.bottomAnchor constraintEqualToAnchor:container.bottomAnchor])
+
+    ]);
 
     [self updateWithEntity:entity];
     return container;
@@ -2944,8 +3161,8 @@
     UIView *prevAnchor = nil;
 
     // Power toggle button
-    self.toggleButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.toggleButton.titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightMedium];
+    self.toggleButton = HASystemButton();
+    self.toggleButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:HAFontWeightMedium];
     self.toggleButton.layer.cornerRadius = 8;
     self.toggleButton.clipsToBounds = YES;
     self.toggleButton.translatesAutoresizingMaskIntoConstraints = NO;
@@ -2954,7 +3171,7 @@
 
     // Humidity value label
     self.humidityLabel = [[UILabel alloc] init];
-    self.humidityLabel.font = [UIFont monospacedDigitSystemFontOfSize:13 weight:UIFontWeightRegular];
+    self.humidityLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:13 weight:HAFontWeightRegular];
     self.humidityLabel.textColor = [HATheme secondaryTextColor];
     self.humidityLabel.textAlignment = NSTextAlignmentRight;
     self.humidityLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -2971,26 +3188,37 @@
     [self.humiditySlider addTarget:self action:@selector(humidityReleased:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside];
     [container addSubview:self.humiditySlider];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.toggleButton.topAnchor constraintEqualToAnchor:container.topAnchor],
-        [self.toggleButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [self.toggleButton.heightAnchor constraintEqualToConstant:36],
-        [self.toggleButton.widthAnchor constraintEqualToConstant:80],
+    HAActivateConstraints(@[
 
-        [self.humiditySlider.topAnchor constraintEqualToAnchor:self.toggleButton.bottomAnchor constant:12],
-        [self.humiditySlider.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [self.humiditySlider.trailingAnchor constraintEqualToAnchor:self.humidityLabel.leadingAnchor constant:-8],
+        HACon([self.toggleButton.topAnchor constraintEqualToAnchor:container.topAnchor]),
 
-        [self.humidityLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-        [self.humidityLabel.centerYAnchor constraintEqualToAnchor:self.humiditySlider.centerYAnchor],
-        [self.humidityLabel.widthAnchor constraintEqualToConstant:44],
-    ]];
+        HACon([self.toggleButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+        HACon([self.toggleButton.heightAnchor constraintEqualToConstant:36]),
+
+        HACon([self.toggleButton.widthAnchor constraintEqualToConstant:80]),
+
+
+        HACon([self.humiditySlider.topAnchor constraintEqualToAnchor:self.toggleButton.bottomAnchor constant:12]),
+
+        HACon([self.humiditySlider.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+        HACon([self.humiditySlider.trailingAnchor constraintEqualToAnchor:self.humidityLabel.leadingAnchor constant:-8]),
+
+
+        HACon([self.humidityLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+        HACon([self.humidityLabel.centerYAnchor constraintEqualToAnchor:self.humiditySlider.centerYAnchor]),
+
+        HACon([self.humidityLabel.widthAnchor constraintEqualToConstant:44])
+
+    ]);
     prevAnchor = self.humiditySlider;
 
     // Mode dropdown button (when available_modes is non-empty)
     if (self.hasModes) {
-        self.modeButton = [UIButton buttonWithType:UIButtonTypeSystem];
-        self.modeButton.titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightMedium];
+        self.modeButton = HASystemButton();
+        self.modeButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:HAFontWeightMedium];
         self.modeButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
         self.modeButton.backgroundColor = [HATheme buttonBackgroundColor];
         self.modeButton.layer.cornerRadius = 8;
@@ -3000,16 +3228,21 @@
         [self.modeButton addTarget:self action:@selector(modeTapped) forControlEvents:UIControlEventTouchUpInside];
         [container addSubview:self.modeButton];
 
-        [NSLayoutConstraint activateConstraints:@[
-            [self.modeButton.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:12],
-            [self.modeButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-            [self.modeButton.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-            [self.modeButton.heightAnchor constraintEqualToConstant:36],
-        ]];
+        HAActivateConstraints(@[
+
+            HACon([self.modeButton.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:12]),
+
+            HACon([self.modeButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+            HACon([self.modeButton.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+            HACon([self.modeButton.heightAnchor constraintEqualToConstant:36])
+
+        ]);
         prevAnchor = self.modeButton;
     }
 
-    [prevAnchor.bottomAnchor constraintEqualToAnchor:container.bottomAnchor].active = YES;
+    HASetConstraintActive(HAMakeConstraint([prevAnchor.bottomAnchor constraintEqualToAnchor:container.bottomAnchor]), YES);
 
     [self updateWithEntity:entity];
     return container;
@@ -3065,24 +3298,16 @@
     NSArray *modes = [self.entity humidifierAvailableModes];
     if (modes.count == 0) return;
 
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Mode"
-                                                                  message:nil
-                                                           preferredStyle:UIAlertControllerStyleActionSheet];
-    for (NSString *mode in modes) {
-        [alert addAction:[UIAlertAction actionWithTitle:mode style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
-            [HAHaptics lightImpact];
-            self.serviceBlock(@"set_mode", @"humidifier", @{@"mode": mode}, self.entity.entityId);
-        }]];
-    }
-    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
-
     UIViewController *vc = [self.containerRef ha_parentViewController];
     if (vc) {
-        if (alert.popoverPresentationController) {
-            alert.popoverPresentationController.sourceView = self.modeButton;
-            alert.popoverPresentationController.sourceRect = self.modeButton.bounds;
-        }
-        [vc presentViewController:alert animated:YES completion:nil];
+        [vc ha_showActionSheetWithTitle:@"Mode"
+                            cancelTitle:@"Cancel"
+                           actionTitles:modes
+                             sourceView:self.modeButton
+                                handler:^(NSInteger index) {
+            [HAHaptics lightImpact];
+            self.serviceBlock(@"set_mode", @"humidifier", @{@"mode": modes[(NSUInteger)index]}, self.entity.entityId);
+        }];
     }
 }
 
@@ -3100,25 +3325,30 @@
     self.entity = entity;
     UIView *container = [[UIView alloc] init];
 
-    UIStackView *stack = [[UIStackView alloc] init];
-    stack.axis = UILayoutConstraintAxisVertical;
+    HAStackView *stack = [[HAStackView alloc] init];
+    stack.axis = 1;
     stack.spacing = 6;
     stack.translatesAutoresizingMaskIntoConstraints = NO;
     [container addSubview:stack];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [stack.topAnchor constraintEqualToAnchor:container.topAnchor],
-        [stack.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [stack.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-        [stack.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
-    ]];
+    HAActivateConstraints(@[
+
+        HACon([stack.topAnchor constraintEqualToAnchor:container.topAnchor]),
+
+        HACon([stack.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+        HACon([stack.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+        HACon([stack.bottomAnchor constraintEqualToAnchor:container.bottomAnchor])
+
+    ]);
 
     // Condition (primary display)
     NSString *condition = [entity weatherCondition] ?: entity.state;
     NSString *symbol = [HAEntity symbolForWeatherCondition:condition];
     UILabel *conditionLabel = [[UILabel alloc] init];
     conditionLabel.text = [NSString stringWithFormat:@"%@ %@", symbol, [condition capitalizedString]];
-    conditionLabel.font = [UIFont systemFontOfSize:18 weight:UIFontWeightSemibold];
+    conditionLabel.font = [UIFont ha_systemFontOfSize:18 weight:HAFontWeightSemibold];
     conditionLabel.textColor = [HATheme primaryTextColor];
     [stack addArrangedSubview:conditionLabel];
 
@@ -3166,15 +3396,15 @@
 }
 
 - (UIView *)rowWithIcon:(NSString *)icon label:(NSString *)label value:(NSString *)value {
-    UIStackView *row = [[UIStackView alloc] init];
-    row.axis = UILayoutConstraintAxisHorizontal;
+    HAStackView *row = [[HAStackView alloc] init];
+    row.axis = 0;
     row.spacing = 8;
-    row.alignment = UIStackViewAlignmentCenter;
+    row.alignment = 3;
 
     UILabel *iconLabel = [[UILabel alloc] init];
     iconLabel.text = icon;
     iconLabel.font = [UIFont systemFontOfSize:14];
-    [iconLabel setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [iconLabel setContentHuggingPriority:UILayoutPriorityRequired forAxis:0];
     [row addArrangedSubview:iconLabel];
 
     UILabel *nameLabel = [[UILabel alloc] init];
@@ -3184,15 +3414,15 @@
     [row addArrangedSubview:nameLabel];
 
     UIView *spacer = [[UIView alloc] init];
-    [spacer setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+    [spacer setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:0];
     [row addArrangedSubview:spacer];
 
     UILabel *valueLabel = [[UILabel alloc] init];
     valueLabel.text = value;
-    valueLabel.font = [UIFont monospacedDigitSystemFontOfSize:14 weight:UIFontWeightMedium];
+    valueLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:14 weight:HAFontWeightMedium];
     valueLabel.textColor = [HATheme primaryTextColor];
     valueLabel.textAlignment = NSTextAlignmentRight;
-    [valueLabel setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [valueLabel setContentHuggingPriority:UILayoutPriorityRequired forAxis:0];
     [row addArrangedSubview:valueLabel];
 
     return row;
@@ -3244,34 +3474,41 @@
 
     // Latest version
     self.latestLabel = [[UILabel alloc] init];
-    self.latestLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
+    self.latestLabel.font = [UIFont ha_systemFontOfSize:14 weight:HAFontWeightMedium];
     self.latestLabel.textColor = [HATheme primaryTextColor];
     self.latestLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [container addSubview:self.latestLabel];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.installedLabel.topAnchor constraintEqualToAnchor:container.topAnchor],
-        [self.installedLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [self.installedLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
+    HAActivateConstraints(@[
 
-        [self.latestLabel.topAnchor constraintEqualToAnchor:self.installedLabel.bottomAnchor constant:4],
-        [self.latestLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [self.latestLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-    ]];
+        HACon([self.installedLabel.topAnchor constraintEqualToAnchor:container.topAnchor]),
+
+        HACon([self.installedLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+        HACon([self.installedLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+
+        HACon([self.latestLabel.topAnchor constraintEqualToAnchor:self.installedLabel.bottomAnchor constant:4]),
+
+        HACon([self.latestLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+        HACon([self.latestLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor])
+
+    ]);
     prevAnchor = self.latestLabel;
 
     // Action buttons row
     if (self.supportsInstall) {
-        UIStackView *buttonRow = [[UIStackView alloc] init];
-        buttonRow.axis = UILayoutConstraintAxisHorizontal;
+        HAStackView *buttonRow = [[HAStackView alloc] init];
+        buttonRow.axis = 0;
         buttonRow.spacing = 12;
-        buttonRow.distribution = UIStackViewDistributionFillEqually;
+        buttonRow.distribution = 1;
         buttonRow.translatesAutoresizingMaskIntoConstraints = NO;
         [container addSubview:buttonRow];
 
-        self.installButton = [UIButton buttonWithType:UIButtonTypeSystem];
+        self.installButton = HASystemButton();
         [self.installButton setTitle:@"Install" forState:UIControlStateNormal];
-        self.installButton.titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];
+        self.installButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:HAFontWeightSemibold];
         [self.installButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
         self.installButton.backgroundColor = [HATheme onTintColor];
         self.installButton.layer.cornerRadius = 8;
@@ -3279,21 +3516,26 @@
         [self.installButton addTarget:self action:@selector(installTapped) forControlEvents:UIControlEventTouchUpInside];
         [buttonRow addArrangedSubview:self.installButton];
 
-        self.skipButton = [UIButton buttonWithType:UIButtonTypeSystem];
+        self.skipButton = HASystemButton();
         [self.skipButton setTitle:@"Skip" forState:UIControlStateNormal];
-        self.skipButton.titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightMedium];
+        self.skipButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:HAFontWeightMedium];
         self.skipButton.backgroundColor = [HATheme buttonBackgroundColor];
         self.skipButton.layer.cornerRadius = 8;
         self.skipButton.clipsToBounds = YES;
         [self.skipButton addTarget:self action:@selector(skipTapped) forControlEvents:UIControlEventTouchUpInside];
         [buttonRow addArrangedSubview:self.skipButton];
 
-        [NSLayoutConstraint activateConstraints:@[
-            [buttonRow.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:10],
-            [buttonRow.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-            [buttonRow.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-            [buttonRow.heightAnchor constraintEqualToConstant:36],
-        ]];
+        HAActivateConstraints(@[
+
+            HACon([buttonRow.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:10]),
+
+            HACon([buttonRow.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+            HACon([buttonRow.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+            HACon([buttonRow.heightAnchor constraintEqualToConstant:36])
+
+        ]);
         prevAnchor = buttonRow;
     }
 
@@ -3306,15 +3548,19 @@
         self.summaryLabel.translatesAutoresizingMaskIntoConstraints = NO;
         [container addSubview:self.summaryLabel];
 
-        [NSLayoutConstraint activateConstraints:@[
-            [self.summaryLabel.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:10],
-            [self.summaryLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-            [self.summaryLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-        ]];
+        HAActivateConstraints(@[
+
+            HACon([self.summaryLabel.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:10]),
+
+            HACon([self.summaryLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+            HACon([self.summaryLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor])
+
+        ]);
         prevAnchor = self.summaryLabel;
     }
 
-    [prevAnchor.bottomAnchor constraintEqualToAnchor:container.bottomAnchor].active = YES;
+    HASetConstraintActive(HAMakeConstraint([prevAnchor.bottomAnchor constraintEqualToAnchor:container.bottomAnchor]), YES);
 
     [self updateWithEntity:entity];
     return container;
@@ -3386,7 +3632,7 @@
 
     // Target temperature stepper + label
     self.targetLabel = [[UILabel alloc] init];
-    self.targetLabel.font = [UIFont monospacedDigitSystemFontOfSize:16 weight:UIFontWeightMedium];
+    self.targetLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:16 weight:HAFontWeightMedium];
     self.targetLabel.textColor = [HATheme primaryTextColor];
     self.targetLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [container addSubview:self.targetLabel];
@@ -3403,19 +3649,24 @@
     [self.tempStepper addTarget:self action:@selector(stepperChanged:) forControlEvents:UIControlEventValueChanged];
     [container addSubview:self.tempStepper];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.targetLabel.topAnchor constraintEqualToAnchor:container.topAnchor],
-        [self.targetLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
+    HAActivateConstraints(@[
 
-        [self.tempStepper.centerYAnchor constraintEqualToAnchor:self.targetLabel.centerYAnchor],
-        [self.tempStepper.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-    ]];
+        HACon([self.targetLabel.topAnchor constraintEqualToAnchor:container.topAnchor]),
+
+        HACon([self.targetLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+
+        HACon([self.tempStepper.centerYAnchor constraintEqualToAnchor:self.targetLabel.centerYAnchor]),
+
+        HACon([self.tempStepper.trailingAnchor constraintEqualToAnchor:container.trailingAnchor])
+
+    ]);
     prevAnchor = self.targetLabel;
 
     // Operation mode dropdown
     if (self.hasModes) {
-        self.modeButton = [UIButton buttonWithType:UIButtonTypeSystem];
-        self.modeButton.titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightMedium];
+        self.modeButton = HASystemButton();
+        self.modeButton.titleLabel.font = [UIFont ha_systemFontOfSize:15 weight:HAFontWeightMedium];
         self.modeButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
         self.modeButton.backgroundColor = [HATheme buttonBackgroundColor];
         self.modeButton.layer.cornerRadius = 8;
@@ -3425,16 +3676,21 @@
         [self.modeButton addTarget:self action:@selector(modeTapped) forControlEvents:UIControlEventTouchUpInside];
         [container addSubview:self.modeButton];
 
-        [NSLayoutConstraint activateConstraints:@[
-            [self.modeButton.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:12],
-            [self.modeButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-            [self.modeButton.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-            [self.modeButton.heightAnchor constraintEqualToConstant:36],
-        ]];
+        HAActivateConstraints(@[
+
+            HACon([self.modeButton.topAnchor constraintEqualToAnchor:prevAnchor.bottomAnchor constant:12]),
+
+            HACon([self.modeButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+            HACon([self.modeButton.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+            HACon([self.modeButton.heightAnchor constraintEqualToConstant:36])
+
+        ]);
         prevAnchor = self.modeButton;
     }
 
-    [prevAnchor.bottomAnchor constraintEqualToAnchor:container.bottomAnchor].active = YES;
+    HASetConstraintActive(HAMakeConstraint([prevAnchor.bottomAnchor constraintEqualToAnchor:container.bottomAnchor]), YES);
 
     [self updateWithEntity:entity];
     return container;
@@ -3475,24 +3731,21 @@
     NSArray *modes = [self.entity waterHeaterOperationList];
     if (modes.count == 0) return;
 
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Operation Mode"
-                                                                  message:nil
-                                                           preferredStyle:UIAlertControllerStyleActionSheet];
+    NSMutableArray *titles = [NSMutableArray arrayWithCapacity:modes.count];
     for (NSString *mode in modes) {
-        [alert addAction:[UIAlertAction actionWithTitle:[mode capitalizedString] style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
-            [HAHaptics lightImpact];
-            self.serviceBlock(@"set_operation_mode", @"water_heater", @{@"operation_mode": mode}, self.entity.entityId);
-        }]];
+        [titles addObject:[mode capitalizedString]];
     }
-    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
 
     UIViewController *vc = [self.containerRef ha_parentViewController];
     if (vc) {
-        if (alert.popoverPresentationController) {
-            alert.popoverPresentationController.sourceView = self.modeButton;
-            alert.popoverPresentationController.sourceRect = self.modeButton.bounds;
-        }
-        [vc presentViewController:alert animated:YES completion:nil];
+        [vc ha_showActionSheetWithTitle:@"Operation Mode"
+                            cancelTitle:@"Cancel"
+                           actionTitles:titles
+                             sourceView:self.modeButton
+                                handler:^(NSInteger index) {
+            [HAHaptics lightImpact];
+            self.serviceBlock(@"set_operation_mode", @"water_heater", @{@"operation_mode": modes[(NSUInteger)index]}, self.entity.entityId);
+        }];
     }
 }
 
@@ -3522,13 +3775,19 @@
     self.textField.translatesAutoresizingMaskIntoConstraints = NO;
     [container addSubview:self.textField];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.textField.topAnchor constraintEqualToAnchor:container.topAnchor],
-        [self.textField.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [self.textField.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-        [self.textField.heightAnchor constraintEqualToConstant:40],
-        [self.textField.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
-    ]];
+    HAActivateConstraints(@[
+
+        HACon([self.textField.topAnchor constraintEqualToAnchor:container.topAnchor]),
+
+        HACon([self.textField.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+        HACon([self.textField.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+        HACon([self.textField.heightAnchor constraintEqualToConstant:40]),
+
+        HACon([self.textField.bottomAnchor constraintEqualToAnchor:container.bottomAnchor])
+
+    ]);
 
     [self updateWithEntity:entity];
     return container;
@@ -3616,11 +3875,15 @@
     [self.datePicker addTarget:self action:@selector(dateChanged:) forControlEvents:UIControlEventValueChanged];
     [container addSubview:self.datePicker];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.datePicker.topAnchor constraintEqualToAnchor:container.topAnchor],
-        [self.datePicker.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [self.datePicker.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
-    ]];
+    HAActivateConstraints(@[
+
+        HACon([self.datePicker.topAnchor constraintEqualToAnchor:container.topAnchor]),
+
+        HACon([self.datePicker.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+        HACon([self.datePicker.bottomAnchor constraintEqualToAnchor:container.bottomAnchor])
+
+    ]);
 
     [self updateWithEntity:entity];
     return container;
@@ -3716,19 +3979,24 @@
     UIView *container = [[UIView alloc] init];
 
     self.stateValueLabel = [[UILabel alloc] init];
-    self.stateValueLabel.font = [UIFont systemFontOfSize:18 weight:UIFontWeightMedium];
+    self.stateValueLabel.font = [UIFont ha_systemFontOfSize:18 weight:HAFontWeightMedium];
     self.stateValueLabel.textColor = [HATheme primaryTextColor];
     self.stateValueLabel.textAlignment = NSTextAlignmentCenter;
     self.stateValueLabel.numberOfLines = 2;
     self.stateValueLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [container addSubview:self.stateValueLabel];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.stateValueLabel.topAnchor constraintEqualToAnchor:container.topAnchor constant:8],
-        [self.stateValueLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [self.stateValueLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-        [self.stateValueLabel.bottomAnchor constraintEqualToAnchor:container.bottomAnchor constant:-8],
-    ]];
+    HAActivateConstraints(@[
+
+        HACon([self.stateValueLabel.topAnchor constraintEqualToAnchor:container.topAnchor constant:8]),
+
+        HACon([self.stateValueLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+
+        HACon([self.stateValueLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+
+        HACon([self.stateValueLabel.bottomAnchor constraintEqualToAnchor:container.bottomAnchor constant:-8])
+
+    ]);
 
     [self updateWithEntity:entity];
     return container;

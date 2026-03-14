@@ -1,3 +1,4 @@
+#import "HAAutoLayout.h"
 #import "HAMapCardCell.h"
 #import "HAEntity.h"
 #import "HADashboardConfig.h"
@@ -21,12 +22,14 @@
     self.mapView.userInteractionEnabled = NO; // static map in card view
     [self.contentView addSubview:self.mapView];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.mapView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
-        [self.mapView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
-        [self.mapView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
-        [self.mapView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
-    ]];
+    HAPinEdgesFlush(self.mapView, self.contentView);
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    if (!HAAutoLayoutAvailable()) {
+        self.mapView.frame = self.contentView.bounds;
+    }
 }
 
 - (void)configureWithSection:(HADashboardConfigSection *)section
@@ -86,7 +89,6 @@
 - (void)prepareForReuse {
     [super prepareForReuse];
     [self.mapView removeAnnotations:self.mapView.annotations];
-    self.contentView.backgroundColor = [HATheme cellBackgroundColor];
 }
 
 @end

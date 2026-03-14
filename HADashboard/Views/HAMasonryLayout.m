@@ -1,4 +1,5 @@
 #import "HAMasonryLayout.h"
+#import "HACellCompat.h"
 
 /// HA masonry spacing constants (matching hui-masonry-view.ts)
 static const CGFloat kContainerPaddingTop = 4.0;
@@ -52,8 +53,8 @@ static const CGFloat kMaxColumnWidth = 500.0;
     if ([cardType isEqualToString:@"weather-forecast"] || [cardType isEqualToString:@"weather"]) return 4;
     if ([cardType isEqualToString:@"history-graph"] || [cardType isEqualToString:@"graph"]) return 4;
     if ([cardType isEqualToString:@"sensor"]) return 2;
-    if ([cardType isEqualToString:@"media-control"] || [cardType containsString:@"media-player"]) return 3;
-    if ([cardType isEqualToString:@"alarm-panel"] || [cardType containsString:@"alarm"]) return 3;
+    if ([cardType isEqualToString:@"media-control"] || ([cardType rangeOfString:@"media-player"].location != NSNotFound)) return 3;
+    if ([cardType isEqualToString:@"alarm-panel"] || ([cardType rangeOfString:@"alarm"].location != NSNotFound)) return 3;
 
     if ([cardType isEqualToString:@"entities"]) {
         NSInteger entityCount = 0;
@@ -158,7 +159,7 @@ static const CGFloat kMaxColumnWidth = 500.0;
 
         // Create layout attributes
         UICollectionViewLayoutAttributes *attr =
-            [UICollectionViewLayoutAttributes layoutAttributesForCellWithIndexPath:indexPath];
+            [HACollectionViewLayoutAttributesBase layoutAttributesForCellWithIndexPath:indexPath];
         attr.frame = CGRectMake(columnX, columnY[targetColumn] + kCardMarginTop, cardWidth, itemHeight);
         [self.itemAttributes addObject:attr];
 

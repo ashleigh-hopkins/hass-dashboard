@@ -1,4 +1,5 @@
 #import "HAMJPEGStreamParser.h"
+#import "HAHTTPClient.h"
 #import "HALog.h"
 
 /// Queue for JPEG decoding — avoid blocking main thread with image decompression.
@@ -6,9 +7,8 @@ static dispatch_queue_t _decodeQueue;
 
 static const NSTimeInterval kFirstFrameTimeout = 10.0;
 
-@interface HAMJPEGStreamParser () <NSURLSessionDataDelegate>
-@property (nonatomic, strong) NSURLSession *session;
-@property (nonatomic, strong) NSURLSessionDataTask *task;
+@interface HAMJPEGStreamParser () <HAHTTPClientStreamDelegate>
+@property (nonatomic, strong) id task;
 @property (nonatomic, strong) NSMutableData *buffer;
 @property (nonatomic, copy) NSData *boundaryData;
 @property (nonatomic, assign) BOOL streaming;
@@ -45,22 +45,15 @@ static const NSTimeInterval kFirstFrameTimeout = 10.0;
     // Long timeout — stream runs until cancelled
     request.timeoutInterval = 300;
 
-    NSURLSessionConfiguration *config = [NSURLSessionConfiguration defaultSessionConfiguration];
-    config.timeoutIntervalForRequest = 30; // Initial connection timeout
-    config.timeoutIntervalForResource = 0; // No overall timeout for streaming
-    self.session = [NSURLSession sessionWithConfiguration:config delegate:self delegateQueue:nil];
-    self.task = [self.session dataTaskWithRequest:request];
-    [self.task resume];
+    self.task = [[HAHTTPClient sharedClient] streamingTaskWithRequest:request delegate:self];
 }
 
 - (void)stop {
     self.streaming = NO;
     [self.firstFrameTimer invalidate];
     self.firstFrameTimer = nil;
-    [self.task cancel];
+    [[HAHTTPClient sharedClient] cancelTask:self.task];
     self.task = nil;
-    [self.session invalidateAndCancel];
-    self.session = nil;
     self.buffer = nil;
     self.boundaryData = nil;
     self.receivedFirstFrame = NO;
@@ -71,50 +64,40 @@ static const NSTimeInterval kFirstFrameTimeout = 10.0;
     return _streaming;
 }
 
-#pragma mark - NSURLSessionDataDelegate
+#pragma mark - HAHTTPClientStreamDelegate
 
-- (void)URLSession:(NSURLSession *)session dataTask:(NSURLSessionDataTask *)dataTask
-    didReceiveResponse:(NSURLResponse *)response
-     completionHandler:(void (^)(NSURLSessionResponseDisposition))completionHandler {
-    if (!self.streaming) {
-        completionHandler(NSURLSessionResponseCancel);
-        return;
-    }
+- (void)httpClient:(HAHTTPClient *)client didReceiveResponse:(NSURLResponse *)response forTask:(id)task {
+    if (!self.streaming) return;
 
     NSHTTPURLResponse *http = (NSHTTPURLResponse *)response;
     if (http.statusCode != 200) {
         NSError *error = [NSError errorWithDomain:@"HAMJPEGStreamParser" code:http.statusCode
             userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"HTTP %ld", (long)http.statusCode]}];
         [self reportError:error];
-        completionHandler(NSURLSessionResponseCancel);
+        [[HAHTTPClient sharedClient] cancelTask:self.task];
         return;
     }
 
     NSString *contentType = http.allHeaderFields[@"Content-Type"];
     HALogD(@"cam", @"Response %ld, Content-Type: %@", (long)http.statusCode, contentType);
 
-    // NSURLSession splits multipart/x-mixed-replace into per-part responses.
-    // First call: Content-Type is multipart/x-mixed-replace (extract boundary).
-    // Subsequent calls: Content-Type is image/jpeg (one per MJPEG frame).
-    // When we detect a subsequent part, flush the accumulated buffer as a frame.
+    // Subsequent part responses: flush buffer as a JPEG frame
     if (self.boundaryData) {
         self.usePartAccumulation = YES;
-        // Flush previous part's data as a JPEG frame
         if (self.buffer.length > 100) {
             [self decodeJPEGFromChunk:[self.buffer copy]];
         }
         [self.buffer setLength:0];
-        completionHandler(NSURLSessionResponseAllow);
         return;
     }
 
     // First response — check if it's actually multipart
-    if (contentType && ![contentType containsString:@"multipart"]) {
+    if (contentType && ([contentType rangeOfString:@"multipart"].location == NSNotFound)) {
         HALogW(@"cam", @"Not a multipart stream (Content-Type: %@) — aborting", contentType);
         NSError *error = [NSError errorWithDomain:@"HAMJPEGStreamParser" code:-3
             userInfo:@{NSLocalizedDescriptionKey: @"Not a multipart MJPEG stream"}];
         [self reportError:error];
-        completionHandler(NSURLSessionResponseCancel);
+        [[HAHTTPClient sharedClient] cancelTask:self.task];
         return;
     }
 
@@ -128,22 +111,22 @@ static const NSTimeInterval kFirstFrameTimeout = 10.0;
                                                              userInfo:nil
                                                               repeats:NO];
     });
-
-    completionHandler(NSURLSessionResponseAllow);
 }
 
-- (void)URLSession:(NSURLSession *)session dataTask:(NSURLSessionDataTask *)dataTask didReceiveData:(NSData *)data {
+- (void)httpClient:(HAHTTPClient *)client didReceiveData:(NSData *)data forTask:(id)task {
     if (!self.streaming) return;
     [self.buffer appendData:data];
-    // In part accumulation mode, NSURLSession splits parts for us — frames are flushed
-    // in didReceiveResponse when the next part starts. Only use boundary extraction
-    // when NSURLSession doesn't split (single continuous stream).
     if (!self.usePartAccumulation) {
         [self extractFrames];
     }
 }
 
-- (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)task didCompleteWithError:(NSError *)error {
+- (void)httpClient:(HAHTTPClient *)client didFinishTask:(id)task {
+    if (!self.streaming) return;
+    self.streaming = NO;
+}
+
+- (void)httpClient:(HAHTTPClient *)client task:(id)task didFailWithError:(NSError *)error {
     if (!self.streaming) return;
     self.streaming = NO;
     if (error && error.code != NSURLErrorCancelled) {
@@ -260,7 +243,7 @@ static const NSTimeInterval kFirstFrameTimeout = 10.0;
     if (!self.streaming || self.receivedFirstFrame) return;
     HALogW(@"cam", @"No frame received within %.0fs — aborting", kFirstFrameTimeout);
     self.streaming = NO;
-    [self.task cancel];
+    [[HAHTTPClient sharedClient] cancelTask:self.task];
     NSError *error = [NSError errorWithDomain:@"HAMJPEGStreamParser" code:-4
         userInfo:@{NSLocalizedDescriptionKey: @"No MJPEG frame received within timeout"}];
     [self reportError:error];

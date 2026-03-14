@@ -1,3 +1,4 @@
+#import "HAAutoLayout.h"
 #import "HACameraEntityCell.h"
 #import "HAEntity.h"
 #import "HAAuthManager.h"
@@ -9,6 +10,8 @@
 #import "HALog.h"
 #import <AVFoundation/AVFoundation.h>
 #import <objc/runtime.h>
+#import "UIFont+HACompat.h"
+#import "NSString+HACompat.h"
 
 static const NSTimeInterval kSnapshotRefreshInterval = 5.0;
 static const NSInteger kMaxConsecutiveFailuresBeforeClear = 3;
@@ -151,12 +154,14 @@ static HACameraStreamMode currentStreamMode(void) {
     CGFloat padding = 10.0;
 
     // Image view: fills cell, with toggling top constraint for name visibility
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.snapshotView attribute:NSLayoutAttributeLeading
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeLeading multiplier:1 constant:0]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.snapshotView attribute:NSLayoutAttributeTrailing
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTrailing multiplier:1 constant:0]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.snapshotView attribute:NSLayoutAttributeBottom
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeBottom multiplier:1 constant:0]];
+    HAActivateConstraints(@[
+        HACon([NSLayoutConstraint constraintWithItem:self.snapshotView attribute:NSLayoutAttributeLeading
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeLeading multiplier:1 constant:0]),
+        HACon([NSLayoutConstraint constraintWithItem:self.snapshotView attribute:NSLayoutAttributeTrailing
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTrailing multiplier:1 constant:0]),
+        HACon([NSLayoutConstraint constraintWithItem:self.snapshotView attribute:NSLayoutAttributeBottom
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeBottom multiplier:1 constant:0]),
+    ]);
 
     // Two top constraints: below nameLabel (with title) or at contentView top (no title)
     self.snapshotTopWithName = [NSLayoutConstraint constraintWithItem:self.snapshotView attribute:NSLayoutAttributeTop
@@ -168,22 +173,26 @@ static HACameraStreamMode currentStreamMode(void) {
     self.snapshotTopNoName.active = YES;
 
     // Spinner: centered in snapshot view
-    [self.snapshotView addConstraint:[NSLayoutConstraint constraintWithItem:self.loadingSpinner attribute:NSLayoutAttributeCenterX
-        relatedBy:NSLayoutRelationEqual toItem:self.snapshotView attribute:NSLayoutAttributeCenterX multiplier:1 constant:0]];
-    [self.snapshotView addConstraint:[NSLayoutConstraint constraintWithItem:self.loadingSpinner attribute:NSLayoutAttributeCenterY
-        relatedBy:NSLayoutRelationEqual toItem:self.snapshotView attribute:NSLayoutAttributeCenterY multiplier:1 constant:0]];
+    HAActivateConstraints(@[
+        HACon([NSLayoutConstraint constraintWithItem:self.loadingSpinner attribute:NSLayoutAttributeCenterX
+            relatedBy:NSLayoutRelationEqual toItem:self.snapshotView attribute:NSLayoutAttributeCenterX multiplier:1 constant:0]),
+        HACon([NSLayoutConstraint constraintWithItem:self.loadingSpinner attribute:NSLayoutAttributeCenterY
+            relatedBy:NSLayoutRelationEqual toItem:self.snapshotView attribute:NSLayoutAttributeCenterY multiplier:1 constant:0]),
+    ]);
 
     // Error label: centered in snapshot view
-    [self.snapshotView addConstraint:[NSLayoutConstraint constraintWithItem:self.errorLabel attribute:NSLayoutAttributeCenterX
-        relatedBy:NSLayoutRelationEqual toItem:self.snapshotView attribute:NSLayoutAttributeCenterX multiplier:1 constant:0]];
-    [self.snapshotView addConstraint:[NSLayoutConstraint constraintWithItem:self.errorLabel attribute:NSLayoutAttributeCenterY
-        relatedBy:NSLayoutRelationEqual toItem:self.snapshotView attribute:NSLayoutAttributeCenterY multiplier:1 constant:0]];
-    [self.snapshotView addConstraint:[NSLayoutConstraint constraintWithItem:self.errorLabel attribute:NSLayoutAttributeLeading
-        relatedBy:NSLayoutRelationGreaterThanOrEqual toItem:self.snapshotView attribute:NSLayoutAttributeLeading multiplier:1 constant:padding]];
+    HAActivateConstraints(@[
+        HACon([NSLayoutConstraint constraintWithItem:self.errorLabel attribute:NSLayoutAttributeCenterX
+            relatedBy:NSLayoutRelationEqual toItem:self.snapshotView attribute:NSLayoutAttributeCenterX multiplier:1 constant:0]),
+        HACon([NSLayoutConstraint constraintWithItem:self.errorLabel attribute:NSLayoutAttributeCenterY
+            relatedBy:NSLayoutRelationEqual toItem:self.snapshotView attribute:NSLayoutAttributeCenterY multiplier:1 constant:0]),
+        HACon([NSLayoutConstraint constraintWithItem:self.errorLabel attribute:NSLayoutAttributeLeading
+            relatedBy:NSLayoutRelationGreaterThanOrEqual toItem:self.snapshotView attribute:NSLayoutAttributeLeading multiplier:1 constant:padding]),
+    ]);
 
     // State badge (recording/streaming indicator, top-right corner)
     self.stateBadge = [[UILabel alloc] init];
-    self.stateBadge.font = [UIFont systemFontOfSize:9 weight:UIFontWeightBold];
+    self.stateBadge.font = [UIFont ha_systemFontOfSize:9 weight:HAFontWeightBold];
     self.stateBadge.textColor = [UIColor whiteColor];
     self.stateBadge.textAlignment = NSTextAlignmentCenter;
     self.stateBadge.backgroundColor = [[UIColor redColor] colorWithAlphaComponent:0.8];
@@ -193,12 +202,12 @@ static HACameraStreamMode currentStreamMode(void) {
     self.stateBadge.hidden = YES;
     [self.contentView addSubview:self.stateBadge];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.stateBadge.topAnchor constraintEqualToAnchor:self.snapshotView.topAnchor constant:6],
-        [self.stateBadge.trailingAnchor constraintEqualToAnchor:self.snapshotView.trailingAnchor constant:-38],
-        [self.stateBadge.heightAnchor constraintEqualToConstant:16],
-        [self.stateBadge.widthAnchor constraintGreaterThanOrEqualToConstant:40],
-    ]];
+    HAActivateConstraints(@[
+        HACon([self.stateBadge.topAnchor constraintEqualToAnchor:self.snapshotView.topAnchor constant:6]),
+        HACon([self.stateBadge.trailingAnchor constraintEqualToAnchor:self.snapshotView.trailingAnchor constant:-38]),
+        HACon([self.stateBadge.heightAnchor constraintEqualToConstant:16]),
+        HACon([self.stateBadge.widthAnchor constraintGreaterThanOrEqualToConstant:40]),
+    ]);
 
     // Camera power toggle button (top-left of snapshot)
     self.cameraPowerButton = [UIButton buttonWithType:UIButtonTypeCustom];
@@ -239,51 +248,41 @@ static HACameraStreamMode currentStreamMode(void) {
     [self.cameraVolumeButton addTarget:self action:@selector(gridVolumeTapped) forControlEvents:UIControlEventTouchUpInside];
     [self.contentView addSubview:self.cameraVolumeButton];
 
-    // Set icons via MDI glyphs
-    NSString *powerGlyph = [HAIconMapper glyphForIconName:@"power"] ?: @"\u23FB";
-    NSString *snapGlyph = [HAIconMapper glyphForIconName:@"camera-iris"] ?: [HAIconMapper glyphForIconName:@"camera"] ?: @"\U0001F4F7";
-    NSString *fullscreenGlyph = [HAIconMapper glyphForIconName:@"fullscreen"] ?: @"\u26F6";
-    UIFont *iconFont = [HAIconMapper mdiFontOfSize:14];
-    [self.cameraPowerButton setAttributedTitle:[[NSAttributedString alloc] initWithString:powerGlyph
-        attributes:@{NSFontAttributeName: iconFont, NSForegroundColorAttributeName: [UIColor whiteColor]}]
-        forState:UIControlStateNormal];
-    [self.cameraSnapshotButton setAttributedTitle:[[NSAttributedString alloc] initWithString:snapGlyph
-        attributes:@{NSFontAttributeName: iconFont, NSForegroundColorAttributeName: [UIColor whiteColor]}]
-        forState:UIControlStateNormal];
-    [self.cameraFullscreenButton setAttributedTitle:[[NSAttributedString alloc] initWithString:fullscreenGlyph
-        attributes:@{NSFontAttributeName: iconFont, NSForegroundColorAttributeName: [UIColor whiteColor]}]
-        forState:UIControlStateNormal];
+    // Set icons via MDI glyphs (setIconName: handles iOS 5 CoreText fallback)
+    [HAIconMapper setIconName:@"power" onButton:self.cameraPowerButton size:14 color:[UIColor whiteColor]];
+    [HAIconMapper setIconName:@"camera-iris" onButton:self.cameraSnapshotButton size:14 color:[UIColor whiteColor]];
+    [HAIconMapper setIconName:@"fullscreen" onButton:self.cameraFullscreenButton size:14 color:[UIColor whiteColor]];
 
     // Snapshot button leads from power button when visible, from snapshotView edge when hidden.
     // Use two constraints with different priorities — the active one wins.
-    NSLayoutConstraint *snapAfterPower = [self.cameraSnapshotButton.leadingAnchor constraintEqualToAnchor:self.cameraPowerButton.trailingAnchor constant:4];
+    NSLayoutConstraint *snapAfterPower = HAMakeConstraint([self.cameraSnapshotButton.leadingAnchor constraintEqualToAnchor:self.cameraPowerButton.trailingAnchor constant:4]);
     snapAfterPower.priority = UILayoutPriorityDefaultHigh; // 750 — used when power visible
-    NSLayoutConstraint *snapAtEdge = [self.cameraSnapshotButton.leadingAnchor constraintEqualToAnchor:self.snapshotView.leadingAnchor constant:6];
+    NSLayoutConstraint *snapAtEdge = HAMakeConstraint([self.cameraSnapshotButton.leadingAnchor constraintEqualToAnchor:self.snapshotView.leadingAnchor constant:6]);
     snapAtEdge.priority = UILayoutPriorityDefaultLow; // 250 — used when power hidden
     self.snapAfterPowerConstraint = snapAfterPower;
     self.snapAtEdgeConstraint = snapAtEdge;
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.cameraPowerButton.topAnchor constraintEqualToAnchor:self.snapshotView.topAnchor constant:6],
-        [self.cameraPowerButton.leadingAnchor constraintEqualToAnchor:self.snapshotView.leadingAnchor constant:6],
-        [self.cameraPowerButton.widthAnchor constraintEqualToConstant:28],
-        [self.cameraPowerButton.heightAnchor constraintEqualToConstant:28],
-        [self.cameraSnapshotButton.topAnchor constraintEqualToAnchor:self.snapshotView.topAnchor constant:6],
-        snapAfterPower,
-        snapAtEdge,
-        [self.cameraSnapshotButton.widthAnchor constraintEqualToConstant:28],
-        [self.cameraSnapshotButton.heightAnchor constraintEqualToConstant:28],
+    HAActivateConstraints(@[
+        HACon([self.cameraPowerButton.topAnchor constraintEqualToAnchor:self.snapshotView.topAnchor constant:6]),
+        HACon([self.cameraPowerButton.leadingAnchor constraintEqualToAnchor:self.snapshotView.leadingAnchor constant:6]),
+        HACon([self.cameraPowerButton.widthAnchor constraintEqualToConstant:28]),
+        HACon([self.cameraPowerButton.heightAnchor constraintEqualToConstant:28]),
+        HACon([self.cameraSnapshotButton.topAnchor constraintEqualToAnchor:self.snapshotView.topAnchor constant:6]),
+        HACon(self.snapAfterPowerConstraint),
+        HACon(self.snapAtEdgeConstraint),
+        HACon([self.cameraSnapshotButton.widthAnchor constraintEqualToConstant:28]),
+        HACon([self.cameraSnapshotButton.heightAnchor constraintEqualToConstant:28]),
         // Fullscreen button — top-right corner
-        [self.cameraFullscreenButton.topAnchor constraintEqualToAnchor:self.snapshotView.topAnchor constant:6],
-        [self.cameraFullscreenButton.trailingAnchor constraintEqualToAnchor:self.snapshotView.trailingAnchor constant:-6],
-        [self.cameraFullscreenButton.widthAnchor constraintEqualToConstant:28],
-        [self.cameraFullscreenButton.heightAnchor constraintEqualToConstant:28],
+        HACon([self.cameraFullscreenButton.topAnchor constraintEqualToAnchor:self.snapshotView.topAnchor constant:6]),
+        HACon([self.cameraFullscreenButton.trailingAnchor constraintEqualToAnchor:self.snapshotView.trailingAnchor constant:-6]),
+        HACon([self.cameraFullscreenButton.widthAnchor constraintEqualToConstant:28]),
+        HACon([self.cameraFullscreenButton.heightAnchor constraintEqualToConstant:28]),
         // Volume button — bottom-right corner
-        [self.cameraVolumeButton.bottomAnchor constraintEqualToAnchor:self.snapshotView.bottomAnchor constant:-6],
-        [self.cameraVolumeButton.trailingAnchor constraintEqualToAnchor:self.snapshotView.trailingAnchor constant:-6],
-        [self.cameraVolumeButton.widthAnchor constraintEqualToConstant:28],
-        [self.cameraVolumeButton.heightAnchor constraintEqualToConstant:28],
-    ]];
+        HACon([self.cameraVolumeButton.bottomAnchor constraintEqualToAnchor:self.snapshotView.bottomAnchor constant:-6]),
+        HACon([self.cameraVolumeButton.trailingAnchor constraintEqualToAnchor:self.snapshotView.trailingAnchor constant:-6]),
+        HACon([self.cameraVolumeButton.widthAnchor constraintEqualToConstant:28]),
+        HACon([self.cameraVolumeButton.heightAnchor constraintEqualToConstant:28]),
+    ]);
 
     // Shared session for image fetches — no caching to always get fresh frames
     NSURLSessionConfiguration *config = [NSURLSessionConfiguration ephemeralSessionConfiguration];
@@ -451,11 +450,7 @@ static HACameraStreamMode currentStreamMode(void) {
     closeButton.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.6];
     closeButton.layer.cornerRadius = 18;
     closeButton.clipsToBounds = YES;
-    NSString *closeGlyph = [HAIconMapper glyphForIconName:@"close"] ?: @"✕";
-    UIFont *closeFont = [HAIconMapper mdiFontOfSize:18];
-    [closeButton setAttributedTitle:[[NSAttributedString alloc] initWithString:closeGlyph
-        attributes:@{NSFontAttributeName: closeFont, NSForegroundColorAttributeName: [UIColor whiteColor]}]
-        forState:UIControlStateNormal];
+    [HAIconMapper setIconName:@"close" onButton:closeButton size:18 color:[UIColor whiteColor]];
     closeButton.frame = CGRectMake(fullscreen.view.bounds.size.width - 50, 40, 36, 36);
     closeButton.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleBottomMargin;
     [closeButton addTarget:self action:@selector(dismissFullscreenButton:) forControlEvents:UIControlEventTouchUpInside];
@@ -464,7 +459,7 @@ static HACameraStreamMode currentStreamMode(void) {
     // Camera name — bottom-left
     UILabel *nameLabel = [[UILabel alloc] init];
     nameLabel.text = [self.entity friendlyName] ?: self.currentEntityId;
-    nameLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightMedium];
+    nameLabel.font = [UIFont ha_systemFontOfSize:16 weight:HAFontWeightMedium];
     nameLabel.textColor = [UIColor whiteColor];
     nameLabel.frame = CGRectMake(16, fullscreen.view.bounds.size.height - 50, fullscreen.view.bounds.size.width - 100, 30);
     nameLabel.autoresizingMask = UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleWidth;
@@ -488,15 +483,13 @@ static HACameraStreamMode currentStreamMode(void) {
             self.hlsPlayer.volume = savedVol;
         }
 
-        NSString *initialGlyph = startMuted ? muteGlyph : unmuteGlyph;
+        NSString *initialIcon = startMuted ? @"volume-off" : @"volume-high";
         UIButton *muteButton = [UIButton buttonWithType:UIButtonTypeCustom];
         muteButton.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.6];
         muteButton.layer.cornerRadius = 18;
         muteButton.clipsToBounds = YES;
         muteButton.tag = 8001;
-        [muteButton setAttributedTitle:[[NSAttributedString alloc] initWithString:initialGlyph
-            attributes:@{NSFontAttributeName: iconFont, NSForegroundColorAttributeName: [UIColor whiteColor]}]
-            forState:UIControlStateNormal];
+        [HAIconMapper setIconName:initialIcon onButton:muteButton size:18 color:[UIColor whiteColor]];
         muteButton.frame = CGRectMake(fullscreen.view.bounds.size.width - 50,
                                       fullscreen.view.bounds.size.height - 50, 36, 36);
         muteButton.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleTopMargin;
@@ -542,7 +535,6 @@ static HACameraStreamMode currentStreamMode(void) {
     if (!self.hlsPlayer) return;
 
     BOOL wasMuted = (self.hlsPlayer.volume == 0);
-    UIFont *iconFont = [HAIconMapper mdiFontOfSize:18];
     NSString *volKey = [NSString stringWithFormat:@"HACameraVolume_%@", self.currentEntityId];
 
     if (wasMuted) {
@@ -551,10 +543,7 @@ static HACameraStreamMode currentStreamMode(void) {
         if (vol <= 0) vol = 0.5;
         self.hlsPlayer.volume = vol;
 
-        NSString *glyph = [HAIconMapper glyphForIconName:@"volume-high"] ?: @"🔊";
-        [sender setAttributedTitle:[[NSAttributedString alloc] initWithString:glyph
-            attributes:@{NSFontAttributeName: iconFont, NSForegroundColorAttributeName: [UIColor whiteColor]}]
-            forState:UIControlStateNormal];
+        [HAIconMapper setIconName:@"volume-high" onButton:sender size:18 color:[UIColor whiteColor]];
 
         // Show volume slider
         UIView *slider = [sender.superview viewWithTag:8002];
@@ -566,10 +555,7 @@ static HACameraStreamMode currentStreamMode(void) {
         // Mute
         self.hlsPlayer.volume = 0;
 
-        NSString *glyph = [HAIconMapper glyphForIconName:@"volume-off"] ?: @"🔇";
-        [sender setAttributedTitle:[[NSAttributedString alloc] initWithString:glyph
-            attributes:@{NSFontAttributeName: iconFont, NSForegroundColorAttributeName: [UIColor whiteColor]}]
-            forState:UIControlStateNormal];
+        [HAIconMapper setIconName:@"volume-off" onButton:sender size:18 color:[UIColor whiteColor]];
 
         // Hide volume slider
         UIView *slider = [sender.superview viewWithTag:8002];
@@ -587,18 +573,15 @@ static HACameraStreamMode currentStreamMode(void) {
     // Update mute button icon based on volume level
     UIButton *muteBtn = (UIButton *)[slider.superview viewWithTag:8001];
     if (!muteBtn) return;
-    UIFont *iconFont = [HAIconMapper mdiFontOfSize:18];
-    NSString *glyph;
+    NSString *volIcon;
     if (slider.value <= 0.01) {
-        glyph = [HAIconMapper glyphForIconName:@"volume-off"] ?: @"🔇";
+        volIcon = @"volume-off";
     } else if (slider.value < 0.5) {
-        glyph = [HAIconMapper glyphForIconName:@"volume-medium"] ?: @"🔉";
+        volIcon = @"volume-medium";
     } else {
-        glyph = [HAIconMapper glyphForIconName:@"volume-high"] ?: @"🔊";
+        volIcon = @"volume-high";
     }
-    [muteBtn setAttributedTitle:[[NSAttributedString alloc] initWithString:glyph
-        attributes:@{NSFontAttributeName: iconFont, NSForegroundColorAttributeName: [UIColor whiteColor]}]
-        forState:UIControlStateNormal];
+    [HAIconMapper setIconName:volIcon onButton:muteBtn size:18 color:[UIColor whiteColor]];
 }
 
 #pragma mark - Overlay Action Buttons
@@ -669,7 +652,7 @@ static HACameraStreamMode currentStreamMode(void) {
             if (glyph) {
                 UIFont *mdiFont = [HAIconMapper mdiFontOfSize:kOverlayIconFontSize];
                 iconLabel.attributedText = [[NSAttributedString alloc] initWithString:glyph
-                    attributes:@{NSFontAttributeName: mdiFont, NSForegroundColorAttributeName: [UIColor whiteColor]}];
+                    attributes:@{HAFontAttributeName: mdiFont, HAForegroundColorAttributeName: [UIColor whiteColor]}];
             } else {
                 iconLabel.text = @"?";
                 iconLabel.font = [UIFont systemFontOfSize:kOverlayIconFontSize];
@@ -707,7 +690,7 @@ static HACameraStreamMode currentStreamMode(void) {
     if (glyph) {
         UIFont *mdiFont = [HAIconMapper mdiFontOfSize:kOverlayIconFontSize];
         iconLabel.attributedText = [[NSAttributedString alloc] initWithString:glyph
-            attributes:@{NSFontAttributeName: mdiFont, NSForegroundColorAttributeName: iconColor}];
+            attributes:@{HAFontAttributeName: mdiFont, HAForegroundColorAttributeName: iconColor}];
     } else {
         iconLabel.attributedText = nil;
         iconLabel.text = @"?";
@@ -823,6 +806,41 @@ static HACameraStreamMode currentStreamMode(void) {
 
 - (void)layoutSubviews {
     [super layoutSubviews];
+    if (!HAAutoLayoutAvailable()) {
+        CGFloat w = self.contentView.bounds.size.width;
+        CGFloat h = self.contentView.bounds.size.height;
+        CGFloat padding = 10.0;
+
+        // Snapshot view: full bleed or below name
+        // Ensure translatesAutoresizingMaskIntoConstraints=YES so UIKit honours
+        // our explicit frame and contentMode centers the scaled image correctly.
+        // Without this, the view may have TAMIC=NO with no constraints, causing
+        // the layer content gravity to anchor top-left instead of center.
+        self.snapshotView.translatesAutoresizingMaskIntoConstraints = YES;
+        CGFloat snapTop = self.nameLabel.hidden ? 0 : CGRectGetMaxY(self.nameLabel.frame) + 4;
+        self.snapshotView.frame = CGRectMake(0, snapTop, w, h - snapTop);
+
+        // Loading spinner: centered in snapshot
+        CGSize spinSize = [self.loadingSpinner sizeThatFits:CGSizeMake(50, 50)];
+        CGFloat snapMidX = w / 2.0;
+        CGFloat snapMidY = snapTop + (h - snapTop) / 2.0;
+        self.loadingSpinner.frame = CGRectMake(snapMidX - spinSize.width / 2.0, snapMidY - snapTop - spinSize.height / 2.0, spinSize.width, spinSize.height);
+
+        // Error label: centered in snapshot
+        CGSize errSize = [self.errorLabel sizeThatFits:CGSizeMake(w - padding * 2, CGFLOAT_MAX)];
+        self.errorLabel.frame = CGRectMake(padding, (h - snapTop) / 2.0 - errSize.height / 2.0, w - padding * 2, errSize.height);
+
+        // State badge: top-right of snapshot
+        CGSize badgeSize = [self.stateBadge sizeThatFits:CGSizeMake(80, 16)];
+        self.stateBadge.frame = CGRectMake(w - 38 - MAX(badgeSize.width, 40), snapTop + 6, MAX(badgeSize.width, 40), 16);
+
+        // Camera buttons
+        self.cameraPowerButton.frame = CGRectMake(6, snapTop + 6, 28, 28);
+        CGFloat snapBtnX = self.cameraPowerButton.hidden ? 6 : 38;
+        self.cameraSnapshotButton.frame = CGRectMake(snapBtnX, snapTop + 6, 28, 28);
+        self.cameraFullscreenButton.frame = CGRectMake(w - 34, snapTop + 6, 28, 28);
+        self.cameraVolumeButton.frame = CGRectMake(w - 34, h - 34, 28, 28);
+    }
     [self layoutOverlayBar];
     // Keep HLS player layer frame in sync with snapshot view
     if (self.hlsPlayerLayer) {
@@ -843,10 +861,10 @@ static HACameraStreamMode currentStreamMode(void) {
         UIGraphicsBeginImageContextWithOptions(CGSizeMake(w, h), YES, 0);
         [[UIColor colorWithRed:0.1 green:0.12 blue:0.15 alpha:1] setFill];
         UIRectFill(CGRectMake(0, 0, w, h));
-        NSDictionary *attrs = @{NSFontAttributeName: [UIFont systemFontOfSize:14], NSForegroundColorAttributeName: [UIColor colorWithWhite:0.5 alpha:1]};
+        NSDictionary *attrs = @{HAFontAttributeName: [UIFont systemFontOfSize:14], HAForegroundColorAttributeName: [UIColor colorWithWhite:0.5 alpha:1]};
         NSString *label = [NSString stringWithFormat:@"📷 %@", [self.entity friendlyName] ?: @"Camera"];
-        CGSize sz = [label sizeWithAttributes:attrs];
-        [label drawAtPoint:CGPointMake((w - sz.width) / 2, (h - sz.height) / 2) withAttributes:attrs];
+        CGSize sz = [label ha_sizeWithAttributes:attrs];
+        [label ha_drawAtPoint:CGPointMake((w - sz.width) / 2, (h - sz.height) / 2) withAttributes:attrs];
         self.snapshotView.image = UIGraphicsGetImageFromCurrentImageContext();
         UIGraphicsEndImageContext();
         [self.loadingSpinner stopAnimating];
@@ -1280,16 +1298,8 @@ static HACameraStreamMode currentStreamMode(void) {
 }
 
 - (void)updateGridVolumeIcon {
-    UIFont *iconFont = [HAIconMapper mdiFontOfSize:14];
-    NSString *glyph;
-    if (self.hlsPlayer.volume <= 0.01) {
-        glyph = [HAIconMapper glyphForIconName:@"volume-off"] ?: @"M";
-    } else {
-        glyph = [HAIconMapper glyphForIconName:@"volume-high"] ?: @"V";
-    }
-    [self.cameraVolumeButton setAttributedTitle:[[NSAttributedString alloc] initWithString:glyph
-        attributes:@{NSFontAttributeName: iconFont, NSForegroundColorAttributeName: [UIColor whiteColor]}]
-        forState:UIControlStateNormal];
+    NSString *volIcon = (self.hlsPlayer.volume <= 0.01) ? @"volume-off" : @"volume-high";
+    [HAIconMapper setIconName:volIcon onButton:self.cameraVolumeButton size:14 color:[UIColor whiteColor]];
 }
 
 - (void)gridVolumeTapped {

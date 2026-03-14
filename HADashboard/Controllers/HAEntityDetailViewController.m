@@ -1,4 +1,9 @@
+#import "HAAutoLayout.h"
+#import "NSString+HACompat.h"
+#import "HAStackView.h"
+#import "NSString+HACompat.h"
 #import "HAEntityDetailViewController.h"
+#import "UIViewController+HAAlert.h"
 #import "HAEntity.h"
 #import "HATheme.h"
 #import "HAIconMapper.h"
@@ -9,6 +14,7 @@
 #import "HAGraphView.h"
 #import "HAAttributeRowView.h"
 #import "HAEntityDetailSection.h"
+#import "UIFont+HACompat.h"
 
 static const CGFloat kGrabberWidth = 36.0;
 static const CGFloat kGrabberHeight = 5.0;
@@ -18,7 +24,7 @@ static const CGFloat kGraphHeight = 160.0;
 
 @interface HAEntityDetailViewController () <HAGraphViewDelegate>
 @property (nonatomic, strong, readwrite) UIScrollView *scrollView;
-@property (nonatomic, strong, readwrite) UIStackView *contentStack;
+@property (nonatomic, strong, readwrite) HAStackView *contentStack;
 
 // Header elements
 @property (nonatomic, strong) UIView *grabberView;
@@ -38,7 +44,7 @@ static const CGFloat kGraphHeight = 160.0;
 @property (nonatomic, strong) UIView *domainSectionView;
 
 // Attributes section
-@property (nonatomic, strong) UIStackView *attributesStack;
+@property (nonatomic, strong) HAStackView *attributesStack;
 
 // Zoom re-fetch
 @property (nonatomic, strong) NSTimer *zoomFetchTimer;
@@ -115,12 +121,12 @@ static const CGFloat kGraphHeight = 160.0;
     self.grabberView.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:self.grabberView];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.grabberView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:8],
-        [self.grabberView.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
-        [self.grabberView.widthAnchor constraintEqualToConstant:kGrabberWidth],
-        [self.grabberView.heightAnchor constraintEqualToConstant:kGrabberHeight],
-    ]];
+    HAActivateConstraints(@[
+        HACon([self.grabberView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:8]),
+        HACon([self.grabberView.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor]),
+        HACon([self.grabberView.widthAnchor constraintEqualToConstant:kGrabberWidth]),
+        HACon([self.grabberView.heightAnchor constraintEqualToConstant:kGrabberHeight]),
+    ]);
 }
 
 - (void)setupHeader {
@@ -133,7 +139,7 @@ static const CGFloat kGraphHeight = 160.0;
 
     // Name
     self.nameLabel = [[UILabel alloc] init];
-    self.nameLabel.font = [UIFont systemFontOfSize:18 weight:UIFontWeightSemibold];
+    self.nameLabel.font = [UIFont ha_systemFontOfSize:18 weight:HAFontWeightSemibold];
     self.nameLabel.textColor = [HATheme primaryTextColor];
     self.nameLabel.numberOfLines = 2;
     self.nameLabel.lineBreakMode = NSLineBreakByTruncatingTail;
@@ -148,9 +154,9 @@ static const CGFloat kGraphHeight = 160.0;
     [self.view addSubview:self.stateLabel];
 
     // Close button
-    self.closeButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.closeButton = HASystemButton();
     [self.closeButton setTitle:@"\u2715" forState:UIControlStateNormal];
-    self.closeButton.titleLabel.font = [UIFont systemFontOfSize:20 weight:UIFontWeightMedium];
+    self.closeButton.titleLabel.font = [UIFont ha_systemFontOfSize:20 weight:HAFontWeightMedium];
     [self.closeButton setTitleColor:[HATheme secondaryTextColor] forState:UIControlStateNormal];
     [self.closeButton addTarget:self action:@selector(closeTapped) forControlEvents:UIControlEventTouchUpInside];
     self.closeButton.translatesAutoresizingMaskIntoConstraints = NO;
@@ -158,25 +164,25 @@ static const CGFloat kGraphHeight = 160.0;
 
     CGFloat topOffset = 8 + kGrabberHeight + 12;
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.iconLabel.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:kHeaderPadding],
-        [self.iconLabel.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:topOffset],
-        [self.iconLabel.widthAnchor constraintEqualToConstant:kIconSize + 4],
-        [self.iconLabel.heightAnchor constraintEqualToConstant:kIconSize + 4],
+    HAActivateConstraints(@[
+        HACon([self.iconLabel.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:kHeaderPadding]),
+        HACon([self.iconLabel.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:topOffset]),
+        HACon([self.iconLabel.widthAnchor constraintEqualToConstant:kIconSize + 4]),
+        HACon([self.iconLabel.heightAnchor constraintEqualToConstant:kIconSize + 4]),
 
-        [self.nameLabel.leadingAnchor constraintEqualToAnchor:self.iconLabel.trailingAnchor constant:10],
-        [self.nameLabel.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:topOffset],
-        [self.nameLabel.trailingAnchor constraintEqualToAnchor:self.closeButton.leadingAnchor constant:-8],
+        HACon([self.nameLabel.leadingAnchor constraintEqualToAnchor:self.iconLabel.trailingAnchor constant:10]),
+        HACon([self.nameLabel.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:topOffset]),
+        HACon([self.nameLabel.trailingAnchor constraintEqualToAnchor:self.closeButton.leadingAnchor constant:-8]),
 
-        [self.stateLabel.leadingAnchor constraintEqualToAnchor:self.nameLabel.leadingAnchor],
-        [self.stateLabel.topAnchor constraintEqualToAnchor:self.nameLabel.bottomAnchor constant:2],
-        [self.stateLabel.trailingAnchor constraintEqualToAnchor:self.nameLabel.trailingAnchor],
+        HACon([self.stateLabel.leadingAnchor constraintEqualToAnchor:self.nameLabel.leadingAnchor]),
+        HACon([self.stateLabel.topAnchor constraintEqualToAnchor:self.nameLabel.bottomAnchor constant:2]),
+        HACon([self.stateLabel.trailingAnchor constraintEqualToAnchor:self.nameLabel.trailingAnchor]),
 
-        [self.closeButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-kHeaderPadding],
-        [self.closeButton.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:topOffset],
-        [self.closeButton.widthAnchor constraintEqualToConstant:32],
-        [self.closeButton.heightAnchor constraintEqualToConstant:32],
-    ]];
+        HACon([self.closeButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-kHeaderPadding]),
+        HACon([self.closeButton.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:topOffset]),
+        HACon([self.closeButton.widthAnchor constraintEqualToConstant:32]),
+        HACon([self.closeButton.heightAnchor constraintEqualToConstant:32]),
+    ]);
 }
 
 - (void)setupScrollView {
@@ -186,27 +192,27 @@ static const CGFloat kGraphHeight = 160.0;
     self.scrollView.showsVerticalScrollIndicator = YES;
     [self.view addSubview:self.scrollView];
 
-    self.contentStack = [[UIStackView alloc] init];
-    self.contentStack.axis = UILayoutConstraintAxisVertical;
+    self.contentStack = [[HAStackView alloc] init];
+    self.contentStack.axis = 1;
     self.contentStack.spacing = 16;
-    self.contentStack.alignment = UIStackViewAlignmentFill;
+    self.contentStack.alignment = 0;
     self.contentStack.translatesAutoresizingMaskIntoConstraints = NO;
     [self.scrollView addSubview:self.contentStack];
 
     CGFloat headerBottom = 8 + kGrabberHeight + 12 + kIconSize + 4 + 20 + 12;
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.scrollView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:headerBottom],
-        [self.scrollView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-        [self.scrollView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [self.scrollView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+    HAActivateConstraints(@[
+        HACon([self.scrollView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:headerBottom]),
+        HACon([self.scrollView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor]),
+        HACon([self.scrollView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor]),
+        HACon([self.scrollView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]),
 
-        [self.contentStack.topAnchor constraintEqualToAnchor:self.scrollView.topAnchor constant:8],
-        [self.contentStack.leadingAnchor constraintEqualToAnchor:self.scrollView.leadingAnchor constant:kHeaderPadding],
-        [self.contentStack.trailingAnchor constraintEqualToAnchor:self.scrollView.trailingAnchor constant:-kHeaderPadding],
-        [self.contentStack.bottomAnchor constraintEqualToAnchor:self.scrollView.bottomAnchor constant:-16],
-        [self.contentStack.widthAnchor constraintEqualToAnchor:self.scrollView.widthAnchor constant:-2 * kHeaderPadding],
-    ]];
+        HACon([self.contentStack.topAnchor constraintEqualToAnchor:self.scrollView.topAnchor constant:8]),
+        HACon([self.contentStack.leadingAnchor constraintEqualToAnchor:self.scrollView.leadingAnchor constant:kHeaderPadding]),
+        HACon([self.contentStack.trailingAnchor constraintEqualToAnchor:self.scrollView.trailingAnchor constant:-kHeaderPadding]),
+        HACon([self.contentStack.bottomAnchor constraintEqualToAnchor:self.scrollView.bottomAnchor constant:-16]),
+        HACon([self.contentStack.widthAnchor constraintEqualToAnchor:self.scrollView.widthAnchor constant:-2 * kHeaderPadding]),
+    ]);
 }
 
 - (void)setupHistorySection {
@@ -231,8 +237,8 @@ static const CGFloat kGraphHeight = 160.0;
     if (@available(iOS 13.0, *)) {
         self.historySegment.selectedSegmentTintColor = [UIColor colorWithWhite:0.3 alpha:1.0];
         self.historySegment.backgroundColor = [UIColor colorWithWhite:0.12 alpha:1.0];
-        NSDictionary *normalAttrs = @{NSForegroundColorAttributeName: [UIColor colorWithWhite:0.7 alpha:1.0]};
-        NSDictionary *selectedAttrs = @{NSForegroundColorAttributeName: [UIColor whiteColor]};
+        NSDictionary *normalAttrs = @{HAForegroundColorAttributeName: [UIColor colorWithWhite:0.7 alpha:1.0]};
+        NSDictionary *selectedAttrs = @{HAForegroundColorAttributeName: [UIColor whiteColor]};
         [self.historySegment setTitleTextAttributes:normalAttrs forState:UIControlStateNormal];
         [self.historySegment setTitleTextAttributes:selectedAttrs forState:UIControlStateSelected];
     } else {
@@ -256,20 +262,20 @@ static const CGFloat kGraphHeight = 160.0;
     self.graphSpinner.hidesWhenStopped = YES;
     [self.historyContainer addSubview:self.graphSpinner];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.historySegment.topAnchor constraintEqualToAnchor:self.historyContainer.topAnchor],
-        [self.historySegment.leadingAnchor constraintEqualToAnchor:self.historyContainer.leadingAnchor],
-        [self.historySegment.trailingAnchor constraintEqualToAnchor:self.historyContainer.trailingAnchor],
+    HAActivateConstraints(@[
+        HACon([self.historySegment.topAnchor constraintEqualToAnchor:self.historyContainer.topAnchor]),
+        HACon([self.historySegment.leadingAnchor constraintEqualToAnchor:self.historyContainer.leadingAnchor]),
+        HACon([self.historySegment.trailingAnchor constraintEqualToAnchor:self.historyContainer.trailingAnchor]),
 
-        [self.graphView.topAnchor constraintEqualToAnchor:self.historySegment.bottomAnchor constant:8],
-        [self.graphView.leadingAnchor constraintEqualToAnchor:self.historyContainer.leadingAnchor],
-        [self.graphView.trailingAnchor constraintEqualToAnchor:self.historyContainer.trailingAnchor],
-        [self.graphView.heightAnchor constraintEqualToConstant:kGraphHeight],
-        [self.graphView.bottomAnchor constraintEqualToAnchor:self.historyContainer.bottomAnchor],
+        HACon([self.graphView.topAnchor constraintEqualToAnchor:self.historySegment.bottomAnchor constant:8]),
+        HACon([self.graphView.leadingAnchor constraintEqualToAnchor:self.historyContainer.leadingAnchor]),
+        HACon([self.graphView.trailingAnchor constraintEqualToAnchor:self.historyContainer.trailingAnchor]),
+        HACon([self.graphView.heightAnchor constraintEqualToConstant:kGraphHeight]),
+        HACon([self.graphView.bottomAnchor constraintEqualToAnchor:self.historyContainer.bottomAnchor]),
 
-        [self.graphSpinner.centerXAnchor constraintEqualToAnchor:self.graphView.centerXAnchor],
-        [self.graphSpinner.centerYAnchor constraintEqualToAnchor:self.graphView.centerYAnchor],
-    ]];
+        HACon([self.graphSpinner.centerXAnchor constraintEqualToAnchor:self.graphView.centerXAnchor]),
+        HACon([self.graphSpinner.centerYAnchor constraintEqualToAnchor:self.graphView.centerYAnchor]),
+    ]);
 }
 
 #pragma mark - Domain Section
@@ -298,10 +304,10 @@ static const CGFloat kGraphHeight = 160.0;
 #pragma mark - Attributes
 
 - (void)setupAttributesSection {
-    self.attributesStack = [[UIStackView alloc] init];
-    self.attributesStack.axis = UILayoutConstraintAxisVertical;
+    self.attributesStack = [[HAStackView alloc] init];
+    self.attributesStack.axis = 1;
     self.attributesStack.spacing = 0;
-    self.attributesStack.alignment = UIStackViewAlignmentFill;
+    self.attributesStack.alignment = 0;
     self.attributesStack.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentStack addArrangedSubview:self.attributesStack];
 
@@ -651,22 +657,22 @@ static const CGFloat kGraphHeight = 160.0;
 
     UILabel *fromLabel = [[UILabel alloc] init];
     fromLabel.text = @"From:";
-    fromLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
+    fromLabel.font = [UIFont ha_systemFontOfSize:13 weight:HAFontWeightMedium];
     fromLabel.textColor = [HATheme secondaryTextColor];
     fromLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [container addSubview:fromLabel];
 
     UILabel *toLabel = [[UILabel alloc] init];
     toLabel.text = @"To:";
-    toLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
+    toLabel.font = [UIFont ha_systemFontOfSize:13 weight:HAFontWeightMedium];
     toLabel.textColor = [HATheme secondaryTextColor];
     toLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [container addSubview:toLabel];
 
-    UIButton *applyBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+    UIButton *applyBtn = HASystemButton();
     [applyBtn setTitle:@"Apply" forState:UIControlStateNormal];
     [applyBtn setTitleColor:[UIColor colorWithRed:0.30 green:0.60 blue:1.00 alpha:1.0] forState:UIControlStateNormal];
-    applyBtn.titleLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightSemibold];
+    applyBtn.titleLabel.font = [UIFont ha_systemFontOfSize:14 weight:HAFontWeightSemibold];
     applyBtn.translatesAutoresizingMaskIntoConstraints = NO;
     [applyBtn addTarget:self action:@selector(applyCustomRange) forControlEvents:UIControlEventTouchUpInside];
     [container addSubview:applyBtn];
@@ -696,29 +702,29 @@ static const CGFloat kGraphHeight = 160.0;
         [endPicker addTarget:self action:@selector(endDateChanged:) forControlEvents:UIControlEventValueChanged];
         [container addSubview:endPicker];
 
-        [NSLayoutConstraint activateConstraints:@[
-            [fromLabel.topAnchor constraintEqualToAnchor:container.topAnchor constant:8],
-            [fromLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-            [fromLabel.widthAnchor constraintEqualToConstant:40],
-            [startPicker.centerYAnchor constraintEqualToAnchor:fromLabel.centerYAnchor],
-            [startPicker.leadingAnchor constraintEqualToAnchor:fromLabel.trailingAnchor constant:4],
-            [toLabel.topAnchor constraintEqualToAnchor:fromLabel.bottomAnchor constant:8],
-            [toLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-            [toLabel.widthAnchor constraintEqualToConstant:40],
-            [endPicker.centerYAnchor constraintEqualToAnchor:toLabel.centerYAnchor],
-            [endPicker.leadingAnchor constraintEqualToAnchor:toLabel.trailingAnchor constant:4],
-            [applyBtn.topAnchor constraintEqualToAnchor:toLabel.bottomAnchor constant:8],
-            [applyBtn.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-            [applyBtn.bottomAnchor constraintEqualToAnchor:container.bottomAnchor constant:-4],
-            [container.heightAnchor constraintEqualToConstant:90],
-        ]];
+        HAActivateConstraints(@[
+            HACon([fromLabel.topAnchor constraintEqualToAnchor:container.topAnchor constant:8]),
+            HACon([fromLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+            HACon([fromLabel.widthAnchor constraintEqualToConstant:40]),
+            HACon([startPicker.centerYAnchor constraintEqualToAnchor:fromLabel.centerYAnchor]),
+            HACon([startPicker.leadingAnchor constraintEqualToAnchor:fromLabel.trailingAnchor constant:4]),
+            HACon([toLabel.topAnchor constraintEqualToAnchor:fromLabel.bottomAnchor constant:8]),
+            HACon([toLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+            HACon([toLabel.widthAnchor constraintEqualToConstant:40]),
+            HACon([endPicker.centerYAnchor constraintEqualToAnchor:toLabel.centerYAnchor]),
+            HACon([endPicker.leadingAnchor constraintEqualToAnchor:toLabel.trailingAnchor constant:4]),
+            HACon([applyBtn.topAnchor constraintEqualToAnchor:toLabel.bottomAnchor constant:8]),
+            HACon([applyBtn.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+            HACon([applyBtn.bottomAnchor constraintEqualToAnchor:container.bottomAnchor constant:-4]),
+            HACon([container.heightAnchor constraintEqualToConstant:90]),
+        ]);
     } else {
         // iOS 9-13 fallback: date buttons
         NSDateFormatter *fmt = [[NSDateFormatter alloc] init];
         fmt.dateStyle = NSDateFormatterMediumStyle;
         fmt.timeStyle = NSDateFormatterShortStyle;
 
-        UIButton *startBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+        UIButton *startBtn = HASystemButton();
         [startBtn setTitle:[fmt stringFromDate:self.customStartDate] forState:UIControlStateNormal];
         startBtn.titleLabel.font = [UIFont systemFontOfSize:13];
         startBtn.translatesAutoresizingMaskIntoConstraints = NO;
@@ -726,7 +732,7 @@ static const CGFloat kGraphHeight = 160.0;
         [startBtn addTarget:self action:@selector(showStartDatePicker) forControlEvents:UIControlEventTouchUpInside];
         [container addSubview:startBtn];
 
-        UIButton *endBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+        UIButton *endBtn = HASystemButton();
         [endBtn setTitle:[fmt stringFromDate:self.customEndDate] forState:UIControlStateNormal];
         endBtn.titleLabel.font = [UIFont systemFontOfSize:13];
         endBtn.translatesAutoresizingMaskIntoConstraints = NO;
@@ -734,20 +740,20 @@ static const CGFloat kGraphHeight = 160.0;
         [endBtn addTarget:self action:@selector(showEndDatePicker) forControlEvents:UIControlEventTouchUpInside];
         [container addSubview:endBtn];
 
-        [NSLayoutConstraint activateConstraints:@[
-            [fromLabel.topAnchor constraintEqualToAnchor:container.topAnchor constant:8],
-            [fromLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-            [startBtn.centerYAnchor constraintEqualToAnchor:fromLabel.centerYAnchor],
-            [startBtn.leadingAnchor constraintEqualToAnchor:fromLabel.trailingAnchor constant:4],
-            [toLabel.topAnchor constraintEqualToAnchor:fromLabel.bottomAnchor constant:8],
-            [toLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-            [endBtn.centerYAnchor constraintEqualToAnchor:toLabel.centerYAnchor],
-            [endBtn.leadingAnchor constraintEqualToAnchor:toLabel.trailingAnchor constant:4],
-            [applyBtn.topAnchor constraintEqualToAnchor:toLabel.bottomAnchor constant:8],
-            [applyBtn.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-            [applyBtn.bottomAnchor constraintEqualToAnchor:container.bottomAnchor constant:-4],
-            [container.heightAnchor constraintEqualToConstant:80],
-        ]];
+        HAActivateConstraints(@[
+            HACon([fromLabel.topAnchor constraintEqualToAnchor:container.topAnchor constant:8]),
+            HACon([fromLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+            HACon([startBtn.centerYAnchor constraintEqualToAnchor:fromLabel.centerYAnchor]),
+            HACon([startBtn.leadingAnchor constraintEqualToAnchor:fromLabel.trailingAnchor constant:4]),
+            HACon([toLabel.topAnchor constraintEqualToAnchor:fromLabel.bottomAnchor constant:8]),
+            HACon([toLabel.leadingAnchor constraintEqualToAnchor:container.leadingAnchor]),
+            HACon([endBtn.centerYAnchor constraintEqualToAnchor:toLabel.centerYAnchor]),
+            HACon([endBtn.leadingAnchor constraintEqualToAnchor:toLabel.trailingAnchor constant:4]),
+            HACon([applyBtn.topAnchor constraintEqualToAnchor:toLabel.bottomAnchor constant:8]),
+            HACon([applyBtn.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]),
+            HACon([applyBtn.bottomAnchor constraintEqualToAnchor:container.bottomAnchor constant:-4]),
+            HACon([container.heightAnchor constraintEqualToConstant:80]),
+        ]);
     }
 
     // Insert into content stack after historySegment
@@ -774,27 +780,42 @@ static const CGFloat kGraphHeight = 160.0;
 - (void)showEndDatePicker { [self showFallbackDatePickerForStart:NO]; }
 
 - (void)showFallbackDatePickerForStart:(BOOL)isStart {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:isStart ? @"Start Date" : @"End Date"
-                                                                  message:@"\n\n\n\n\n\n\n\n\n"
-                                                           preferredStyle:UIAlertControllerStyleActionSheet];
     UIDatePicker *picker = [[UIDatePicker alloc] init];
     picker.datePickerMode = UIDatePickerModeDateAndTime;
     picker.date = isStart ? self.customStartDate : self.customEndDate;
     picker.maximumDate = [NSDate date];
-    picker.frame = CGRectMake(10, 30, 300, 200);
-    [alert.view addSubview:picker];
 
-    [alert addAction:[UIAlertAction actionWithTitle:@"Done" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+    void (^applyDate)(void) = ^{
         if (isStart) self.customStartDate = picker.date; else self.customEndDate = picker.date;
         NSDateFormatter *fmt = [[NSDateFormatter alloc] init];
         fmt.dateStyle = NSDateFormatterMediumStyle;
         fmt.timeStyle = NSDateFormatterShortStyle;
         UIButton *btn = [self.datePickerContainer viewWithTag:isStart ? 200 : 201];
         if ([btn isKindOfClass:[UIButton class]]) [btn setTitle:[fmt stringFromDate:picker.date] forState:UIControlStateNormal];
-    }]];
-    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
-    alert.popoverPresentationController.sourceView = self.datePickerContainer;
-    [self presentViewController:alert animated:YES completion:nil];
+    };
+
+    if ([UIAlertController class]) {
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:isStart ? @"Start Date" : @"End Date"
+                                                                      message:@"\n\n\n\n\n\n\n\n\n"
+                                                               preferredStyle:UIAlertControllerStyleActionSheet];
+        picker.frame = CGRectMake(10, 30, 300, 200);
+        [alert.view addSubview:picker];
+        [alert addAction:[UIAlertAction actionWithTitle:@"Done" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+            applyDate();
+        }]];
+        [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+        alert.popoverPresentationController.sourceView = self.datePickerContainer;
+        [self presentViewController:alert animated:YES completion:nil];
+    } else {
+        // iOS 5-7: simple Done/Cancel (picker not embedded)
+        [self ha_showActionSheetWithTitle:isStart ? @"Start Date" : @"End Date"
+                             cancelTitle:@"Cancel"
+                            actionTitles:@[@"Done"]
+                              sourceView:self.datePickerContainer
+                                 handler:^(NSInteger index) {
+            if (index == 0) applyDate();
+        }];
+    }
 }
 
 - (void)applyCustomRange {
@@ -922,6 +943,230 @@ static const CGFloat kGraphHeight = 160.0;
         stateStr = [HAEntityDisplayHelper humanReadableState:entity.state];
     }
     self.stateLabel.text = stateStr;
+}
+
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    if (!HAAutoLayoutAvailable()) {
+        CGRect bounds = self.view.bounds;
+        CGFloat topOffset = 8 + kGrabberHeight + 12;
+
+        // Grabber
+        if (self.grabberView) {
+            self.grabberView.frame = CGRectMake((bounds.size.width - kGrabberWidth) / 2, 8, kGrabberWidth, kGrabberHeight);
+        }
+
+        // Header: icon | name+state | close button
+        self.iconLabel.frame = CGRectMake(kHeaderPadding, topOffset, kIconSize + 4, kIconSize + 4);
+        self.closeButton.frame = CGRectMake(bounds.size.width - kHeaderPadding - 32, topOffset, 32, 32);
+
+        CGFloat nameX = CGRectGetMaxX(self.iconLabel.frame) + 10;
+        CGFloat nameW = CGRectGetMinX(self.closeButton.frame) - 8 - nameX;
+        CGSize nameSize = [self.nameLabel sizeThatFits:CGSizeMake(nameW, CGFLOAT_MAX)];
+        self.nameLabel.frame = CGRectMake(nameX, topOffset, nameW, nameSize.height);
+
+        CGSize stateSize = [self.stateLabel sizeThatFits:CGSizeMake(nameW, CGFLOAT_MAX)];
+        self.stateLabel.frame = CGRectMake(nameX, CGRectGetMaxY(self.nameLabel.frame) + 2, nameW, stateSize.height);
+
+        // Scroll view: below header
+        CGFloat headerBottom = 8 + kGrabberHeight + 12 + kIconSize + 4 + 20 + 12;
+        self.scrollView.frame = CGRectMake(0, headerBottom, bounds.size.width, bounds.size.height - headerBottom);
+
+        // Pre-set bounds on container views so HAStackView can measure them via sizeThatFits:
+        CGFloat stackWidth = bounds.size.width - 2 * kHeaderPadding;
+
+        if (self.domainSectionView && self.domainSection) {
+            CGFloat dsH = [self.domainSection preferredHeight];
+            self.domainSectionView.bounds = CGRectMake(0, 0, stackWidth, dsH);
+        }
+
+        CGFloat segmentH = 28;
+        CGFloat histH = segmentH + 8 + kGraphHeight;
+        self.historyContainer.bounds = CGRectMake(0, 0, stackWidth, histH);
+
+        // Content stack: inset within scroll view
+        CGSize stackSize = [self.contentStack sizeThatFits:CGSizeMake(stackWidth, CGFLOAT_MAX)];
+        self.contentStack.frame = CGRectMake(kHeaderPadding, 8, stackWidth, stackSize.height);
+        [self.contentStack setNeedsLayout];
+        [self.contentStack layoutIfNeeded];
+        self.scrollView.contentSize = CGSizeMake(bounds.size.width, 8 + stackSize.height + 16);
+
+        // Layout history container internals
+        [self layoutHistoryContainerManual:stackWidth];
+
+        // Layout domain section internals
+        if (self.domainSectionView) {
+            [self layoutDomainSectionManual:stackWidth];
+        }
+    }
+}
+
+/// Position the history container's subviews (segment control, graph, spinner) manually.
+- (void)layoutHistoryContainerManual:(CGFloat)width {
+    CGFloat segmentH = 28;
+    self.historySegment.frame = CGRectMake(0, 0, width, segmentH);
+    self.graphView.frame = CGRectMake(0, segmentH + 8, width, kGraphHeight);
+    self.graphSpinner.frame = CGRectMake((width - 20) / 2,
+                                          segmentH + 8 + (kGraphHeight - 20) / 2,
+                                          20, 20);
+}
+
+/// Walk the domain section container's subviews and position them using a layout
+/// that approximates the vertical constraint chaining used when Auto Layout is available.
+/// Handles common patterns: side-by-side slider+label, overlay containers, color wheels.
+- (void)layoutDomainSectionManual:(CGFloat)width {
+    UIView *container = self.domainSectionView;
+    NSArray *subs = container.subviews;
+    NSInteger count = (NSInteger)subs.count;
+    CGFloat y = 0;
+    CGFloat spacing = 12;
+    NSInteger i = 0;
+
+    while (i < count) {
+        UIView *sub = subs[(NSUInteger)i];
+        if (sub.hidden) { i++; continue; }
+
+        // Skip right-aligned labels that will be positioned alongside a following UISlider
+        if ([sub isKindOfClass:[UILabel class]] && ((UILabel *)sub).textAlignment == NSTextAlignmentRight) {
+            if (i + 1 < count && [subs[(NSUInteger)(i + 1)] isKindOfClass:[UISlider class]]) {
+                // Will be positioned by the slider handler below
+                i++;
+                continue;
+            }
+            // Also skip if followed by a track container + slider
+            if (i + 2 < count
+                && ![subs[(NSUInteger)(i + 1)] isKindOfClass:[UISlider class]]
+                && ![subs[(NSUInteger)(i + 1)] isKindOfClass:[UILabel class]]
+                && ![subs[(NSUInteger)(i + 1)] isKindOfClass:[UIButton class]]
+                && [subs[(NSUInteger)(i + 2)] isKindOfClass:[UISlider class]]) {
+                i++;
+                continue;
+            }
+        }
+
+        // Pattern: UISlider — look for a right-aligned value label before or after it
+        if ([sub isKindOfClass:[UISlider class]]) {
+            // Find the associated right-aligned value label
+            UILabel *valueLabel = nil;
+            NSInteger valueLabelIndex = -1;
+            // Check preceding sibling
+            if (i > 0) {
+                UIView *prev = subs[(NSUInteger)(i - 1)];
+                if ([prev isKindOfClass:[UILabel class]] && ((UILabel *)prev).textAlignment == NSTextAlignmentRight) {
+                    valueLabel = (UILabel *)prev;
+                    valueLabelIndex = i - 1;
+                }
+            }
+            // Check following sibling
+            if (!valueLabel && i + 1 < count) {
+                UIView *next = subs[(NSUInteger)(i + 1)];
+                if ([next isKindOfClass:[UILabel class]] && ((UILabel *)next).textAlignment == NSTextAlignmentRight) {
+                    valueLabel = (UILabel *)next;
+                    valueLabelIndex = i + 1;
+                }
+            }
+
+            CGFloat sliderH = 31;
+            if (valueLabel) {
+                CGFloat labelW = 52;
+                CGSize labelFit = [valueLabel sizeThatFits:CGSizeMake(labelW, CGFLOAT_MAX)];
+                sub.frame = CGRectMake(0, y, width - labelW - 8, sliderH);
+                valueLabel.frame = CGRectMake(width - labelW, y + (sliderH - labelFit.height) / 2, labelW, labelFit.height);
+            } else {
+                sub.frame = CGRectMake(0, y, width, sliderH);
+            }
+            y += sliderH + spacing;
+            // Skip the value label in the next iteration if it follows the slider
+            if (valueLabelIndex == i + 1) i += 2; else i++;
+            continue;
+        }
+
+        // Pattern: UILabel followed by UISlider+UILabel — label is a section header
+        // (already handled by normal flow since label gets its own row)
+
+        // Pattern: gradient track container — look ahead for a UISlider following it
+        // The track should be overlaid on the slider, not stacked
+        if (![sub isKindOfClass:[UISlider class]] && ![sub isKindOfClass:[UILabel class]]
+            && ![sub isKindOfClass:[UIButton class]] && ![sub isKindOfClass:[UISegmentedControl class]]
+            && ![sub isKindOfClass:[UIScrollView class]]
+            && sub.layer.cornerRadius > 0 && i + 1 < count) {
+            UIView *next = subs[(NSUInteger)(i + 1)];
+            if ([next isKindOfClass:[UISlider class]]) {
+                CGFloat sliderH = 31;
+                CGFloat labelW = 52;
+                // Find the right-aligned value label: check after slider and before track container
+                UILabel *valueLabel = nil;
+                NSInteger skipExtra = 0;
+                if (i + 2 < count && [subs[(NSUInteger)(i + 2)] isKindOfClass:[UILabel class]]
+                    && ((UILabel *)subs[(NSUInteger)(i + 2)]).textAlignment == NSTextAlignmentRight) {
+                    valueLabel = (UILabel *)subs[(NSUInteger)(i + 2)];
+                    skipExtra = 1;
+                }
+                // Also check preceding sibling (skipped earlier by the label-skip logic)
+                if (!valueLabel && i > 0 && [subs[(NSUInteger)(i - 1)] isKindOfClass:[UILabel class]]
+                    && ((UILabel *)subs[(NSUInteger)(i - 1)]).textAlignment == NSTextAlignmentRight) {
+                    valueLabel = (UILabel *)subs[(NSUInteger)(i - 1)];
+                }
+
+                CGFloat sliderW = width;
+                if (valueLabel) {
+                    sliderW = width - labelW - 8;
+                    CGSize vFit = [valueLabel sizeThatFits:CGSizeMake(labelW, CGFLOAT_MAX)];
+                    valueLabel.frame = CGRectMake(width - labelW, y + (sliderH - vFit.height) / 2, labelW, vFit.height);
+                }
+                next.frame = CGRectMake(0, y, sliderW, sliderH);
+                // Overlay the track container behind the slider
+                sub.frame = CGRectMake(2, y + (sliderH - 6) / 2, sliderW - 4, 6);
+                for (CALayer *layer in sub.layer.sublayers) {
+                    if ([layer isKindOfClass:[CAGradientLayer class]]) {
+                        layer.frame = sub.bounds;
+                    }
+                }
+                y += sliderH + spacing;
+                i += 2 + skipExtra;
+                continue;
+            }
+        }
+
+        // Determine subview height
+        CGFloat subH = 0;
+        CGFloat subW = width;
+        CGFloat subX = 0;
+
+        if ([sub isKindOfClass:[UISlider class]]) {
+            subH = 31;
+        } else if ([sub isKindOfClass:[UIButton class]]) {
+            subH = 36;
+            CGSize btnFit = [sub sizeThatFits:CGSizeMake(width, subH)];
+            if (btnFit.width > 0 && btnFit.width < width * 0.6) {
+                subW = MAX(btnFit.width, 80);
+            }
+        } else if ([sub isKindOfClass:[UISegmentedControl class]]) {
+            subH = 28;
+        } else if ([sub isKindOfClass:[UILabel class]]) {
+            CGSize labelFit = [sub sizeThatFits:CGSizeMake(width, CGFLOAT_MAX)];
+            subH = MAX(labelFit.height, 18);
+        } else if ([sub isKindOfClass:[UIScrollView class]]) {
+            subH = 36;
+        } else {
+            // Custom views (color wheel, etc.) — check for known square views
+            CGSize fit = [sub sizeThatFits:CGSizeMake(width, CGFLOAT_MAX)];
+            if (fit.height > 0 && fit.width > 0) {
+                subH = fit.height;
+            } else {
+                // Color wheel or similar: use a reasonable default
+                subH = MIN(200, width * 0.6);
+                subW = subH;
+                subX = (width - subW) / 2;
+            }
+        }
+
+        sub.frame = CGRectMake(subX, y, subW, subH);
+        [sub setNeedsLayout];
+        [sub layoutIfNeeded];
+        y += subH + spacing;
+        i++;
+    }
 }
 
 #pragma mark - Actions

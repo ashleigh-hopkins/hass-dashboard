@@ -1,6 +1,7 @@
 #import "HALogbookManager.h"
 #import "HAAuthManager.h"
 #import "HAConnectionManager.h"
+#import "HAHTTPClient.h"
 #import "NSMutableURLRequest+HAHelpers.h"
 #import "HALog.h"
 
@@ -69,8 +70,7 @@
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
     [request ha_setAuthHeaders:token];
 
-    NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithRequest:request
-        completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+    [[HAHTTPClient sharedClient] dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
             if (error || !data) {
                 ha_dispatchMainCompletion(completion, nil, error);
                 return;
@@ -88,7 +88,6 @@
 
             ha_dispatchMainCompletion(completion, entries, nil);
         }];
-    [task resume];
 }
 
 - (void)fetchEntriesForEntityIds:(NSArray<NSString *> *)entityIds

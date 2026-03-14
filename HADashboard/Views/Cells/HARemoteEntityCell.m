@@ -1,3 +1,4 @@
+#import "HAAutoLayout.h"
 #import "HARemoteEntityCell.h"
 #import "HAEntity.h"
 #import "HADashboardConfig.h"
@@ -5,6 +6,7 @@
 #import "HASwitch.h"
 #import "HAHaptics.h"
 #import "UIView+HAUtilities.h"
+#import "UIFont+HACompat.h"
 
 @interface HARemoteEntityCell ()
 @property (nonatomic, strong) UISwitch *toggleSwitch;
@@ -24,20 +26,35 @@
     [self.toggleSwitch addTarget:self action:@selector(switchToggled:) forControlEvents:UIControlEventValueChanged];
     [self.contentView addSubview:self.toggleSwitch];
 
-    self.activityButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.activityButton.titleLabel.font = [UIFont systemFontOfSize:11 weight:UIFontWeightMedium];
+    self.activityButton = HASystemButton();
+    self.activityButton.titleLabel.font = [UIFont ha_systemFontOfSize:11 weight:HAFontWeightMedium];
     [self.activityButton setTitleColor:[HATheme secondaryTextColor] forState:UIControlStateNormal];
     self.activityButton.translatesAutoresizingMaskIntoConstraints = NO;
     self.activityButton.hidden = YES;
     [self.activityButton addTarget:self action:@selector(activityTapped) forControlEvents:UIControlEventTouchUpInside];
     [self.contentView addSubview:self.activityButton];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.toggleSwitch.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-padding],
-        [self.toggleSwitch.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:padding],
-        [self.activityButton.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding],
-        [self.activityButton.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-padding],
-    ]];
+    HAActivateConstraints(@[
+        HACon([self.toggleSwitch.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-padding]),
+        HACon([self.toggleSwitch.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:padding]),
+        HACon([self.activityButton.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding]),
+        HACon([self.activityButton.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-padding]),
+    ]);
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    if (!HAAutoLayoutAvailable()) {
+        CGFloat padding = 10.0;
+        CGFloat w = self.contentView.bounds.size.width;
+        CGFloat h = self.contentView.bounds.size.height;
+
+        CGSize switchSize = [self.toggleSwitch sizeThatFits:CGSizeZero];
+        self.toggleSwitch.frame = CGRectMake(w - padding - switchSize.width, padding, switchSize.width, switchSize.height);
+
+        CGSize actSize = [self.activityButton sizeThatFits:CGSizeMake(w - padding * 2, CGFLOAT_MAX)];
+        self.activityButton.frame = CGRectMake(padding, h - padding - actSize.height, actSize.width, actSize.height);
+    }
 }
 
 - (void)configureWithEntity:(HAEntity *)entity configItem:(HADashboardConfigItem *)configItem {
@@ -58,7 +75,7 @@
         self.activityButton.hidden = YES;
     }
 
-    self.contentView.backgroundColor = isOn ? [HATheme onTintColor] : [HATheme cellBackgroundColor];
+    [self applyOnStateTint:isOn];
 }
 
 - (void)switchToggled:(UISwitch *)sender {
@@ -82,7 +99,6 @@
     [super prepareForReuse];
     self.toggleSwitch.on = NO;
     self.activityButton.hidden = YES;
-    self.contentView.backgroundColor = [HATheme cellBackgroundColor];
 }
 
 @end

@@ -3,6 +3,7 @@
 #import "HAEntity.h"
 #import "HAConnectionManager.h"
 #import "HAHaptics.h"
+#import "UIViewController+HAAlert.h"
 
 NSString *const HAActionNavigateNotification = @"HAActionNavigateNotification";
 
@@ -49,12 +50,6 @@ NSString *const HAActionNavigateNotification = @"HAActionNavigateNotification";
         message = @"Are you sure?";
     }
 
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:nil
-                                                                  message:message
-                                                           preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel"
-                                              style:UIAlertActionStyleCancel
-                                            handler:nil]];
     __weak typeof(self) weakSelf = self;
     HAAction *confirmedAction = [[HAAction alloc] init];
     confirmedAction.action = action.action;
@@ -65,13 +60,15 @@ NSString *const HAActionNavigateNotification = @"HAActionNavigateNotification";
     confirmedAction.target = action.target;
     confirmedAction.entityOverride = action.entityOverride;
     // Don't set confirmation again — prevent infinite loop
-    [alert addAction:[UIAlertAction actionWithTitle:@"Confirm"
-                                              style:UIAlertActionStyleDefault
-                                            handler:^(UIAlertAction *_) {
-        [weakSelf doExecuteAction:confirmedAction forEntity:entity fromViewController:vc];
-    }]];
-
-    [vc presentViewController:alert animated:YES completion:nil];
+    [vc ha_showAlertWithTitle:nil
+                      message:message
+                  cancelTitle:@"Cancel"
+                 actionTitles:@[@"Confirm"]
+                      handler:^(NSInteger index) {
+        if (index == 0) {
+            [weakSelf doExecuteAction:confirmedAction forEntity:entity fromViewController:vc];
+        }
+    }];
 }
 
 #pragma mark - Action Execution

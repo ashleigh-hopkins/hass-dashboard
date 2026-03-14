@@ -1,7 +1,9 @@
+#import "HAAutoLayout.h"
 #import "HASectionHeaderView.h"
 #import "HADashboardConfig.h"
 #import "HATheme.h"
 #import "HAIconMapper.h"
+#import "UIFont+HACompat.h"
 
 @interface HASectionHeaderView ()
 @property (nonatomic, strong) UILabel *iconLabel;
@@ -31,24 +33,28 @@
 
     // Title label
     self.titleLabel = [[UILabel alloc] init];
-    self.titleLabel.font = [UIFont systemFontOfSize:17 weight:UIFontWeightSemibold];
+    self.titleLabel.font = [UIFont ha_systemFontOfSize:17 weight:HAFontWeightSemibold];
     self.titleLabel.textColor = [HATheme sectionHeaderColor];
+    self.titleLabel.textAlignment = NSTextAlignmentLeft;
+    self.titleLabel.lineBreakMode = NSLineBreakByClipping;
     self.titleLabel.numberOfLines = 1;
+    // iOS 5: force single-line rendering by constraining height to 1 line
+    self.titleLabel.adjustsFontSizeToFitWidth = NO;
     self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self addSubview:self.titleLabel];
 
     // Layout: icon (fixed 24pt width) | 4pt gap | title
     // Two title leading constraints: with-icon (after icon) and no-icon (flush left).
-    [NSLayoutConstraint activateConstraints:@[
-        [self.iconLabel.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:16],
-        [self.iconLabel.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
-        [self.iconLabel.widthAnchor constraintEqualToConstant:24],
+    HAActivateConstraints(@[
+        HACon([self.iconLabel.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:16]),
+        HACon([self.iconLabel.centerYAnchor constraintEqualToAnchor:self.centerYAnchor]),
+        HACon([self.iconLabel.widthAnchor constraintEqualToConstant:24]),
 
-        [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-16],
-        [self.titleLabel.centerYAnchor constraintEqualToAnchor:self.centerYAnchor]
-    ]];
-    self.titleLeadingWithIcon = [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.iconLabel.trailingAnchor constant:4];
-    self.titleLeadingNoIcon = [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:16];
+        HACon([self.titleLabel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-16]),
+        HACon([self.titleLabel.centerYAnchor constraintEqualToAnchor:self.centerYAnchor])
+    ]);
+    self.titleLeadingWithIcon = HAMakeConstraint([self.titleLabel.leadingAnchor constraintEqualToAnchor:self.iconLabel.trailingAnchor constant:4]);
+    self.titleLeadingNoIcon = HAMakeConstraint([self.titleLabel.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:16]);
     self.titleLeadingNoIcon.active = YES;
 }
 
@@ -77,6 +83,21 @@
         self.iconLabel.hidden = YES;
         self.titleLeadingWithIcon.active = NO;
         self.titleLeadingNoIcon.active = YES;
+    }
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    if (!HAAutoLayoutAvailable()) {
+        CGFloat w = self.bounds.size.width;
+        CGFloat h = self.bounds.size.height;
+        if (!self.iconLabel.hidden) {
+            self.iconLabel.frame = CGRectMake(16, (h - 24) / 2, 24, 24);
+            CGFloat titleX = CGRectGetMaxX(self.iconLabel.frame) + 4;
+            self.titleLabel.frame = CGRectMake(titleX, (h - 20) / 2, w - 16 - titleX, 20);
+        } else {
+            self.titleLabel.frame = CGRectMake(16, (h - 20) / 2, w - 32, 20);
+        }
     }
 }
 

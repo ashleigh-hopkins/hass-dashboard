@@ -1,4 +1,5 @@
 #import <UIKit/UIKit.h>
+#import "HACellCompat.h"
 
 @protocol HASidebarLayoutDelegate <UICollectionViewDelegate>
 
@@ -15,7 +16,7 @@
 /// Above 760px: main (flex-grow 2, max 1620px) and sidebar (flex-grow 1, max 380px) side by side.
 /// Below 760px: single column, sidebar cards below main cards.
 /// Compatible with iOS 9+ (UICollectionViewLayout subclass).
-@interface HASidebarLayout : UICollectionViewLayout
+@interface HASidebarLayout : HACollectionViewLayoutBase
 
 @property (nonatomic, weak) id<HASidebarLayoutDelegate> delegate;
 

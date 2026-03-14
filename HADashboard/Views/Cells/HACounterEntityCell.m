@@ -1,9 +1,11 @@
+#import "HAAutoLayout.h"
 #import "HACounterEntityCell.h"
 #import "HAEntity.h"
 #import "HAConnectionManager.h"
 #import "HADashboardConfig.h"
 #import "HATheme.h"
 #import "HAHaptics.h"
+#import "UIFont+HACompat.h"
 
 @interface HACounterEntityCell ()
 @property (nonatomic, strong) UILabel *valueLabel;
@@ -21,7 +23,7 @@
     CGFloat padding = 10.0;
 
     // Value label (large, prominent)
-    self.valueLabel = [self labelWithFont:[UIFont monospacedDigitSystemFontOfSize:28 weight:UIFontWeightBold]
+    self.valueLabel = [self labelWithFont:[UIFont ha_monospacedDigitSystemFontOfSize:28 weight:HAFontWeightBold]
                                     color:[HATheme primaryTextColor] lines:1];
     self.valueLabel.textAlignment = NSTextAlignmentRight;
 
@@ -29,7 +31,7 @@
     CGFloat buttonSpacing = 6.0;
 
     // Decrement button
-    self.decrementButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.decrementButton = HASystemButton();
     [self.decrementButton setTitle:@"\u2212" forState:UIControlStateNormal]; // minus sign
     self.decrementButton.titleLabel.font = [UIFont boldSystemFontOfSize:18];
     self.decrementButton.backgroundColor = [HATheme destructiveColor];
@@ -40,7 +42,7 @@
     [self.contentView addSubview:self.decrementButton];
 
     // Increment button
-    self.incrementButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.incrementButton = HASystemButton();
     [self.incrementButton setTitle:@"+" forState:UIControlStateNormal];
     self.incrementButton.titleLabel.font = [UIFont boldSystemFontOfSize:18];
     self.incrementButton.backgroundColor = [HATheme successColor];
@@ -51,7 +53,7 @@
     [self.contentView addSubview:self.incrementButton];
 
     // Reset button
-    self.resetButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.resetButton = HASystemButton();
     [self.resetButton setTitle:@"Reset" forState:UIControlStateNormal];
     self.resetButton.titleLabel.font = [UIFont systemFontOfSize:11];
     self.resetButton.translatesAutoresizingMaskIntoConstraints = NO;
@@ -59,35 +61,61 @@
     [self.contentView addSubview:self.resetButton];
 
     // Value label: top-right
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.valueLabel attribute:NSLayoutAttributeTrailing
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTrailing multiplier:1 constant:-padding]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.valueLabel attribute:NSLayoutAttributeTop
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTop multiplier:1 constant:padding]];
+    HAActivateConstraints(@[
+        HACon([NSLayoutConstraint constraintWithItem:self.valueLabel attribute:NSLayoutAttributeTrailing
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTrailing multiplier:1 constant:-padding]),
+        HACon([NSLayoutConstraint constraintWithItem:self.valueLabel attribute:NSLayoutAttributeTop
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTop multiplier:1 constant:padding]),
+    ]);
 
     // Buttons: bottom row
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.incrementButton attribute:NSLayoutAttributeTrailing
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTrailing multiplier:1 constant:-padding]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.incrementButton attribute:NSLayoutAttributeBottom
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeBottom multiplier:1 constant:-padding]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.incrementButton attribute:NSLayoutAttributeWidth
-        relatedBy:NSLayoutRelationEqual toItem:nil attribute:NSLayoutAttributeNotAnAttribute multiplier:1 constant:buttonSize]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.incrementButton attribute:NSLayoutAttributeHeight
-        relatedBy:NSLayoutRelationEqual toItem:nil attribute:NSLayoutAttributeNotAnAttribute multiplier:1 constant:buttonSize]];
-
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.decrementButton attribute:NSLayoutAttributeTrailing
-        relatedBy:NSLayoutRelationEqual toItem:self.incrementButton attribute:NSLayoutAttributeLeading multiplier:1 constant:-buttonSpacing]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.decrementButton attribute:NSLayoutAttributeBottom
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeBottom multiplier:1 constant:-padding]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.decrementButton attribute:NSLayoutAttributeWidth
-        relatedBy:NSLayoutRelationEqual toItem:nil attribute:NSLayoutAttributeNotAnAttribute multiplier:1 constant:buttonSize]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.decrementButton attribute:NSLayoutAttributeHeight
-        relatedBy:NSLayoutRelationEqual toItem:nil attribute:NSLayoutAttributeNotAnAttribute multiplier:1 constant:buttonSize]];
+    HAActivateConstraints(@[
+        HACon([NSLayoutConstraint constraintWithItem:self.incrementButton attribute:NSLayoutAttributeTrailing
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTrailing multiplier:1 constant:-padding]),
+        HACon([NSLayoutConstraint constraintWithItem:self.incrementButton attribute:NSLayoutAttributeBottom
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeBottom multiplier:1 constant:-padding]),
+        HACon([NSLayoutConstraint constraintWithItem:self.incrementButton attribute:NSLayoutAttributeWidth
+            relatedBy:NSLayoutRelationEqual toItem:nil attribute:NSLayoutAttributeNotAnAttribute multiplier:1 constant:buttonSize]),
+        HACon([NSLayoutConstraint constraintWithItem:self.incrementButton attribute:NSLayoutAttributeHeight
+            relatedBy:NSLayoutRelationEqual toItem:nil attribute:NSLayoutAttributeNotAnAttribute multiplier:1 constant:buttonSize]),
+        HACon([NSLayoutConstraint constraintWithItem:self.decrementButton attribute:NSLayoutAttributeTrailing
+            relatedBy:NSLayoutRelationEqual toItem:self.incrementButton attribute:NSLayoutAttributeLeading multiplier:1 constant:-buttonSpacing]),
+        HACon([NSLayoutConstraint constraintWithItem:self.decrementButton attribute:NSLayoutAttributeBottom
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeBottom multiplier:1 constant:-padding]),
+        HACon([NSLayoutConstraint constraintWithItem:self.decrementButton attribute:NSLayoutAttributeWidth
+            relatedBy:NSLayoutRelationEqual toItem:nil attribute:NSLayoutAttributeNotAnAttribute multiplier:1 constant:buttonSize]),
+        HACon([NSLayoutConstraint constraintWithItem:self.decrementButton attribute:NSLayoutAttributeHeight
+            relatedBy:NSLayoutRelationEqual toItem:nil attribute:NSLayoutAttributeNotAnAttribute multiplier:1 constant:buttonSize]),
+    ]);
 
     // Reset button: bottom-left
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.resetButton attribute:NSLayoutAttributeLeading
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeLeading multiplier:1 constant:padding]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.resetButton attribute:NSLayoutAttributeBottom
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeBottom multiplier:1 constant:-padding]];
+    HAActivateConstraints(@[
+        HACon([NSLayoutConstraint constraintWithItem:self.resetButton attribute:NSLayoutAttributeLeading
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeLeading multiplier:1 constant:padding]),
+        HACon([NSLayoutConstraint constraintWithItem:self.resetButton attribute:NSLayoutAttributeBottom
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeBottom multiplier:1 constant:-padding]),
+    ]);
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    if (!HAAutoLayoutAvailable()) {
+        CGFloat padding = 10.0;
+        CGFloat w = self.contentView.bounds.size.width;
+        CGFloat h = self.contentView.bounds.size.height;
+        CGFloat buttonSize = 32.0;
+        CGFloat buttonSpacing = 6.0;
+
+        CGSize valSize = [self.valueLabel sizeThatFits:CGSizeMake(w - padding * 2, CGFLOAT_MAX)];
+        self.valueLabel.frame = CGRectMake(w - padding - valSize.width, padding, valSize.width, valSize.height);
+
+        self.incrementButton.frame = CGRectMake(w - padding - buttonSize, h - padding - buttonSize, buttonSize, buttonSize);
+        self.decrementButton.frame = CGRectMake(CGRectGetMinX(self.incrementButton.frame) - buttonSpacing - buttonSize,
+                                                 h - padding - buttonSize, buttonSize, buttonSize);
+
+        CGSize resetSize = [self.resetButton sizeThatFits:CGSizeMake(100, CGFLOAT_MAX)];
+        self.resetButton.frame = CGRectMake(padding, h - padding - resetSize.height, resetSize.width, resetSize.height);
+    }
 }
 
 - (void)configureWithEntity:(HAEntity *)entity configItem:(HADashboardConfigItem *)configItem {

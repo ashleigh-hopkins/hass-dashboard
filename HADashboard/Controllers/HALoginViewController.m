@@ -1,3 +1,4 @@
+#import "HAAutoLayout.h"
 #import "HALoginViewController.h"
 #import "HAConnectionFormView.h"
 #import "HAConstellationView.h"
@@ -7,6 +8,7 @@
 #import "HATheme.h"
 #import "HASwitch.h"
 #import "HALog.h"
+#import "UIFont+HACompat.h"
 
 @interface HALoginViewController () <HAConnectionFormDelegate>
 @property (nonatomic, strong) HAConnectionFormView *connectionForm;
@@ -84,69 +86,78 @@
     self.scrollView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
     UIScrollView *scrollView = self.scrollView;
     [self.view addSubview:scrollView];
-    [NSLayoutConstraint activateConstraints:@[
-        [scrollView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
-        [scrollView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
-        [scrollView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-        [scrollView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-    ]];
+    HAActivateConstraints(@[
+        HACon([scrollView.topAnchor constraintEqualToAnchor:self.view.topAnchor]),
+        HACon([scrollView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]),
+        HACon([scrollView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor]),
+        HACon([scrollView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor]),
+    ]);
 
     // ── Outer wrapper (scroll content, at least screen-height for centering) ──
     UIView *wrapper = [[UIView alloc] init];
     wrapper.translatesAutoresizingMaskIntoConstraints = NO;
+    wrapper.tag = 100;
     [scrollView addSubview:wrapper];
     // contentLayoutGuide/frameLayoutGuide are iOS 11+. On iOS 9-10, pin the
     // wrapper directly to the scroll view (which acts as the content guide)
     // and use an equal-width constraint to the scroll view itself.
     if (@available(iOS 11.0, *)) {
-        [NSLayoutConstraint activateConstraints:@[
-            [wrapper.topAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.topAnchor],
-            [wrapper.bottomAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.bottomAnchor],
-            [wrapper.leadingAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.leadingAnchor],
-            [wrapper.trailingAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.trailingAnchor],
-            [wrapper.widthAnchor constraintEqualToAnchor:scrollView.frameLayoutGuide.widthAnchor],
-        ]];
-        [wrapper.heightAnchor constraintGreaterThanOrEqualToAnchor:scrollView.frameLayoutGuide.heightAnchor].active = YES;
+        HAActivateConstraints(@[
+            HACon([wrapper.topAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.topAnchor]),
+            HACon([wrapper.bottomAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.bottomAnchor]),
+            HACon([wrapper.leadingAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.leadingAnchor]),
+            HACon([wrapper.trailingAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.trailingAnchor]),
+            HACon([wrapper.widthAnchor constraintEqualToAnchor:scrollView.frameLayoutGuide.widthAnchor]),
+        ]);
+        HASetConstraintActive([wrapper.heightAnchor constraintGreaterThanOrEqualToAnchor:scrollView.frameLayoutGuide.heightAnchor], YES);
     } else {
-        [NSLayoutConstraint activateConstraints:@[
-            [wrapper.topAnchor constraintEqualToAnchor:scrollView.topAnchor],
-            [wrapper.bottomAnchor constraintEqualToAnchor:scrollView.bottomAnchor],
-            [wrapper.leadingAnchor constraintEqualToAnchor:scrollView.leadingAnchor],
-            [wrapper.trailingAnchor constraintEqualToAnchor:scrollView.trailingAnchor],
-            [wrapper.widthAnchor constraintEqualToAnchor:scrollView.widthAnchor],
-        ]];
-        [wrapper.heightAnchor constraintGreaterThanOrEqualToAnchor:scrollView.heightAnchor].active = YES;
+        HAActivateConstraints(@[
+            HACon([wrapper.topAnchor constraintEqualToAnchor:scrollView.topAnchor]),
+            HACon([wrapper.bottomAnchor constraintEqualToAnchor:scrollView.bottomAnchor]),
+            HACon([wrapper.leadingAnchor constraintEqualToAnchor:scrollView.leadingAnchor]),
+            HACon([wrapper.trailingAnchor constraintEqualToAnchor:scrollView.trailingAnchor]),
+            HACon([wrapper.widthAnchor constraintEqualToAnchor:scrollView.widthAnchor]),
+        ]);
+        HASetConstraintActive([wrapper.heightAnchor constraintGreaterThanOrEqualToAnchor:scrollView.heightAnchor], YES);
     }
 
     // ── Column (centered content holder) ───────────────────────────────
     UIView *column = [[UIView alloc] init];
     column.translatesAutoresizingMaskIntoConstraints = NO;
+    column.tag = 101;
     [wrapper addSubview:column];
 
     // Center column horizontally with max width
-    [NSLayoutConstraint activateConstraints:@[
-        [column.centerXAnchor constraintEqualToAnchor:wrapper.centerXAnchor],
-        [column.widthAnchor constraintLessThanOrEqualToConstant:maxWidth],
-        [column.leadingAnchor constraintGreaterThanOrEqualToAnchor:wrapper.leadingAnchor constant:padding],
-        [column.trailingAnchor constraintLessThanOrEqualToAnchor:wrapper.trailingAnchor constant:-padding],
-    ]];
-    NSLayoutConstraint *preferWidth = [column.widthAnchor constraintEqualToConstant:maxWidth];
-    preferWidth.priority = UILayoutPriorityDefaultHigh;
-    preferWidth.active = YES;
+    HAActivateConstraints(@[
+        HACon([column.centerXAnchor constraintEqualToAnchor:wrapper.centerXAnchor]),
+        HACon([column.widthAnchor constraintLessThanOrEqualToConstant:maxWidth]),
+        HACon([column.leadingAnchor constraintGreaterThanOrEqualToAnchor:wrapper.leadingAnchor constant:padding]),
+        HACon([column.trailingAnchor constraintLessThanOrEqualToAnchor:wrapper.trailingAnchor constant:-padding]),
+    ]);
+
+    NSLayoutConstraint *preferWidth = HAMakeConstraint([column.widthAnchor constraintEqualToConstant:maxWidth]);
+    if (preferWidth) {
+        preferWidth.priority = UILayoutPriorityDefaultHigh;
+        HASetConstraintActive(preferWidth, YES);
+    }
 
     // Center column vertically (low priority so it yields when content > screen)
-    NSLayoutConstraint *centerY = [column.centerYAnchor constraintEqualToAnchor:wrapper.centerYAnchor];
-    centerY.priority = UILayoutPriorityDefaultLow;
-    centerY.active = YES;
+    NSLayoutConstraint *centerY = HAMakeConstraint([column.centerYAnchor constraintEqualToAnchor:wrapper.centerYAnchor]);
+    if (centerY) {
+        centerY.priority = UILayoutPriorityDefaultLow;
+        HASetConstraintActive(centerY, YES);
+    }
+
     // Hard constraints: don't let it escape the wrapper
-    [NSLayoutConstraint activateConstraints:@[
-        [column.topAnchor constraintGreaterThanOrEqualToAnchor:wrapper.topAnchor constant:40],
-        [column.bottomAnchor constraintLessThanOrEqualToAnchor:wrapper.bottomAnchor constant:-20],
-    ]];
+    HAActivateConstraints(@[
+        HACon([column.topAnchor constraintGreaterThanOrEqualToAnchor:wrapper.topAnchor constant:40]),
+        HACon([column.bottomAnchor constraintLessThanOrEqualToAnchor:wrapper.bottomAnchor constant:-20]),
+    ]);
 
     // ── App icon ───────────────────────────────────────────────────────
     UIImageView *iconView = [[UIImageView alloc] init];
     iconView.translatesAutoresizingMaskIntoConstraints = NO;
+    iconView.tag = 102;
     iconView.contentMode = UIViewContentModeScaleAspectFit;
     NSDictionary *icons = [[NSBundle mainBundle] infoDictionary][@"CFBundleIcons"];
     NSString *iconName = [icons[@"CFBundlePrimaryIcon"][@"CFBundleIconFiles"] lastObject];
@@ -170,8 +181,9 @@
 
     // Card title
     UILabel *cardTitle = [[UILabel alloc] init];
+    cardTitle.tag = 103;
     cardTitle.text = @"Connect to your server";
-    cardTitle.font = [UIFont systemFontOfSize:20 weight:UIFontWeightSemibold];
+    cardTitle.font = [UIFont ha_systemFontOfSize:20 weight:HAFontWeightSemibold];
     cardTitle.textColor = [HATheme primaryTextColor];
     cardTitle.textAlignment = NSTextAlignmentCenter;
     cardTitle.translatesAutoresizingMaskIntoConstraints = NO;
@@ -184,19 +196,20 @@
     [self.cardView addSubview:self.connectionForm];
 
     // Card internal layout
-    [NSLayoutConstraint activateConstraints:@[
-        [cardTitle.topAnchor constraintEqualToAnchor:self.cardView.topAnchor constant:cardPadding],
-        [cardTitle.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:cardPadding],
-        [cardTitle.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-cardPadding],
-        [self.connectionForm.topAnchor constraintEqualToAnchor:cardTitle.bottomAnchor constant:24],
-        [self.connectionForm.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:cardPadding],
-        [self.connectionForm.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-cardPadding],
-        [self.connectionForm.bottomAnchor constraintEqualToAnchor:self.cardView.bottomAnchor constant:-cardPadding],
-    ]];
+    HAActivateConstraints(@[
+        HACon([cardTitle.topAnchor constraintEqualToAnchor:self.cardView.topAnchor constant:cardPadding]),
+        HACon([cardTitle.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:cardPadding]),
+        HACon([cardTitle.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-cardPadding]),
+        HACon([self.connectionForm.topAnchor constraintEqualToAnchor:cardTitle.bottomAnchor constant:24]),
+        HACon([self.connectionForm.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:cardPadding]),
+        HACon([self.connectionForm.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-cardPadding]),
+        HACon([self.connectionForm.bottomAnchor constraintEqualToAnchor:self.cardView.bottomAnchor constant:-cardPadding]),
+    ]);
 
     // ── Demo mode (below card) ─────────────────────────────────────────
     UIView *demoRow = [[UIView alloc] init];
     demoRow.translatesAutoresizingMaskIntoConstraints = NO;
+    demoRow.tag = 104;
     [column addSubview:demoRow];
 
     UILabel *demoLabel = [[UILabel alloc] init];
@@ -212,28 +225,97 @@
     self.demoSwitch.translatesAutoresizingMaskIntoConstraints = NO;
     [demoRow addSubview:self.demoSwitch];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [demoLabel.topAnchor constraintEqualToAnchor:demoRow.topAnchor],
-        [demoLabel.leadingAnchor constraintEqualToAnchor:demoRow.leadingAnchor],
-        [demoLabel.bottomAnchor constraintEqualToAnchor:demoRow.bottomAnchor],
-        [self.demoSwitch.trailingAnchor constraintEqualToAnchor:demoRow.trailingAnchor],
-        [self.demoSwitch.centerYAnchor constraintEqualToAnchor:demoLabel.centerYAnchor],
-    ]];
+    HAActivateConstraints(@[
+        HACon([demoLabel.topAnchor constraintEqualToAnchor:demoRow.topAnchor]),
+        HACon([demoLabel.leadingAnchor constraintEqualToAnchor:demoRow.leadingAnchor]),
+        HACon([demoLabel.bottomAnchor constraintEqualToAnchor:demoRow.bottomAnchor]),
+        HACon([self.demoSwitch.trailingAnchor constraintEqualToAnchor:demoRow.trailingAnchor]),
+        HACon([self.demoSwitch.centerYAnchor constraintEqualToAnchor:demoLabel.centerYAnchor]),
+    ]);
 
     // ── Column vertical layout: icon → card → demo ─────────────────────
-    [NSLayoutConstraint activateConstraints:@[
-        [iconView.topAnchor constraintEqualToAnchor:column.topAnchor],
-        [iconView.centerXAnchor constraintEqualToAnchor:column.centerXAnchor],
-        [iconView.widthAnchor constraintEqualToConstant:88],
-        [iconView.heightAnchor constraintEqualToConstant:88],
-        [self.cardView.topAnchor constraintEqualToAnchor:iconView.bottomAnchor constant:24],
-        [self.cardView.leadingAnchor constraintEqualToAnchor:column.leadingAnchor],
-        [self.cardView.trailingAnchor constraintEqualToAnchor:column.trailingAnchor],
-        [demoRow.topAnchor constraintEqualToAnchor:self.cardView.bottomAnchor constant:24],
-        [demoRow.leadingAnchor constraintEqualToAnchor:column.leadingAnchor constant:4],
-        [demoRow.trailingAnchor constraintEqualToAnchor:column.trailingAnchor constant:-4],
-        [demoRow.bottomAnchor constraintEqualToAnchor:column.bottomAnchor],
-    ]];
+    HAActivateConstraints(@[
+        HACon([iconView.topAnchor constraintEqualToAnchor:column.topAnchor]),
+        HACon([iconView.centerXAnchor constraintEqualToAnchor:column.centerXAnchor]),
+        HACon([iconView.widthAnchor constraintEqualToConstant:88]),
+        HACon([iconView.heightAnchor constraintEqualToConstant:88]),
+        HACon([self.cardView.topAnchor constraintEqualToAnchor:iconView.bottomAnchor constant:24]),
+        HACon([self.cardView.leadingAnchor constraintEqualToAnchor:column.leadingAnchor]),
+        HACon([self.cardView.trailingAnchor constraintEqualToAnchor:column.trailingAnchor]),
+        HACon([demoRow.topAnchor constraintEqualToAnchor:self.cardView.bottomAnchor constant:24]),
+        HACon([demoRow.leadingAnchor constraintEqualToAnchor:column.leadingAnchor constant:4]),
+        HACon([demoRow.trailingAnchor constraintEqualToAnchor:column.trailingAnchor constant:-4]),
+        HACon([demoRow.bottomAnchor constraintEqualToAnchor:column.bottomAnchor]),
+    ]);
+}
+
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    if (!HAAutoLayoutAvailable()) {
+        CGRect bounds = self.view.bounds;
+        CGFloat padding = 24.0;
+        CGFloat maxWidth = 460.0;
+        CGFloat cardPadding = 28.0;
+
+        // Scroll view fills the view
+        self.scrollView.frame = bounds;
+
+        // Wrapper fills scroll content (at least screen height)
+        UIView *wrapper = [self.scrollView viewWithTag:100];
+        UIView *column = [wrapper viewWithTag:101];
+        UIView *iconView = [column viewWithTag:102];
+
+        CGFloat columnWidth = MIN(maxWidth, bounds.size.width - padding * 2);
+
+        // Icon: 88x88 centered at top
+        iconView.frame = CGRectMake((columnWidth - 88) / 2, 0, 88, 88);
+
+        // Card title
+        UILabel *cardTitle = (UILabel *)[self.cardView viewWithTag:103];
+        CGSize titleSize = [cardTitle sizeThatFits:CGSizeMake(columnWidth - cardPadding * 2, CGFLOAT_MAX)];
+        cardTitle.frame = CGRectMake(cardPadding, cardPadding, columnWidth - cardPadding * 2, titleSize.height);
+
+        // Connection form
+        CGFloat formTop = CGRectGetMaxY(cardTitle.frame) + 24;
+        CGFloat formWidth = columnWidth - cardPadding * 2;
+        CGSize formSize = [self.connectionForm sizeThatFits:CGSizeMake(formWidth, CGFLOAT_MAX)];
+        self.connectionForm.frame = CGRectMake(cardPadding, formTop, formWidth, formSize.height);
+
+        // Card
+        CGFloat cardHeight = CGRectGetMaxY(self.connectionForm.frame) + cardPadding;
+        CGFloat cardTop = CGRectGetMaxY(iconView.frame) + 24;
+        self.cardView.frame = CGRectMake(0, cardTop, columnWidth, cardHeight);
+
+        // Demo row
+        UIView *demoRow = [column viewWithTag:104];
+        CGFloat demoTop = CGRectGetMaxY(self.cardView.frame) + 24;
+        CGSize switchSize = [self.demoSwitch sizeThatFits:CGSizeMake(columnWidth, 44)];
+        demoRow.frame = CGRectMake(4, demoTop, columnWidth - 8, switchSize.height);
+
+        // Layout demo row children (label + switch)
+        for (UIView *sub in demoRow.subviews) {
+            if ([sub isKindOfClass:[UISwitch class]]) {
+                sub.frame = CGRectMake(demoRow.bounds.size.width - sub.frame.size.width, 0,
+                                       sub.frame.size.width, sub.frame.size.height);
+            } else if ([sub isKindOfClass:[UILabel class]]) {
+                CGSize lblSize = [sub sizeThatFits:demoRow.bounds.size];
+                sub.frame = CGRectMake(0, (switchSize.height - lblSize.height) / 2,
+                                       lblSize.width, lblSize.height);
+            }
+        }
+
+        // Column
+        CGFloat columnHeight = CGRectGetMaxY(demoRow.frame);
+        CGFloat columnX = (bounds.size.width - columnWidth) / 2;
+        // Center column vertically in wrapper, min 40pt from top
+        CGFloat columnY = MAX(40, (bounds.size.height - columnHeight) / 2);
+        column.frame = CGRectMake(columnX, columnY, columnWidth, columnHeight);
+
+        // Wrapper
+        CGFloat wrapperHeight = MAX(bounds.size.height, CGRectGetMaxY(column.frame) + 20);
+        wrapper.frame = CGRectMake(0, 0, bounds.size.width, wrapperHeight);
+        self.scrollView.contentSize = CGSizeMake(bounds.size.width, wrapperHeight);
+    }
 }
 
 #pragma mark - HAConnectionFormDelegate

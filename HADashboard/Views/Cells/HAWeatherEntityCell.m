@@ -1,3 +1,4 @@
+#import "HAAutoLayout.h"
 #import "HAWeatherEntityCell.h"
 #import "HADateUtils.h"
 #import "HAEntity.h"
@@ -6,6 +7,7 @@
 #import "HAIconMapper.h"
 #import "HAConnectionManager.h"
 #import "HAWeatherHelper.h"
+#import "UIFont+HACompat.h"
 
 /// Height for the top section: name + condition symbol + temp + details
 static const CGFloat kTopContentHeight = 90.0;
@@ -50,7 +52,7 @@ static const NSInteger kDefaultForecastRows = 5;
 
     // Temperature
     self.tempLabel = [[UILabel alloc] init];
-    self.tempLabel.font = [UIFont monospacedDigitSystemFontOfSize:28 weight:UIFontWeightLight];
+    self.tempLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:28 weight:HAFontWeightLight];
     self.tempLabel.textColor = [HATheme primaryTextColor];
     self.tempLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:self.tempLabel];
@@ -69,33 +71,33 @@ static const NSInteger kDefaultForecastRows = 5;
     [self.contentView addSubview:self.forecastContainer];
 
     // Symbol: left side, below name
-    [NSLayoutConstraint activateConstraints:@[
-        [self.conditionSymbol.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding],
-        [self.conditionSymbol.topAnchor constraintEqualToAnchor:self.nameLabel.bottomAnchor constant:2],
-    ]];
+    HAActivateConstraints(@[
+        HACon([self.conditionSymbol.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding]),
+        HACon([self.conditionSymbol.topAnchor constraintEqualToAnchor:self.nameLabel.bottomAnchor constant:2]),
+    ]);
 
     // Temp: right of symbol
-    [NSLayoutConstraint activateConstraints:@[
-        [self.tempLabel.leadingAnchor constraintEqualToAnchor:self.conditionSymbol.trailingAnchor constant:8],
-        [self.tempLabel.centerYAnchor constraintEqualToAnchor:self.conditionSymbol.centerYAnchor],
-    ]];
+    HAActivateConstraints(@[
+        HACon([self.tempLabel.leadingAnchor constraintEqualToAnchor:self.conditionSymbol.trailingAnchor constant:8]),
+        HACon([self.tempLabel.centerYAnchor constraintEqualToAnchor:self.conditionSymbol.centerYAnchor]),
+    ]);
 
     // Details: below condition symbol, single line
-    [NSLayoutConstraint activateConstraints:@[
-        [self.detailsLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding],
-        [self.detailsLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-padding],
-        [self.detailsLabel.topAnchor constraintEqualToAnchor:self.conditionSymbol.bottomAnchor constant:4],
-    ]];
+    HAActivateConstraints(@[
+        HACon([self.detailsLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding]),
+        HACon([self.detailsLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-padding]),
+        HACon([self.detailsLabel.topAnchor constraintEqualToAnchor:self.conditionSymbol.bottomAnchor constant:4]),
+    ]);
 
     // Forecast container: below details, pinned leading/trailing/bottom
-    self.forecastHeightConstraint = [self.forecastContainer.heightAnchor constraintEqualToConstant:kForecastRowHeight * kDefaultForecastRows];
-    [NSLayoutConstraint activateConstraints:@[
-        [self.forecastContainer.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding],
-        [self.forecastContainer.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-padding],
-        [self.forecastContainer.topAnchor constraintGreaterThanOrEqualToAnchor:self.detailsLabel.bottomAnchor constant:kForecastGap],
-        [self.forecastContainer.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-kBottomPadding],
-        self.forecastHeightConstraint,
-    ]];
+    self.forecastHeightConstraint = HAMakeConstraint([self.forecastContainer.heightAnchor constraintEqualToConstant:kForecastRowHeight * kDefaultForecastRows]);
+    HAActivateConstraints(@[
+        HACon([self.forecastContainer.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding]),
+        HACon([self.forecastContainer.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-padding]),
+        HACon([self.forecastContainer.topAnchor constraintGreaterThanOrEqualToAnchor:self.detailsLabel.bottomAnchor constant:kForecastGap]),
+        HACon([self.forecastContainer.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-kBottomPadding]),
+        HACon(self.forecastHeightConstraint),
+    ]);
 }
 
 #pragma mark - Configure
@@ -217,7 +219,7 @@ static const NSInteger kDefaultForecastRows = 5;
 
     NSString *unit = [entity weatherTemperatureUnit] ?: @"\u00B0";
     UIFont *textFont = [UIFont systemFontOfSize:11];
-    UIFont *iconFont = [HAIconMapper mdiFontOfSize:14];
+    CGFloat iconFontSize = 14;
     UIColor *textColor = [HATheme secondaryTextColor];
     CGFloat rowHeight = 24.0;
     CGFloat rowY = 0;
@@ -257,9 +259,13 @@ static const NSInteger kDefaultForecastRows = 5;
 
         // Weather icon
         UILabel *iconLabel = [[UILabel alloc] initWithFrame:CGRectMake(x, rowY, 20, rowHeight)];
-        iconLabel.text = dayGlyph ?: @"?";
-        iconLabel.font = dayGlyph ? iconFont : textFont;
-        iconLabel.textColor = textColor;
+        if (dayGlyph) {
+            iconLabel.attributedText = [HAIconMapper attributedGlyph:dayGlyph fontSize:iconFontSize color:textColor];
+        } else {
+            iconLabel.text = @"?";
+            iconLabel.font = textFont;
+            iconLabel.textColor = textColor;
+        }
         iconLabel.textAlignment = NSTextAlignmentCenter;
         [self.forecastContainer addSubview:iconLabel];
         x += 24;
@@ -296,6 +302,35 @@ static const NSInteger kDefaultForecastRows = 5;
     }
 }
 
+#pragma mark - Layout
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    if (!HAAutoLayoutAvailable()) {
+        CGFloat w = self.contentView.bounds.size.width;
+        CGFloat h = self.contentView.bounds.size.height;
+        CGFloat padding = 10.0;
+
+        // Condition symbol: below name, left
+        CGSize symSize = [self.conditionSymbol sizeThatFits:CGSizeMake(50, CGFLOAT_MAX)];
+        self.conditionSymbol.frame = CGRectMake(padding, CGRectGetMaxY(self.nameLabel.frame) + 2, symSize.width, symSize.height);
+
+        // Temp: right of symbol, vertically centered
+        CGSize tempSize = [self.tempLabel sizeThatFits:CGSizeMake(100, CGFLOAT_MAX)];
+        self.tempLabel.frame = CGRectMake(CGRectGetMaxX(self.conditionSymbol.frame) + 8,
+                                          self.conditionSymbol.frame.origin.y + (symSize.height - tempSize.height) / 2.0,
+                                          tempSize.width, tempSize.height);
+
+        // Details: below condition symbol
+        CGSize detSize = [self.detailsLabel sizeThatFits:CGSizeMake(w - padding * 2, CGFLOAT_MAX)];
+        self.detailsLabel.frame = CGRectMake(padding, CGRectGetMaxY(self.conditionSymbol.frame) + 4, w - padding * 2, detSize.height);
+
+        // Forecast container: bottom area
+        CGFloat forecastH = kForecastRowHeight * kDefaultForecastRows;
+        self.forecastContainer.frame = CGRectMake(padding, h - kBottomPadding - forecastH, w - padding * 2, forecastH);
+    }
+}
+
 #pragma mark - Reuse
 
 - (void)prepareForReuse {
@@ -303,8 +338,11 @@ static const NSInteger kDefaultForecastRows = 5;
     self.conditionSymbol.text = nil;
     self.tempLabel.text = nil;
     self.detailsLabel.text = nil;
-    self.contentView.backgroundColor = [HATheme cellBackgroundColor];
     for (UIView *v in self.forecastContainer.subviews) [v removeFromSuperview];
+}
+
+- (void)resetThemeColors {
+    [super resetThemeColors];
     self.tempLabel.textColor = [HATheme primaryTextColor];
     self.detailsLabel.textColor = [HATheme secondaryTextColor];
 }

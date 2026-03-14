@@ -1,9 +1,11 @@
+#import "HAAutoLayout.h"
 #import "HAInputNumberEntityCell.h"
 #import "HAEntity.h"
 #import "HAConnectionManager.h"
 #import "HADashboardConfig.h"
 #import "HAHaptics.h"
 #import "HATheme.h"
+#import "UIFont+HACompat.h"
 
 @interface HAInputNumberEntityCell () <UITextFieldDelegate>
 @property (nonatomic, strong) UISlider *valueSlider;
@@ -25,7 +27,7 @@
     CGFloat padding = 10.0;
 
     // Value label (right side, shows current number)
-    self.valueLabel = [self labelWithFont:[UIFont monospacedDigitSystemFontOfSize:20 weight:UIFontWeightMedium] color:[HATheme primaryTextColor] lines:1];
+    self.valueLabel = [self labelWithFont:[UIFont ha_monospacedDigitSystemFontOfSize:20 weight:HAFontWeightMedium] color:[HATheme primaryTextColor] lines:1];
     self.valueLabel.textAlignment = NSTextAlignmentRight;
 
     // Slider (shown in slider mode)
@@ -39,7 +41,7 @@
 
     // Box text field (shown in box mode)
     self.boxTextField = [[UITextField alloc] init];
-    self.boxTextField.font = [UIFont monospacedDigitSystemFontOfSize:18 weight:UIFontWeightMedium];
+    self.boxTextField.font = [UIFont ha_monospacedDigitSystemFontOfSize:18 weight:HAFontWeightMedium];
     self.boxTextField.textColor = [HATheme primaryTextColor];
     self.boxTextField.textAlignment = NSTextAlignmentCenter;
     self.boxTextField.keyboardType = UIKeyboardTypeDecimalPad;
@@ -53,7 +55,7 @@
     [self.contentView addSubview:self.boxTextField];
 
     // Submit button for box mode
-    self.boxSubmitButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.boxSubmitButton = HASystemButton();
     [self.boxSubmitButton setTitle:@"Set" forState:UIControlStateNormal];
     self.boxSubmitButton.titleLabel.font = [UIFont boldSystemFontOfSize:14];
     self.boxSubmitButton.backgroundColor = [HATheme accentColor];
@@ -64,35 +66,49 @@
     [self.boxSubmitButton addTarget:self action:@selector(boxSubmitTapped) forControlEvents:UIControlEventTouchUpInside];
     [self.contentView addSubview:self.boxSubmitButton];
 
-    // Value label: top-right
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.valueLabel attribute:NSLayoutAttributeTrailing
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTrailing multiplier:1 constant:-padding]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.valueLabel attribute:NSLayoutAttributeTop
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTop multiplier:1 constant:padding]];
+    HAActivateConstraints(@[
+        // Value label: top-right
+        HACon([NSLayoutConstraint constraintWithItem:self.valueLabel attribute:NSLayoutAttributeTrailing
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTrailing multiplier:1 constant:-padding]),
+        HACon([NSLayoutConstraint constraintWithItem:self.valueLabel attribute:NSLayoutAttributeTop
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTop multiplier:1 constant:padding]),
+        // Slider: bottom
+        HACon([NSLayoutConstraint constraintWithItem:self.valueSlider attribute:NSLayoutAttributeLeading
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeLeading multiplier:1 constant:padding]),
+        HACon([NSLayoutConstraint constraintWithItem:self.valueSlider attribute:NSLayoutAttributeTrailing
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTrailing multiplier:1 constant:-padding]),
+        HACon([NSLayoutConstraint constraintWithItem:self.valueSlider attribute:NSLayoutAttributeBottom
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeBottom multiplier:1 constant:-padding]),
+        // Box text field: bottom-left
+        HACon([self.boxTextField.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding]),
+        HACon([self.boxTextField.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-padding]),
+        HACon([self.boxTextField.widthAnchor constraintEqualToConstant:120]),
+        HACon([self.boxTextField.heightAnchor constraintEqualToConstant:32]),
+        // Submit button: right of text field
+        HACon([self.boxSubmitButton.leadingAnchor constraintEqualToAnchor:self.boxTextField.trailingAnchor constant:8]),
+        HACon([self.boxSubmitButton.centerYAnchor constraintEqualToAnchor:self.boxTextField.centerYAnchor]),
+        HACon([self.boxSubmitButton.widthAnchor constraintEqualToConstant:50]),
+        HACon([self.boxSubmitButton.heightAnchor constraintEqualToConstant:32]),
+    ]);
+}
 
-    // Slider: bottom
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.valueSlider attribute:NSLayoutAttributeLeading
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeLeading multiplier:1 constant:padding]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.valueSlider attribute:NSLayoutAttributeTrailing
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTrailing multiplier:1 constant:-padding]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.valueSlider attribute:NSLayoutAttributeBottom
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeBottom multiplier:1 constant:-padding]];
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    if (!HAAutoLayoutAvailable()) {
+        CGFloat padding = 10.0;
+        CGFloat w = self.contentView.bounds.size.width;
+        CGFloat h = self.contentView.bounds.size.height;
 
-    // Box text field: bottom-left
-    [NSLayoutConstraint activateConstraints:@[
-        [self.boxTextField.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding],
-        [self.boxTextField.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-padding],
-        [self.boxTextField.widthAnchor constraintEqualToConstant:120],
-        [self.boxTextField.heightAnchor constraintEqualToConstant:32],
-    ]];
+        CGSize valSize = [self.valueLabel sizeThatFits:CGSizeMake(w - padding * 2, CGFLOAT_MAX)];
+        self.valueLabel.frame = CGRectMake(w - padding - valSize.width, padding, valSize.width, valSize.height);
 
-    // Submit button: right of text field
-    [NSLayoutConstraint activateConstraints:@[
-        [self.boxSubmitButton.leadingAnchor constraintEqualToAnchor:self.boxTextField.trailingAnchor constant:8],
-        [self.boxSubmitButton.centerYAnchor constraintEqualToAnchor:self.boxTextField.centerYAnchor],
-        [self.boxSubmitButton.widthAnchor constraintEqualToConstant:50],
-        [self.boxSubmitButton.heightAnchor constraintEqualToConstant:32],
-    ]];
+        CGFloat sliderH = 31.0;
+        self.valueSlider.frame = CGRectMake(padding, h - padding - sliderH, w - padding * 2, sliderH);
+
+        self.boxTextField.frame = CGRectMake(padding, h - padding - 32, 120, 32);
+        self.boxSubmitButton.frame = CGRectMake(CGRectGetMaxX(self.boxTextField.frame) + 8,
+                                                 h - padding - 32, 50, 32);
+    }
 }
 
 - (void)configureWithEntity:(HAEntity *)entity configItem:(HADashboardConfigItem *)configItem {

@@ -1,11 +1,12 @@
 #import <UIKit/UIKit.h>
+#import "HACellCompat.h"
 
 @class HADashboardConfigSection;
 @class HADashboardConfigItem;
 @class HAEntity;
 
 /// Renders a logbook/activity card showing recent state changes and events.
-@interface HALogbookCardCell : UICollectionViewCell
+@interface HALogbookCardCell : HACollectionViewCellBase
 
 - (void)configureWithSection:(HADashboardConfigSection *)section
                     entities:(NSDictionary<NSString *, HAEntity *> *)entityDict

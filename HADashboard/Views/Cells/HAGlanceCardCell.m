@@ -1,8 +1,10 @@
+#import "HAAutoLayout.h"
 #import "HAGlanceCardCell.h"
 #import "HAGlanceItemView.h"
 #import "HADashboardConfig.h"
 #import "HAEntity.h"
 #import "HATheme.h"
+#import "UIFont+HACompat.h"
 
 static const CGFloat kTitleHeight = 28.0;
 static const CGFloat kTitleFontSize = 14.0;
@@ -27,27 +29,27 @@ static const CGFloat kMinColumnWidth = 70.0; // auto column calculation threshol
         self.itemViews = [NSMutableArray array];
 
         self.titleLabel = [[UILabel alloc] init];
-        self.titleLabel.font = [UIFont systemFontOfSize:kTitleFontSize weight:UIFontWeightSemibold];
+        self.titleLabel.font = [UIFont ha_systemFontOfSize:kTitleFontSize weight:HAFontWeightSemibold];
         self.titleLabel.textColor = [HATheme primaryTextColor];
         self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
         self.titleLabel.hidden = YES;
         [self.contentView addSubview:self.titleLabel];
 
-        [NSLayoutConstraint activateConstraints:@[
-            [self.titleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:kCardPadding],
-            [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:12],
-            [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-12],
-        ]];
+        HAActivateConstraints(@[
+            HACon([self.titleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:kCardPadding]),
+            HACon([self.titleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:12]),
+            HACon([self.titleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-12]),
+        ]);
 
         self.gridContainer = [[UIView alloc] init];
         self.gridContainer.translatesAutoresizingMaskIntoConstraints = NO;
         [self.contentView addSubview:self.gridContainer];
 
-        [NSLayoutConstraint activateConstraints:@[
-            [self.gridContainer.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
-            [self.gridContainer.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
-            [self.gridContainer.bottomAnchor constraintLessThanOrEqualToAnchor:self.contentView.bottomAnchor],
-        ]];
+        HAActivateConstraints(@[
+            HACon([self.gridContainer.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor]),
+            HACon([self.gridContainer.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor]),
+            HACon([self.gridContainer.bottomAnchor constraintLessThanOrEqualToAnchor:self.contentView.bottomAnchor]),
+        ]);
     }
     return self;
 }
@@ -96,9 +98,9 @@ static const CGFloat kMinColumnWidth = 70.0; // auto column calculation threshol
         }
     }
     if (hasTitle) {
-        [self.titleLabel.bottomAnchor constraintEqualToAnchor:self.gridContainer.topAnchor constant:-4].active = YES;
+        HASetConstraintActive([self.titleLabel.bottomAnchor constraintEqualToAnchor:self.gridContainer.topAnchor constant:-4], YES);
     } else {
-        [self.gridContainer.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:kCardPadding].active = YES;
+        HASetConstraintActive([self.gridContainer.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:kCardPadding], YES);
     }
 
     // Create and layout item views
@@ -140,8 +142,6 @@ static const CGFloat kMinColumnWidth = 70.0; // auto column calculation threshol
         [self.gridContainer addSubview:itemView];
         [self.itemViews addObject:itemView];
     }
-
-    self.contentView.backgroundColor = [HATheme cellBackgroundColor];
 }
 
 - (void)itemTapped:(UITapGestureRecognizer *)gesture {
@@ -196,6 +196,23 @@ static const CGFloat kMinColumnWidth = 70.0; // auto column calculation threshol
     return titleExtra + kCardPadding + rows * itemHeight + MAX(0, rows - 1) * kRowSpacing + kCardPadding;
 }
 
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    if (!HAAutoLayoutAvailable()) {
+        CGFloat w = self.contentView.bounds.size.width;
+
+        // Title label: top
+        if (!self.titleLabel.hidden) {
+            CGSize titleSize = [self.titleLabel sizeThatFits:CGSizeMake(w - 24, CGFLOAT_MAX)];
+            self.titleLabel.frame = CGRectMake(12, kCardPadding, w - 24, titleSize.height);
+        }
+
+        // Grid container: below title or at top
+        CGFloat gridY = self.titleLabel.hidden ? kCardPadding : CGRectGetMaxY(self.titleLabel.frame) + 4;
+        self.gridContainer.frame = CGRectMake(0, gridY, w, self.contentView.bounds.size.height - gridY);
+    }
+}
+
 - (void)prepareForReuse {
     [super prepareForReuse];
     for (HAGlanceItemView *iv in self.itemViews) {
@@ -205,7 +222,6 @@ static const CGFloat kMinColumnWidth = 70.0; // auto column calculation threshol
     self.titleLabel.text = nil;
     self.titleLabel.hidden = YES;
     self.entityTapBlock = nil;
-    self.contentView.backgroundColor = [HATheme cellBackgroundColor];
 }
 
 @end

@@ -1,4 +1,5 @@
 #import <UIKit/UIKit.h>
+#import "HACellCompat.h"
 
 @protocol HAColumnarLayoutDelegate <UICollectionViewDelegate>
 
@@ -22,7 +23,7 @@ heightForHeaderInSection:(NSInteger)section;
 
 /// A multi-column collection view layout where each section is a vertical column.
 /// Used for HA 2024+ "sections" view type where sections represent page columns.
-@interface HAColumnarLayout : UICollectionViewLayout
+@interface HAColumnarLayout : HACollectionViewLayoutBase
 
 @property (nonatomic, weak) id<HAColumnarLayoutDelegate> delegate;
 

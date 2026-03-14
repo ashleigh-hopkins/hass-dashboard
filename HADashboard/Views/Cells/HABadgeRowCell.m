@@ -1,9 +1,12 @@
+#import "HAAutoLayout.h"
 #import "HABadgeRowCell.h"
 #import "HADashboardConfig.h"
 #import "HAEntity.h"
 #import "HATheme.h"
 #import "HAIconMapper.h"
 #import "HAEntityDisplayHelper.h"
+#import "UIFont+HACompat.h"
+#import "NSString+HACompat.h"
 
 // HA web badge constants (from ha-badge.ts)
 static const CGFloat kBadgeHeight = 36.0;   // --ha-badge-size: 36px
@@ -35,6 +38,7 @@ static const CGFloat kArcNameLabelHeight = 16.0;
     self = [super initWithFrame:frame];
     if (self) {
         self.contentView.backgroundColor = [UIColor clearColor];
+        self.contentView.clipsToBounds = YES;
         self.backgroundColor = [UIColor clearColor];
         self.badgeViews = [NSMutableArray array];
         self.badgeEntities = [NSMutableArray array];
@@ -52,8 +56,8 @@ static const CGFloat kArcNameLabelHeight = 16.0;
     // All badge/chip styles now use the same HA web badge layout
     CGFloat padding = 4.0;
     CGFloat spacing = 8.0;
-    // Typical badge: icon(18) + gap(6) + text(~50) + padding(16) ≈ 90pt
-    CGFloat estWidth = chipStyle ? 70.0 : 90.0;
+    // Typical badge: icon(18) + gap(6) + state(~50) + gap(4) + name(~45) + padding(16) ≈ 140pt
+    CGFloat estWidth = chipStyle ? 70.0 : 140.0;
     CGFloat usableWidth = width - padding * 2;
     NSInteger perRow = MAX(1, (NSInteger)floor((usableWidth + spacing) / (estWidth + spacing)));
     NSInteger rows = (count + perRow - 1) / perRow;
@@ -161,7 +165,7 @@ static const CGFloat kArcNameLabelHeight = 16.0;
 
         UILabel *valueLabel = [[UILabel alloc] init];
         valueLabel.text = valueText;
-        valueLabel.font = [UIFont monospacedDigitSystemFontOfSize:12 weight:UIFontWeightMedium];
+        valueLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:12 weight:HAFontWeightMedium];
         valueLabel.textColor = [HATheme primaryTextColor];
         valueLabel.lineBreakMode = NSLineBreakByTruncatingTail;
         valueLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -174,36 +178,36 @@ static const CGFloat kArcNameLabelHeight = 16.0;
             // Info column: label (name) on top, content (state) below
             UILabel *nameLabel = [[UILabel alloc] init];
             nameLabel.text = name;
-            nameLabel.font = [UIFont systemFontOfSize:10 weight:UIFontWeightMedium];
+            nameLabel.font = [UIFont ha_systemFontOfSize:10 weight:HAFontWeightMedium];
             nameLabel.textColor = [HATheme secondaryTextColor];
             nameLabel.lineBreakMode = NSLineBreakByTruncatingTail;
             nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
             [badge addSubview:nameLabel];
 
-            [NSLayoutConstraint activateConstraints:@[
-                [iconLabel.leadingAnchor constraintEqualToAnchor:badge.leadingAnchor constant:kBadgeHPad - 4],
-                [iconLabel.centerYAnchor constraintEqualToAnchor:badge.centerYAnchor],
-                [nameLabel.leadingAnchor constraintEqualToAnchor:iconLabel.trailingAnchor constant:kBadgeGap],
-                [nameLabel.bottomAnchor constraintEqualToAnchor:badge.centerYAnchor constant:-1],
-                [nameLabel.trailingAnchor constraintLessThanOrEqualToAnchor:badge.trailingAnchor constant:-kBadgeHPad],
-                [valueLabel.leadingAnchor constraintEqualToAnchor:nameLabel.leadingAnchor],
-                [valueLabel.topAnchor constraintEqualToAnchor:badge.centerYAnchor constant:1],
-                [valueLabel.trailingAnchor constraintLessThanOrEqualToAnchor:badge.trailingAnchor constant:-kBadgeHPad],
-            ]];
-            nameWidth = ceil([name sizeWithAttributes:@{NSFontAttributeName: nameLabel.font}].width);
+            HAActivateConstraints(@[
+                HACon([iconLabel.leadingAnchor constraintEqualToAnchor:badge.leadingAnchor constant:kBadgeHPad - 4]),
+                HACon([iconLabel.centerYAnchor constraintEqualToAnchor:badge.centerYAnchor]),
+                HACon([nameLabel.leadingAnchor constraintEqualToAnchor:iconLabel.trailingAnchor constant:kBadgeGap]),
+                HACon([nameLabel.bottomAnchor constraintEqualToAnchor:badge.centerYAnchor constant:-1]),
+                HACon([nameLabel.trailingAnchor constraintLessThanOrEqualToAnchor:badge.trailingAnchor constant:-kBadgeHPad]),
+                HACon([valueLabel.leadingAnchor constraintEqualToAnchor:nameLabel.leadingAnchor]),
+                HACon([valueLabel.topAnchor constraintEqualToAnchor:badge.centerYAnchor constant:1]),
+                HACon([valueLabel.trailingAnchor constraintLessThanOrEqualToAnchor:badge.trailingAnchor constant:-kBadgeHPad]),
+            ]);
+            nameWidth = ceil([name ha_sizeWithAttributes:@{HAFontAttributeName: nameLabel.font}].width);
         } else {
             // No name: icon + value centered on single line (chip style)
-            [NSLayoutConstraint activateConstraints:@[
-                [iconLabel.leadingAnchor constraintEqualToAnchor:badge.leadingAnchor constant:kBadgeHPad - 4],
-                [iconLabel.centerYAnchor constraintEqualToAnchor:badge.centerYAnchor],
-                [valueLabel.leadingAnchor constraintEqualToAnchor:iconLabel.trailingAnchor constant:kBadgeGap],
-                [valueLabel.centerYAnchor constraintEqualToAnchor:badge.centerYAnchor],
-                [valueLabel.trailingAnchor constraintLessThanOrEqualToAnchor:badge.trailingAnchor constant:-kBadgeHPad],
-            ]];
+            HAActivateConstraints(@[
+                HACon([iconLabel.leadingAnchor constraintEqualToAnchor:badge.leadingAnchor constant:kBadgeHPad - 4]),
+                HACon([iconLabel.centerYAnchor constraintEqualToAnchor:badge.centerYAnchor]),
+                HACon([valueLabel.leadingAnchor constraintEqualToAnchor:iconLabel.trailingAnchor constant:kBadgeGap]),
+                HACon([valueLabel.centerYAnchor constraintEqualToAnchor:badge.centerYAnchor]),
+                HACon([valueLabel.trailingAnchor constraintLessThanOrEqualToAnchor:badge.trailingAnchor constant:-kBadgeHPad]),
+            ]);
         }
 
         // Measure badge width (ceil + 4pt buffer prevents truncation from rounding)
-        CGFloat valWidth = ceil([valueText sizeWithAttributes:@{NSFontAttributeName: valueLabel.font}].width);
+        CGFloat valWidth = ceil([valueText ha_sizeWithAttributes:@{HAFontAttributeName: valueLabel.font}].width);
         CGFloat iconW = icon.length > 0 ? kBadgeIconSize : 0;
         CGFloat infoWidth = MAX(nameWidth, valWidth) + 4.0;
         CGFloat badgeWidth = (kBadgeHPad - 4) + iconW + kBadgeGap + infoWidth + kBadgeHPad;
@@ -242,6 +246,7 @@ static const CGFloat kArcNameLabelHeight = 16.0;
             CGFloat w = [badgeWidths[j] floatValue];
             UIView *badge = allBadges[j];
             badge.frame = CGRectMake(x, y, w, badgeH);
+            if (!HAAutoLayoutAvailable()) [self layoutBadgeSubviews:badge width:w height:badgeH];
             badge.tag = j; // index into badgeEntities
             badge.userInteractionEnabled = YES;
             UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(badgeTapped:)];
@@ -324,6 +329,7 @@ static const CGFloat kArcNameLabelHeight = 16.0;
             // Vertically center shorter badges (pills) within row
             CGFloat yOffset = (rowHeight - h) / 2.0;
             badge.frame = CGRectMake(x, y + yOffset, w, h);
+            if (!HAAutoLayoutAvailable()) [self layoutBadgeSubviews:badge width:w height:h];
             badge.tag = j; // index into badgeEntities
             badge.userInteractionEnabled = YES;
             UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(badgeTapped:)];
@@ -431,12 +437,12 @@ static const CGFloat kArcNameLabelHeight = 16.0;
     NSString *valueText = stateText;
     UILabel *valueLabel = [[UILabel alloc] init];
     valueLabel.text = valueText;
-    valueLabel.font = [UIFont monospacedDigitSystemFontOfSize:11.0 weight:UIFontWeightBold];
+    valueLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:11.0 weight:HAFontWeightBold];
     valueLabel.textColor = [HATheme primaryTextColor];
     valueLabel.textAlignment = NSTextAlignmentCenter;
 
     // Size the value label to fit the text, then center it
-    CGSize valSize = [valueText sizeWithAttributes:@{NSFontAttributeName: valueLabel.font}];
+    CGSize valSize = [valueText ha_sizeWithAttributes:@{HAFontAttributeName: valueLabel.font}];
     CGFloat valWidth = MIN(valSize.width + 2, kArcDiameter - kArcLineWidth * 2);
     valueLabel.frame = CGRectMake(centerX - valWidth / 2.0,
                                   centerY - valSize.height / 2.0,
@@ -450,7 +456,7 @@ static const CGFloat kArcNameLabelHeight = 16.0;
     NSString *name = [HAEntityDisplayHelper displayNameForEntity:entity entityId:entityId section:section];
     UILabel *nameLabel = [[UILabel alloc] init];
     nameLabel.text = name;
-    nameLabel.font = [UIFont systemFontOfSize:10.0 weight:UIFontWeightRegular];
+    nameLabel.font = [UIFont ha_systemFontOfSize:10.0 weight:HAFontWeightRegular];
     nameLabel.textColor = [HATheme secondaryTextColor];
     nameLabel.textAlignment = NSTextAlignmentCenter;
     nameLabel.lineBreakMode = NSLineBreakByTruncatingTail;
@@ -542,14 +548,14 @@ static const CGFloat kArcNameLabelHeight = 16.0;
 
     UILabel *nameLabel = [[UILabel alloc] init];
     nameLabel.text = name;
-    nameLabel.font = [UIFont systemFontOfSize:10 weight:UIFontWeightMedium];
+    nameLabel.font = [UIFont ha_systemFontOfSize:10 weight:HAFontWeightMedium];
     nameLabel.textColor = [HATheme secondaryTextColor];
     nameLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
 
     UILabel *valueLabel = [[UILabel alloc] init];
     valueLabel.text = valueText;
-    valueLabel.font = [UIFont monospacedDigitSystemFontOfSize:12 weight:UIFontWeightMedium];
+    valueLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:12 weight:HAFontWeightMedium];
     valueLabel.textColor = [HATheme primaryTextColor];
     valueLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     valueLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -558,23 +564,32 @@ static const CGFloat kArcNameLabelHeight = 16.0;
     [badge addSubview:nameLabel];
     [badge addSubview:valueLabel];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [iconLabel.leadingAnchor constraintEqualToAnchor:badge.leadingAnchor constant:kBadgeHPad - 4],
-        [iconLabel.centerYAnchor constraintEqualToAnchor:badge.centerYAnchor],
-        [nameLabel.leadingAnchor constraintEqualToAnchor:iconLabel.trailingAnchor constant:kBadgeGap],
-        [nameLabel.bottomAnchor constraintEqualToAnchor:badge.centerYAnchor constant:-1],
-        [nameLabel.trailingAnchor constraintLessThanOrEqualToAnchor:badge.trailingAnchor constant:-kBadgeHPad],
-        [valueLabel.leadingAnchor constraintEqualToAnchor:nameLabel.leadingAnchor],
-        [valueLabel.topAnchor constraintEqualToAnchor:badge.centerYAnchor constant:1],
-        [valueLabel.trailingAnchor constraintLessThanOrEqualToAnchor:badge.trailingAnchor constant:-kBadgeHPad],
-    ]];
-
-    CGFloat nameWidth = ceil([name sizeWithAttributes:@{NSFontAttributeName: nameLabel.font}].width);
-    CGFloat valWidth = ceil([valueText sizeWithAttributes:@{NSFontAttributeName: valueLabel.font}].width);
+    CGFloat nameWidth = ceil([name ha_sizeWithAttributes:@{HAFontAttributeName: nameLabel.font}].width);
+    CGFloat valWidth = ceil([valueText ha_sizeWithAttributes:@{HAFontAttributeName: valueLabel.font}].width);
     CGFloat iconW = icon.length > 0 ? kBadgeIconSize : 0;
     CGFloat infoWidth = MAX(nameWidth, valWidth) + 4.0;
     CGFloat badgeWidth = (kBadgeHPad - 4) + iconW + kBadgeGap + infoWidth + kBadgeHPad;
     badgeWidth = MAX(badgeWidth, kBadgeHeight);
+
+    HAActivateConstraints(@[
+        HACon([iconLabel.leadingAnchor constraintEqualToAnchor:badge.leadingAnchor constant:kBadgeHPad - 4]),
+        HACon([iconLabel.centerYAnchor constraintEqualToAnchor:badge.centerYAnchor]),
+        HACon([nameLabel.leadingAnchor constraintEqualToAnchor:iconLabel.trailingAnchor constant:kBadgeGap]),
+        HACon([nameLabel.bottomAnchor constraintEqualToAnchor:badge.centerYAnchor constant:-1]),
+        HACon([nameLabel.trailingAnchor constraintLessThanOrEqualToAnchor:badge.trailingAnchor constant:-kBadgeHPad]),
+        HACon([valueLabel.leadingAnchor constraintEqualToAnchor:nameLabel.leadingAnchor]),
+        HACon([valueLabel.topAnchor constraintEqualToAnchor:badge.centerYAnchor constant:1]),
+        HACon([valueLabel.trailingAnchor constraintLessThanOrEqualToAnchor:badge.trailingAnchor constant:-kBadgeHPad]),
+    ]);
+    if (!HAAutoLayoutAvailable()) {
+        CGFloat midY = kBadgeHeight / 2.0;
+        CGFloat iconX = kBadgeHPad - 4;
+        iconLabel.frame = CGRectMake(iconX, midY - kBadgeIconSize / 2, kBadgeIconSize, kBadgeIconSize);
+        CGFloat textX = iconX + kBadgeIconSize + kBadgeGap;
+        CGFloat textW = badgeWidth - textX - kBadgeHPad;
+        nameLabel.frame = CGRectMake(textX, midY - 14, textW, 12);
+        valueLabel.frame = CGRectMake(textX, midY + 1, textW, 14);
+    }
     CGFloat maxWidth = self.contentView.bounds.size.width - kArcPadding * 2;
     if (maxWidth <= 0) maxWidth = 300;
     badgeWidth = MIN(badgeWidth, maxWidth);
@@ -601,6 +616,44 @@ static const CGFloat kArcNameLabelHeight = 16.0;
     NSScanner *scanner = [NSScanner scannerWithString:str];
     double value;
     return [scanner scanDouble:&value] && [scanner isAtEnd];
+}
+
+#pragma mark - Frame-based badge subview layout
+
+- (void)layoutBadgeSubviews:(UIView *)badge width:(CGFloat)w height:(CGFloat)h {
+    CGFloat midY = h / 2.0;
+    CGFloat iconX = kBadgeHPad - 4;
+    // Find subviews by order: icon (tag=0 or first UILabel with MDI font), then name/value
+    UILabel *iconLabel = nil, *nameLabel = nil, *valueLabel = nil;
+    for (UIView *sub in badge.subviews) {
+        if (![sub isKindOfClass:[UILabel class]]) continue;
+        UILabel *label = (UILabel *)sub;
+        if (!iconLabel) {
+            iconLabel = label;
+        } else if (!nameLabel && badge.subviews.count > 3) {
+            // 3+ labels: icon, name, value (or icon, value for 2-label chips, handled below)
+            nameLabel = label;
+        } else {
+            valueLabel = label;
+        }
+    }
+    // 2-label badge (chip style): icon + value only
+    if (!valueLabel && nameLabel) {
+        valueLabel = nameLabel;
+        nameLabel = nil;
+    }
+
+    if (iconLabel) {
+        iconLabel.frame = CGRectMake(iconX, midY - kBadgeIconSize / 2, kBadgeIconSize, kBadgeIconSize);
+    }
+    CGFloat textX = iconX + kBadgeIconSize + kBadgeGap;
+    CGFloat textW = MAX(0, w - textX - kBadgeHPad);
+    if (nameLabel && valueLabel) {
+        nameLabel.frame = CGRectMake(textX, midY - 14, textW, 12);
+        valueLabel.frame = CGRectMake(textX, midY + 1, textW, 14);
+    } else if (valueLabel) {
+        valueLabel.frame = CGRectMake(textX, midY - 7, textW, 14);
+    }
 }
 
 #pragma mark - Badge Tap

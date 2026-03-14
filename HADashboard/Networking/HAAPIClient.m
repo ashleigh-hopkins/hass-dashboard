@@ -1,5 +1,6 @@
 #import "HAAPIClient.h"
 #import "HAAuthManager.h"
+#import "HAHTTPClient.h"
 #import "NSMutableURLRequest+HAHelpers.h"
 
 @interface HAAPIClient ()
@@ -117,6 +118,34 @@
 }
 
 - (NSURLSessionDataTask *)executeRequestWithTask:(NSURLRequest *)request completion:(HAAPIResponseBlock)completion {
+    // iOS 5-6: NSURLSession doesn't exist. Use HAHTTPClient (NSURLConnection adapter).
+    if (!self.session) {
+        [[HAHTTPClient sharedClient] dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+            if (error) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    if (completion) completion(nil, error);
+                });
+                return;
+            }
+            NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
+            id json = nil;
+            if (data.length > 0) {
+                json = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+            }
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (httpResponse.statusCode >= 200 && httpResponse.statusCode < 300) {
+                    if (completion) completion(json, nil);
+                } else {
+                    NSError *httpError = [NSError errorWithDomain:@"HAAPIClient"
+                        code:httpResponse.statusCode
+                        userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"HTTP %ld", (long)httpResponse.statusCode]}];
+                    if (completion) completion(nil, httpError);
+                }
+            });
+        }];
+        return nil;
+    }
+
     NSURLSessionDataTask *task = [self.session dataTaskWithRequest:request
         completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
             if (error) {

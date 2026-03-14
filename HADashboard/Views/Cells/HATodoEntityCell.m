@@ -1,8 +1,10 @@
+#import "HAAutoLayout.h"
 #import "HATodoEntityCell.h"
 #import "HAEntity.h"
 #import "HADashboardConfig.h"
 #import "HATheme.h"
 #import "HAIconMapper.h"
+#import "UIFont+HACompat.h"
 
 @interface HATodoEntityCell ()
 @property (nonatomic, strong) UILabel *iconLabel;
@@ -23,21 +25,21 @@
     self.iconLabel.textAlignment = NSTextAlignmentCenter;
 
     // Item count (large number)
-    self.countLabel = [self labelWithFont:[UIFont monospacedDigitSystemFontOfSize:24 weight:UIFontWeightBold] color:[HATheme primaryTextColor] lines:1];
+    self.countLabel = [self labelWithFont:[UIFont ha_monospacedDigitSystemFontOfSize:24 weight:HAFontWeightBold] color:[HATheme primaryTextColor] lines:1];
     self.countLabel.textAlignment = NSTextAlignmentRight;
 
     // Description label
     self.itemCountDescLabel = [self labelWithFont:[UIFont systemFontOfSize:11] color:[HATheme secondaryTextColor] lines:1];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.iconLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding],
-        [self.iconLabel.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
-        [self.iconLabel.widthAnchor constraintEqualToConstant:32],
-        [self.countLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-padding],
-        [self.countLabel.topAnchor constraintEqualToAnchor:self.nameLabel.bottomAnchor constant:2],
-        [self.itemCountDescLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding],
-        [self.itemCountDescLabel.topAnchor constraintEqualToAnchor:self.nameLabel.bottomAnchor constant:4],
-    ]];
+    HAActivateConstraints(@[
+        HACon([self.iconLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding]),
+        HACon([self.iconLabel.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor]),
+        HACon([self.iconLabel.widthAnchor constraintEqualToConstant:32]),
+        HACon([self.countLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-padding]),
+        HACon([self.countLabel.topAnchor constraintEqualToAnchor:self.nameLabel.bottomAnchor constant:2]),
+        HACon([self.itemCountDescLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding]),
+        HACon([self.itemCountDescLabel.topAnchor constraintEqualToAnchor:self.nameLabel.bottomAnchor constant:4]),
+    ]);
 }
 
 - (void)configureWithEntity:(HAEntity *)entity configItem:(HADashboardConfigItem *)configItem {
@@ -65,12 +67,31 @@
     self.contentView.backgroundColor = (count > 0) ? [HATheme onTintColor] : [HATheme cellBackgroundColor];
 }
 
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    if (!HAAutoLayoutAvailable()) {
+        CGFloat padding = 10.0;
+        CGFloat w = self.contentView.bounds.size.width;
+        CGFloat h = self.contentView.bounds.size.height;
+        self.iconLabel.frame = CGRectMake(padding, (h - 32) / 2, 32, 32);
+        CGFloat nameMaxY = CGRectGetMaxY(self.nameLabel.frame);
+        CGSize countSize = [self.countLabel sizeThatFits:CGSizeMake(w, CGFLOAT_MAX)];
+        self.countLabel.frame = CGRectMake(w - padding - countSize.width, nameMaxY + 2,
+                                           countSize.width, countSize.height);
+        CGSize descSize = [self.itemCountDescLabel sizeThatFits:CGSizeMake(w, CGFLOAT_MAX)];
+        self.itemCountDescLabel.frame = CGRectMake(padding, nameMaxY + 4, descSize.width, descSize.height);
+    }
+}
+
 - (void)prepareForReuse {
     [super prepareForReuse];
     self.iconLabel.text = nil;
     self.countLabel.text = nil;
     self.itemCountDescLabel.text = nil;
-    self.contentView.backgroundColor = [HATheme cellBackgroundColor];
+}
+
+- (void)resetThemeColors {
+    [super resetThemeColors];
     self.countLabel.textColor = [HATheme primaryTextColor];
     self.itemCountDescLabel.textColor = [HATheme secondaryTextColor];
 }

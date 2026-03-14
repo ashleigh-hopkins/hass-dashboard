@@ -1,4 +1,6 @@
 #import "HAColumnarLayout.h"
+#import "HACellCompat.h"
+#import "HAAutoLayout.h"
 
 @interface HAColumnarLayout ()
 @property (nonatomic, strong) NSMutableArray<UICollectionViewLayoutAttributes *> *itemAttributes;
@@ -15,7 +17,7 @@
     if (self) {
         _interColumnSpacing = 6.0;
         _interItemSpacing = 6.0;
-        _contentInsets = UIEdgeInsetsMake(8, 16, 16, 16);
+        _contentInsets = UIEdgeInsetsMake(8, 8, 8, 8);
         _itemAttributes = [NSMutableArray array];
         _headerAttributes = [NSMutableArray array];
         _itemAttributesByIndexPath = [NSMutableDictionary dictionary];
@@ -90,7 +92,7 @@
             if (headerHeight > 0) {
                 NSIndexPath *headerIndexPath = [NSIndexPath indexPathForItem:0 inSection:section];
                 UICollectionViewLayoutAttributes *headerAttr =
-                    [UICollectionViewLayoutAttributes layoutAttributesForSupplementaryViewOfKind:UICollectionElementKindSectionHeader
+                    [HACollectionViewLayoutAttributesBase layoutAttributesForSupplementaryViewOfKind:HACollectionElementKindSectionHeader()
                                                                                   withIndexPath:headerIndexPath];
                 headerAttr.frame = CGRectMake(columnX, columnY[col], columnWidth, headerHeight);
                 [self.headerAttributes addObject:headerAttr];
@@ -144,7 +146,7 @@
                 }
 
                 UICollectionViewLayoutAttributes *attr =
-                    [UICollectionViewLayoutAttributes layoutAttributesForCellWithIndexPath:indexPath];
+                    [HACollectionViewLayoutAttributesBase layoutAttributesForCellWithIndexPath:indexPath];
                 attr.frame = CGRectMake(itemX, rowStartY, itemWidth, itemHeight);
                 [self.itemAttributes addObject:attr];
                 self.itemAttributesByIndexPath[indexPath] = attr;

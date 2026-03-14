@@ -1,4 +1,7 @@
+#import "HAAutoLayout.h"
+#import "NSString+HACompat.h"
 #import "HAVacuumEntityCell.h"
+#import "NSString+HACompat.h"
 #import "HAEntity.h"
 #import "HAConnectionManager.h"
 #import "HADashboardConfig.h"
@@ -7,6 +10,7 @@
 #import "HAIconMapper.h"
 #import "HAEntityDisplayHelper.h"
 #import "UIView+HAUtilities.h"
+#import "UIFont+HACompat.h"
 
 static const CGFloat kIconCircleSize = 60.0;
 static const CGFloat kIconFontSize   = 32.0;
@@ -50,7 +54,7 @@ static const CGFloat kButtonSpacing  = 12.0;
     [self.iconCircle addSubview:self.iconLabel];
 
     // -- Status label --
-    self.statusLabel2 = [self labelWithFont:[UIFont systemFontOfSize:13 weight:UIFontWeightMedium] color:[HATheme secondaryTextColor] lines:1];
+    self.statusLabel2 = [self labelWithFont:[UIFont ha_systemFontOfSize:13 weight:HAFontWeightMedium] color:[HATheme secondaryTextColor] lines:1];
     self.statusLabel2.textAlignment = NSTextAlignmentCenter;
 
     // -- Command buttons --
@@ -76,26 +80,23 @@ static const CGFloat kButtonSpacing  = 12.0;
     // to handle dynamic visibility (only configured commands shown).
 
     // Icon circle: centered horizontally, near top
-    [NSLayoutConstraint activateConstraints:@[
-        [self.iconCircle.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor],
-        [self.iconCircle.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:padding + 4],
-        [self.iconCircle.widthAnchor constraintEqualToConstant:kIconCircleSize],
-        [self.iconCircle.heightAnchor constraintEqualToConstant:kIconCircleSize],
-    ]];
+    HAActivateConstraints(@[
+        HACon([self.iconCircle.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor]),
+        HACon([self.iconCircle.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:padding + 4]),
+        HACon([self.iconCircle.widthAnchor constraintEqualToConstant:kIconCircleSize]),
+        HACon([self.iconCircle.heightAnchor constraintEqualToConstant:kIconCircleSize]),
+    ]);
 
     // Icon label: centered inside circle
-    [NSLayoutConstraint activateConstraints:@[
-        [self.iconLabel.centerXAnchor constraintEqualToAnchor:self.iconCircle.centerXAnchor],
-        [self.iconLabel.centerYAnchor constraintEqualToAnchor:self.iconCircle.centerYAnchor],
-    ]];
+    HACenterIn(self.iconLabel, self.iconCircle, YES, YES);
 
     // Status label: below icon circle, centered
-    [NSLayoutConstraint activateConstraints:@[
-        [self.statusLabel2.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor],
-        [self.statusLabel2.topAnchor constraintEqualToAnchor:self.iconCircle.bottomAnchor constant:4],
-        [self.statusLabel2.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.contentView.leadingAnchor constant:padding],
-        [self.statusLabel2.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-padding],
-    ]];
+    HAActivateConstraints(@[
+        HACon([self.statusLabel2.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor]),
+        HACon([self.statusLabel2.topAnchor constraintEqualToAnchor:self.iconCircle.bottomAnchor constant:4]),
+        HACon([self.statusLabel2.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.contentView.leadingAnchor constant:padding]),
+        HACon([self.statusLabel2.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-padding]),
+    ]);
 
     // Buttons don't use auto layout — positioned in layoutSubviews for dynamic visibility
     self.playPauseButton.translatesAutoresizingMaskIntoConstraints = YES;
@@ -113,6 +114,16 @@ static const CGFloat kButtonSpacing  = 12.0;
     CGFloat padding = 10.0;
     CGFloat contentW = self.contentView.bounds.size.width;
     CGFloat contentH = self.contentView.bounds.size.height;
+
+    if (!HAAutoLayoutAvailable()) {
+        // Icon circle: centered horizontally, near top
+        self.iconCircle.frame = CGRectMake((contentW - kIconCircleSize) / 2.0, padding + 4, kIconCircleSize, kIconCircleSize);
+        self.iconLabel.frame = CGRectMake(0, 0, kIconCircleSize, kIconCircleSize);
+
+        // Status label: below icon, centered
+        CGSize statusSize = [self.statusLabel2 sizeThatFits:CGSizeMake(contentW - padding * 2, CGFLOAT_MAX)];
+        self.statusLabel2.frame = CGRectMake((contentW - statusSize.width) / 2.0, CGRectGetMaxY(self.iconCircle.frame) + 4, statusSize.width, statusSize.height);
+    }
 
     // Collect visible buttons
     NSMutableArray<UIButton *> *visibleButtons = [NSMutableArray array];
@@ -267,11 +278,7 @@ static const CGFloat kButtonSpacing  = 12.0;
 
     // Set the robot-vacuum MDI glyph
     NSString *glyph = [HAIconMapper glyphForIconName:@"robot-vacuum"] ?: @"\u2699"; // fallback gear
-    NSAttributedString *iconAttr = [[NSAttributedString alloc] initWithString:glyph
-        attributes:@{
-            NSFontAttributeName: [HAIconMapper mdiFontOfSize:kIconFontSize],
-            NSForegroundColorAttributeName: iconColor
-        }];
+    NSAttributedString *iconAttr = [HAIconMapper attributedGlyph:glyph fontSize:kIconFontSize color:iconColor];
     self.iconLabel.attributedText = iconAttr;
 }
 
@@ -299,7 +306,7 @@ static const CGFloat kButtonSpacing  = 12.0;
     if (fanSpeed) {
         [self.fanSpeedButton setAttributedTitle:nil forState:UIControlStateNormal];
         [self.fanSpeedButton setTitle:fanSpeed forState:UIControlStateNormal];
-        self.fanSpeedButton.titleLabel.font = [UIFont systemFontOfSize:10 weight:UIFontWeightMedium];
+        self.fanSpeedButton.titleLabel.font = [UIFont ha_systemFontOfSize:10 weight:HAFontWeightMedium];
         [self.fanSpeedButton setTitleColor:[HATheme primaryTextColor] forState:UIControlStateNormal];
     } else {
         [self setButton:self.fanSpeedButton iconName:@"fan"];
@@ -317,13 +324,7 @@ static const CGFloat kButtonSpacing  = 12.0;
 }
 
 - (void)setButton:(UIButton *)button iconName:(NSString *)iconName {
-    NSString *glyph = [HAIconMapper glyphForIconName:iconName] ?: @"?";
-    NSAttributedString *attr = [[NSAttributedString alloc] initWithString:glyph
-        attributes:@{
-            NSFontAttributeName: [HAIconMapper mdiFontOfSize:kButtonIconSize],
-            NSForegroundColorAttributeName: [HATheme primaryTextColor]
-        }];
-    [button setAttributedTitle:attr forState:UIControlStateNormal];
+    [HAIconMapper setIconName:iconName onButton:button size:kButtonIconSize color:[HATheme primaryTextColor]];
 }
 
 #pragma mark - Actions

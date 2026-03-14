@@ -1,5 +1,6 @@
 #import "HATheme.h"
 #import "HASunBasedTheme.h"
+#import "HAAutoLayout.h"
 #import "HASoftwareBlur.h"
 #include <dlfcn.h>
 #include <TargetConditionals.h>
@@ -88,6 +89,7 @@ static NSString *const kBlurDisabledKey    = @"HABlurDisabled";
 }
 
 + (BOOL)canBlur {
+    if (![UIVisualEffectView class]) return NO;  // iOS 5-7: no native blur
     if (UIAccessibilityIsReduceTransparencyEnabled()) return NO;
     static BOOL checked = NO;
     static BOOL hardwareCanBlur = YES;
@@ -332,7 +334,7 @@ static UIImage *_blurredGradientCache = nil;
     // useful when the device doesn't respect system appearance settings.
     // Use NSProcessInfo instead of @available because @available checks the
     // SDK version on RosettaSim x86_64 simulators, returning YES on iOS 9.3.
-    if ([NSProcessInfo processInfo].operatingSystemVersion.majorVersion >= 13
+    if (HASystemMajorVersion() >= 13
         && ![self forceSunEntity]) {
         if (@available(iOS 13.0, *)) {
             return [UITraitCollection currentTraitCollection].userInterfaceStyle == UIUserInterfaceStyleDark;
@@ -402,7 +404,7 @@ static UIImage *_blurredGradientCache = nil;
     // the sun-based theme posts HAThemeDidChangeNotification to trigger
     // manual refreshes.  Use NSProcessInfo instead of @available because
     // @available misreports on RosettaSim legacy simulators.
-    if ([NSProcessInfo processInfo].operatingSystemVersion.majorVersion >= 13) {
+    if (HASystemMajorVersion() >= 13) {
         if (@available(iOS 13.0, *)) {
             return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
                 return tc.userInterfaceStyle == UIUserInterfaceStyleDark ? dark : light;
@@ -425,7 +427,7 @@ static UIImage *_blurredGradientCache = nil;
     if (![self isGradientEnabled]) return [self colorWithLight:light dark:dark];
     UIColor *gColor = [self effectiveDarkMode] ? gradientDark : gradientLight;
     // On iOS 13+, wrap in dynamic provider so trait changes resolve correctly
-    if ([NSProcessInfo processInfo].operatingSystemVersion.majorVersion >= 13) {
+    if (HASystemMajorVersion() >= 13) {
         if (@available(iOS 13.0, *)) {
             return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
                 return tc.userInterfaceStyle == UIUserInterfaceStyleDark ? gradientDark : gradientLight;

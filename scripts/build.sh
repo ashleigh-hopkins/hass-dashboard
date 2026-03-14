@@ -7,7 +7,7 @@ set -euo pipefail
 #
 # Usage:
 #   scripts/build.sh sim           # Simulator build (arm64, iOS 15+)
-#   scripts/build.sh rosettasim    # Legacy simulator build (x86_64, iOS 9.0+, RosettaSim)
+#   scripts/build.sh rosettasim    # Legacy simulator build (x86_64, iOS 5.1+, RosettaSim)
 #   scripts/build.sh device        # Universal device build (armv7+arm64)
 #
 # The rosettasim target builds with Xcode 26 xcodebuild but sets
@@ -185,7 +185,7 @@ build_device() {
     for src in "${SOURCES[@]}"; do
         local OBJ_NAME=$(echo "$src" | sed 's|/|_|g; s|\.m$|.o|')
         if "$CLANG" \
-            --target=armv7-apple-ios9.0 \
+            --target=armv7-apple-ios5.1 \
             -isysroot "$XCODE26_SDK" \
             -x objective-c -fobjc-arc -fmodules -Os -DNDEBUG -g -w \
             "${INCLUDE_FLAGS[@]}" \
@@ -195,7 +195,7 @@ build_device() {
             ERRORS=$((ERRORS + 1))
             if [ $ERRORS -le 3 ]; then
                 echo "   FAIL: $src" >&2
-                "$CLANG" --target=armv7-apple-ios9.0 -isysroot "$XCODE26_SDK" \
+                "$CLANG" --target=armv7-apple-ios5.1 -isysroot "$XCODE26_SDK" \
                     -x objective-c -fobjc-arc -fmodules -Os -DNDEBUG \
                     "${INCLUDE_FLAGS[@]}" -c "$PROJECT_DIR/$src" -o /dev/null 2>&1 | grep 'error:' | head -3 >&2
             fi
@@ -208,16 +208,25 @@ build_device() {
     fi
     echo "   Compiled $COMPILED files" >&2
 
-    # Link against Xcode 13 SDK with platform_version override
+    # Assemble the iOS 5.1 C runtime startup stub (provides _start for LC_UNIXTHREAD)
+    echo "   Assembling crt_start_armv7.s..." >&2
+    "$CLANG" \
+        --target=armv7-apple-ios5.1 \
+        -isysroot "$XCODE13_SDK" \
+        -c "$PROJECT_DIR/HADashboard/Compat/crt_start_armv7.s" \
+        -o "$BUILD_DIR/armv7-obj/crt_start_armv7.o"
+
+    # Link against Xcode 13 SDK with -nostartfiles (we provide our own _start)
     echo "   Linking armv7..." >&2
     "$CLANG" \
-        --target=armv7-apple-ios9.0 \
+        --target=armv7-apple-ios5.1 \
         -isysroot "$XCODE13_SDK" \
+        -nostartfiles \
         -framework Foundation -framework UIKit -framework CoreFoundation \
         -framework CoreGraphics -framework CoreText -framework QuartzCore \
         -framework Security -framework CFNetwork \
         -fobjc-arc -dead_strip \
-        -Xlinker -platform_version -Xlinker ios -Xlinker 9.0 -Xlinker "$SDK_VER" \
+        -Xlinker -platform_version -Xlinker ios -Xlinker 5.1 -Xlinker "$SDK_VER" \
         "$BUILD_DIR/armv7-obj"/*.o \
         -o "$BUILD_DIR/armv7-thin"
 
@@ -273,7 +282,8 @@ build_device() {
         -output "$APP/HA Dashboard.tmp"
     mv "$APP/HA Dashboard.tmp" "$APP/HA Dashboard"
 
-    # Recompile LaunchScreen for iOS 9 compatibility
+    # Recompile LaunchScreen for iOS 9 (storyboard launch screens require iOS 8+;
+    # iOS 5 uses Default.png instead, so this only needs to work on iOS 9+)
     echo "   Recompiling LaunchScreen for iOS 9..." >&2
     xcrun ibtool --compile "$APP/LaunchScreen.storyboardc" \
         "$PROJECT_DIR/HADashboard/LaunchScreen.storyboard" \
@@ -283,7 +293,7 @@ build_device() {
     # Patch Info.plist
     echo "   Patching Info.plist..." >&2
     local PLIST="$APP/Info.plist"
-    plutil -replace MinimumOSVersion -string "9.0" "$PLIST"
+    plutil -replace MinimumOSVersion -string "5.1" "$PLIST"
     plutil -remove UIRequiredDeviceCapabilities "$PLIST" 2>/dev/null || true
     plutil -insert UIRequiredDeviceCapabilities -json '["armv7"]' "$PLIST"
     plutil -remove UILaunchScreen "$PLIST" 2>/dev/null || true

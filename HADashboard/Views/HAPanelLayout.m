@@ -1,4 +1,5 @@
 #import "HAPanelLayout.h"
+#import "HACellCompat.h"
 
 @interface HAPanelLayout ()
 @property (nonatomic, strong) UICollectionViewLayoutAttributes *panelAttributes;
@@ -39,7 +40,7 @@
     height = MAX(height, cv.bounds.size.height);
 
     UICollectionViewLayoutAttributes *attr =
-        [UICollectionViewLayoutAttributes layoutAttributesForCellWithIndexPath:indexPath];
+        [HACollectionViewLayoutAttributesBase layoutAttributesForCellWithIndexPath:indexPath];
     attr.frame = CGRectMake(0, 0, width, height);
     self.panelAttributes = attr;
 

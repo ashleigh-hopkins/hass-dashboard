@@ -1,3 +1,4 @@
+#import "HAAutoLayout.h"
 #import "HAClockWeatherCell.h"
 #import "HADateUtils.h"
 #import "HAEntity.h"
@@ -7,6 +8,7 @@
 #import "HAConnectionManager.h"
 #import "LOTAnimationView.h"
 #import "HAWeatherHelper.h"
+#import "UIFont+HACompat.h"
 
 /// Top content height: padding(12) + max(icon 80, text chain ~96) = ~110pt
 static const CGFloat kTopContentHeight = 110.0;
@@ -73,7 +75,7 @@ static const CGFloat kBottomPadding = 12.0;
 
     // Condition text (top-right): "Rainy, 7C"
     self.conditionLabel = [[UILabel alloc] init];
-    self.conditionLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightMedium];
+    self.conditionLabel.font = [UIFont ha_systemFontOfSize:15 weight:HAFontWeightMedium];
     self.conditionLabel.textColor = [HATheme primaryTextColor];
     self.conditionLabel.numberOfLines = 1;
     self.conditionLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -89,7 +91,7 @@ static const CGFloat kBottomPadding = 12.0;
 
     // Clock (large digital)
     self.clockLabel = [[UILabel alloc] init];
-    self.clockLabel.font = [UIFont monospacedDigitSystemFontOfSize:44 weight:UIFontWeightLight];
+    self.clockLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:44 weight:HAFontWeightLight];
     self.clockLabel.textColor = [HATheme primaryTextColor];
     self.clockLabel.textAlignment = NSTextAlignmentLeft;
     self.clockLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -110,59 +112,69 @@ static const CGFloat kBottomPadding = 12.0;
     // --- Layout ---
 
     // Weather icon (MDI fallback / Lottie placeholder position)
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.weatherIconLabel attribute:NSLayoutAttributeLeading
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeLeading multiplier:1 constant:padding]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.weatherIconLabel attribute:NSLayoutAttributeTop
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTop multiplier:1 constant:padding]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.weatherIconLabel attribute:NSLayoutAttributeWidth
-        relatedBy:NSLayoutRelationEqual toItem:nil attribute:NSLayoutAttributeNotAnAttribute multiplier:1 constant:iconSize]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.weatherIconLabel attribute:NSLayoutAttributeHeight
-        relatedBy:NSLayoutRelationEqual toItem:nil attribute:NSLayoutAttributeNotAnAttribute multiplier:1 constant:iconSize]];
+    HAActivateConstraints(@[
+        HACon([NSLayoutConstraint constraintWithItem:self.weatherIconLabel attribute:NSLayoutAttributeLeading
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeLeading multiplier:1 constant:padding]),
+        HACon([NSLayoutConstraint constraintWithItem:self.weatherIconLabel attribute:NSLayoutAttributeTop
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTop multiplier:1 constant:padding]),
+        HACon([NSLayoutConstraint constraintWithItem:self.weatherIconLabel attribute:NSLayoutAttributeWidth
+            relatedBy:NSLayoutRelationEqual toItem:nil attribute:NSLayoutAttributeNotAnAttribute multiplier:1 constant:iconSize]),
+        HACon([NSLayoutConstraint constraintWithItem:self.weatherIconLabel attribute:NSLayoutAttributeHeight
+            relatedBy:NSLayoutRelationEqual toItem:nil attribute:NSLayoutAttributeNotAnAttribute multiplier:1 constant:iconSize]),
+    ]);
 
     // Condition label: right of icon, aligned to top
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.conditionLabel attribute:NSLayoutAttributeLeading
-        relatedBy:NSLayoutRelationEqual toItem:self.weatherIconLabel attribute:NSLayoutAttributeTrailing multiplier:1 constant:8]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.conditionLabel attribute:NSLayoutAttributeTrailing
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTrailing multiplier:1 constant:-padding]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.conditionLabel attribute:NSLayoutAttributeTop
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTop multiplier:1 constant:padding]];
+    HAActivateConstraints(@[
+        HACon([NSLayoutConstraint constraintWithItem:self.conditionLabel attribute:NSLayoutAttributeLeading
+            relatedBy:NSLayoutRelationEqual toItem:self.weatherIconLabel attribute:NSLayoutAttributeTrailing multiplier:1 constant:8]),
+        HACon([NSLayoutConstraint constraintWithItem:self.conditionLabel attribute:NSLayoutAttributeTrailing
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTrailing multiplier:1 constant:-padding]),
+        HACon([NSLayoutConstraint constraintWithItem:self.conditionLabel attribute:NSLayoutAttributeTop
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTop multiplier:1 constant:padding]),
+    ]);
 
     // Humidity: below condition
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.humidityLabel attribute:NSLayoutAttributeLeading
-        relatedBy:NSLayoutRelationEqual toItem:self.conditionLabel attribute:NSLayoutAttributeLeading multiplier:1 constant:0]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.humidityLabel attribute:NSLayoutAttributeTrailing
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTrailing multiplier:1 constant:-padding]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.humidityLabel attribute:NSLayoutAttributeTop
-        relatedBy:NSLayoutRelationEqual toItem:self.conditionLabel attribute:NSLayoutAttributeBottom multiplier:1 constant:2]];
+    HAActivateConstraints(@[
+        HACon([NSLayoutConstraint constraintWithItem:self.humidityLabel attribute:NSLayoutAttributeLeading
+            relatedBy:NSLayoutRelationEqual toItem:self.conditionLabel attribute:NSLayoutAttributeLeading multiplier:1 constant:0]),
+        HACon([NSLayoutConstraint constraintWithItem:self.humidityLabel attribute:NSLayoutAttributeTrailing
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTrailing multiplier:1 constant:-padding]),
+        HACon([NSLayoutConstraint constraintWithItem:self.humidityLabel attribute:NSLayoutAttributeTop
+            relatedBy:NSLayoutRelationEqual toItem:self.conditionLabel attribute:NSLayoutAttributeBottom multiplier:1 constant:2]),
+    ]);
 
     // Clock: right of icon, below humidity
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.clockLabel attribute:NSLayoutAttributeLeading
-        relatedBy:NSLayoutRelationEqual toItem:self.conditionLabel attribute:NSLayoutAttributeLeading multiplier:1 constant:0]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.clockLabel attribute:NSLayoutAttributeTrailing
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTrailing multiplier:1 constant:-padding]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.clockLabel attribute:NSLayoutAttributeTop
-        relatedBy:NSLayoutRelationEqual toItem:self.humidityLabel attribute:NSLayoutAttributeBottom multiplier:1 constant:4]];
+    HAActivateConstraints(@[
+        HACon([NSLayoutConstraint constraintWithItem:self.clockLabel attribute:NSLayoutAttributeLeading
+            relatedBy:NSLayoutRelationEqual toItem:self.conditionLabel attribute:NSLayoutAttributeLeading multiplier:1 constant:0]),
+        HACon([NSLayoutConstraint constraintWithItem:self.clockLabel attribute:NSLayoutAttributeTrailing
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTrailing multiplier:1 constant:-padding]),
+        HACon([NSLayoutConstraint constraintWithItem:self.clockLabel attribute:NSLayoutAttributeTop
+            relatedBy:NSLayoutRelationEqual toItem:self.humidityLabel attribute:NSLayoutAttributeBottom multiplier:1 constant:4]),
+    ]);
 
     // Date: below clock
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.dateLabel attribute:NSLayoutAttributeLeading
-        relatedBy:NSLayoutRelationEqual toItem:self.conditionLabel attribute:NSLayoutAttributeLeading multiplier:1 constant:0]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.dateLabel attribute:NSLayoutAttributeTrailing
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTrailing multiplier:1 constant:-padding]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.dateLabel attribute:NSLayoutAttributeTop
-        relatedBy:NSLayoutRelationEqual toItem:self.clockLabel attribute:NSLayoutAttributeBottom multiplier:1 constant:0]];
+    HAActivateConstraints(@[
+        HACon([NSLayoutConstraint constraintWithItem:self.dateLabel attribute:NSLayoutAttributeLeading
+            relatedBy:NSLayoutRelationEqual toItem:self.conditionLabel attribute:NSLayoutAttributeLeading multiplier:1 constant:0]),
+        HACon([NSLayoutConstraint constraintWithItem:self.dateLabel attribute:NSLayoutAttributeTrailing
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTrailing multiplier:1 constant:-padding]),
+        HACon([NSLayoutConstraint constraintWithItem:self.dateLabel attribute:NSLayoutAttributeTop
+            relatedBy:NSLayoutRelationEqual toItem:self.clockLabel attribute:NSLayoutAttributeBottom multiplier:1 constant:0]),
+    ]);
 
     // Forecast bar: pinned to bottom, must not overlap date label or icon
-    self.forecastHeightConstraint = [self.forecastBarView.heightAnchor constraintEqualToConstant:28.0];
-    NSLayoutConstraint *forecastBelowDate = [self.forecastBarView.topAnchor constraintGreaterThanOrEqualToAnchor:self.dateLabel.bottomAnchor constant:kForecastGap];
-    NSLayoutConstraint *forecastBelowIcon = [self.forecastBarView.topAnchor constraintGreaterThanOrEqualToAnchor:self.weatherIconLabel.bottomAnchor constant:kForecastGap];
-    [NSLayoutConstraint activateConstraints:@[
-        [self.forecastBarView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding],
-        [self.forecastBarView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-padding],
-        [self.forecastBarView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-padding],
-        self.forecastHeightConstraint,
-        forecastBelowDate,
-        forecastBelowIcon,
-    ]];
+    self.forecastHeightConstraint = HAMakeConstraint([self.forecastBarView.heightAnchor constraintEqualToConstant:28.0]);
+    NSLayoutConstraint *forecastBelowDate = HAMakeConstraint([self.forecastBarView.topAnchor constraintGreaterThanOrEqualToAnchor:self.dateLabel.bottomAnchor constant:kForecastGap]);
+    NSLayoutConstraint *forecastBelowIcon = HAMakeConstraint([self.forecastBarView.topAnchor constraintGreaterThanOrEqualToAnchor:self.weatherIconLabel.bottomAnchor constant:kForecastGap]);
+    HAActivateConstraints(@[
+        HACon([self.forecastBarView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding]),
+        HACon([self.forecastBarView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-padding]),
+        HACon([self.forecastBarView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-padding]),
+        HACon(self.forecastHeightConstraint),
+        HACon(forecastBelowDate),
+        HACon(forecastBelowIcon),
+    ]);
 
     // Initialize formatters
     self.clockFormatter = [[NSDateFormatter alloc] init];
@@ -403,7 +415,7 @@ static const CGFloat kBottomPadding = 12.0;
 
     NSString *unit = [entity weatherTemperatureUnit] ?: @"°";
     UIFont *textFont = [UIFont systemFontOfSize:11];
-    UIFont *iconFont = [HAIconMapper mdiFontOfSize:14];
+    CGFloat iconFontSize = 14;
     UIColor *textColor = [HATheme secondaryTextColor];
     CGFloat barHeight = 28.0;
     CGFloat rowY = 0;
@@ -443,9 +455,13 @@ static const CGFloat kBottomPadding = 12.0;
 
         // Weather icon
         UILabel *iconLabel = [[UILabel alloc] initWithFrame:CGRectMake(x, rowY, 20, barHeight)];
-        iconLabel.text = dayGlyph ?: @"?";
-        iconLabel.font = dayGlyph ? iconFont : textFont;
-        iconLabel.textColor = textColor;
+        if (dayGlyph) {
+            iconLabel.attributedText = [HAIconMapper attributedGlyph:dayGlyph fontSize:iconFontSize color:textColor];
+        } else {
+            iconLabel.text = @"?";
+            iconLabel.font = textFont;
+            iconLabel.textColor = textColor;
+        }
         iconLabel.textAlignment = NSTextAlignmentCenter;
         [self.forecastBarView addSubview:iconLabel];
         x += 24;
@@ -550,7 +566,13 @@ static const CGFloat kBottomPadding = 12.0;
 - (void)loadWeatherIconForCondition:(NSString *)condition {
     // Determine day/night
     NSCalendar *cal = [NSCalendar currentCalendar];
-    NSInteger hour = [cal component:NSCalendarUnitHour fromDate:[NSDate date]];
+    NSInteger hour;
+    if ([cal respondsToSelector:@selector(component:fromDate:)]) {
+        hour = [cal component:NSCalendarUnitHour fromDate:[NSDate date]];
+    } else {
+        NSDateComponents *comps = [cal components:NSHourCalendarUnit fromDate:[NSDate date]];
+        hour = [comps hour];
+    }
     BOOL isDaytime = (hour >= 6 && hour < 20);
 
     NSString *iconName = [[self class] iconFileNameForCondition:condition isDaytime:isDaytime];
@@ -607,27 +629,27 @@ static const CGFloat kBottomPadding = 12.0;
         anim.fromValue = @0; anim.toValue = @(M_PI * 2);
         anim.duration = 12.0;
         key = @"sunRotation";
-    } else if ([condition containsString:@"rainy"] || [condition isEqualToString:@"pouring"]) {
+    } else if (([condition rangeOfString:@"rainy"].location != NSNotFound) || [condition isEqualToString:@"pouring"]) {
         anim = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
         anim.fromValue = @(-2); anim.toValue = @(2);
         anim.duration = 1.5; anim.autoreverses = YES;
         key = @"rainBounce";
-    } else if ([condition containsString:@"cloudy"]) {
+    } else if ([condition rangeOfString:@"cloudy"].location != NSNotFound) {
         anim = [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
         anim.fromValue = @(-3); anim.toValue = @(3);
         anim.duration = 3.0; anim.autoreverses = YES;
         key = @"cloudDrift";
-    } else if ([condition containsString:@"wind"]) {
+    } else if ([condition rangeOfString:@"wind"].location != NSNotFound) {
         anim = [CABasicAnimation animationWithKeyPath:@"transform.rotation.z"];
         anim.fromValue = @(-0.1); anim.toValue = @(0.1);
         anim.duration = 0.8; anim.autoreverses = YES;
         key = @"windSway";
-    } else if ([condition containsString:@"lightning"]) {
+    } else if ([condition rangeOfString:@"lightning"].location != NSNotFound) {
         anim = [CABasicAnimation animationWithKeyPath:@"opacity"];
         anim.fromValue = @(1.0); anim.toValue = @(0.4);
         anim.duration = 0.3; anim.autoreverses = YES;
         key = @"lightningFlash";
-    } else if ([condition containsString:@"snowy"]) {
+    } else if ([condition rangeOfString:@"snowy"].location != NSNotFound) {
         anim = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
         anim.fromValue = @(-2); anim.toValue = @(2);
         anim.duration = 2.0; anim.autoreverses = YES;
@@ -648,6 +670,45 @@ static const CGFloat kBottomPadding = 12.0;
         anim.repeatCount = HUGE_VALF;
         anim.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
         [self.weatherIconLabel.layer addAnimation:anim forKey:key];
+    }
+}
+
+#pragma mark - Layout
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    if (!HAAutoLayoutAvailable()) {
+        CGFloat w = self.contentView.bounds.size.width;
+        CGFloat h = self.contentView.bounds.size.height;
+        CGFloat padding = 12.0;
+        CGFloat iconSize = 80.0;
+
+        // Weather icon: top-left
+        self.weatherIconLabel.frame = CGRectMake(padding, padding, iconSize, iconSize);
+        if (self.lottieView) {
+            self.lottieView.frame = self.weatherIconLabel.frame;
+        }
+
+        // Text column: right of icon
+        CGFloat textX = padding + iconSize + 8;
+        CGFloat textW = w - textX - padding;
+
+        CGSize condSize = [self.conditionLabel sizeThatFits:CGSizeMake(textW, CGFLOAT_MAX)];
+        self.conditionLabel.frame = CGRectMake(textX, padding, textW, condSize.height);
+
+        CGSize humidSize = [self.humidityLabel sizeThatFits:CGSizeMake(textW, CGFLOAT_MAX)];
+        self.humidityLabel.frame = CGRectMake(textX, CGRectGetMaxY(self.conditionLabel.frame) + 2, textW, humidSize.height);
+
+        CGSize clockSize = [self.clockLabel sizeThatFits:CGSizeMake(textW, CGFLOAT_MAX)];
+        self.clockLabel.frame = CGRectMake(textX, CGRectGetMaxY(self.humidityLabel.frame) + 4, textW, clockSize.height);
+
+        CGSize dateSize = [self.dateLabel sizeThatFits:CGSizeMake(textW, CGFLOAT_MAX)];
+        self.dateLabel.frame = CGRectMake(textX, CGRectGetMaxY(self.clockLabel.frame), textW, dateSize.height);
+
+        // Forecast bar: bottom area
+        CGFloat forecastH = h - kTopContentHeight - kForecastGap - padding;
+        if (forecastH < 20) forecastH = 20;
+        self.forecastBarView.frame = CGRectMake(padding, kTopContentHeight + kForecastGap, w - padding * 2, forecastH);
     }
 }
 

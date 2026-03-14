@@ -1,19 +1,23 @@
+#import "HAAutoLayout.h"
+#import "HAStackView.h"
 #import "HAAreaCardCell.h"
 #import "HAEntity.h"
 #import "HAConnectionManager.h"
 #import "HAAuthManager.h"
+#import "HAHTTPClient.h"
 #import "HADashboardConfig.h"
 #import "HATheme.h"
 #import "HAHaptics.h"
 #import "HAIconMapper.h"
 #import "HAEntityDisplayHelper.h"
+#import "UIFont+HACompat.h"
 
 @interface HAAreaCardCell ()
 @property (nonatomic, strong) UIImageView *bgImageView;
 @property (nonatomic, strong) UILabel *areaNameLabel;
 @property (nonatomic, strong) UILabel *sensorSummaryLabel;
-@property (nonatomic, strong) UIStackView *toggleStack;
-@property (nonatomic, strong) NSURLSessionDataTask *imageTask;
+@property (nonatomic, strong) HAStackView *toggleStack;
+@property (nonatomic, strong) id imageTask;
 @property (nonatomic, strong) NSArray<NSString *> *toggleEntityIds;
 @end
 
@@ -43,43 +47,43 @@
 
     // Area name (large, white over image)
     self.areaNameLabel = [[UILabel alloc] init];
-    self.areaNameLabel.font = [UIFont systemFontOfSize:18 weight:UIFontWeightBold];
+    self.areaNameLabel.font = [UIFont ha_systemFontOfSize:18 weight:HAFontWeightBold];
     self.areaNameLabel.textColor = [UIColor whiteColor];
     self.areaNameLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:self.areaNameLabel];
 
     // Sensor summary (temp, humidity — below area name)
     self.sensorSummaryLabel = [[UILabel alloc] init];
-    self.sensorSummaryLabel.font = [UIFont systemFontOfSize:12 weight:UIFontWeightMedium];
+    self.sensorSummaryLabel.font = [UIFont ha_systemFontOfSize:12 weight:HAFontWeightMedium];
     self.sensorSummaryLabel.textColor = [[UIColor whiteColor] colorWithAlphaComponent:0.85];
     self.sensorSummaryLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:self.sensorSummaryLabel];
 
     // Toggle buttons (lights, switches, fans)
-    self.toggleStack = [[UIStackView alloc] init];
-    self.toggleStack.axis = UILayoutConstraintAxisHorizontal;
+    self.toggleStack = [[HAStackView alloc] init];
+    self.toggleStack.axis = 0;
     self.toggleStack.spacing = 8;
     self.toggleStack.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:self.toggleStack];
 
     CGFloat pad = 12;
-    [NSLayoutConstraint activateConstraints:@[
-        [self.bgImageView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
-        [self.bgImageView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
-        [self.bgImageView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
-        [self.bgImageView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
-        [overlay.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
-        [overlay.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
-        [overlay.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
-        [overlay.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
-        [self.areaNameLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:pad],
-        [self.areaNameLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:pad],
-        [self.areaNameLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-pad],
-        [self.sensorSummaryLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:pad],
-        [self.sensorSummaryLabel.topAnchor constraintEqualToAnchor:self.areaNameLabel.bottomAnchor constant:2],
-        [self.toggleStack.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-pad],
-        [self.toggleStack.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-pad],
-    ]];
+    HAActivateConstraints(@[
+        HACon([self.bgImageView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor]),
+        HACon([self.bgImageView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor]),
+        HACon([self.bgImageView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor]),
+        HACon([self.bgImageView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor]),
+        HACon([overlay.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor]),
+        HACon([overlay.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor]),
+        HACon([overlay.topAnchor constraintEqualToAnchor:self.contentView.topAnchor]),
+        HACon([overlay.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor]),
+        HACon([self.areaNameLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:pad]),
+        HACon([self.areaNameLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:pad]),
+        HACon([self.areaNameLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-pad]),
+        HACon([self.sensorSummaryLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:pad]),
+        HACon([self.sensorSummaryLabel.topAnchor constraintEqualToAnchor:self.areaNameLabel.bottomAnchor constant:2]),
+        HACon([self.toggleStack.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-pad]),
+        HACon([self.toggleStack.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-pad]),
+    ]);
 }
 
 - (void)configureWithSection:(HADashboardConfigSection *)section
@@ -132,25 +136,30 @@
     NSInteger maxToggles = MIN((NSInteger)toggleIds.count, 4);
     for (NSInteger i = 0; i < maxToggles; i++) {
         HAEntity *entity = entities[toggleIds[i]];
-        UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
-        NSString *glyph = [HAEntityDisplayHelper iconGlyphForEntity:entity];
-        [btn setTitle:glyph forState:UIControlStateNormal];
-        btn.titleLabel.font = [HAIconMapper mdiFontOfSize:18];
-        [btn setTitleColor:[entity isOn] ? [UIColor yellowColor] : [[UIColor whiteColor] colorWithAlphaComponent:0.7]
-                  forState:UIControlStateNormal];
+        UIButton *btn = HASystemButton();
+        NSString *iconName = [entity icon];
+        if (!iconName) {
+            NSString *domain = [entity domain];
+            if ([domain isEqualToString:@"light"])       iconName = @"lightbulb";
+            else if ([domain isEqualToString:@"switch"]) iconName = @"flash";
+            else if ([domain isEqualToString:@"fan"])    iconName = @"fan";
+            else                                         iconName = @"toggle-switch-variant";
+        }
+        UIColor *iconColor = [entity isOn] ? [UIColor yellowColor] : [[UIColor whiteColor] colorWithAlphaComponent:0.7];
+        [HAIconMapper setIconName:iconName onButton:btn size:18 color:iconColor];
         btn.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.15];
         btn.layer.cornerRadius = 16;
         btn.tag = i;
         [btn addTarget:self action:@selector(toggleTapped:) forControlEvents:UIControlEventTouchUpInside];
-        [NSLayoutConstraint activateConstraints:@[
-            [btn.widthAnchor constraintEqualToConstant:32],
-            [btn.heightAnchor constraintEqualToConstant:32],
-        ]];
+        HAActivateConstraints(@[
+            HACon([btn.widthAnchor constraintEqualToConstant:32]),
+            HACon([btn.heightAnchor constraintEqualToConstant:32]),
+        ]);
         [self.toggleStack addArrangedSubview:btn];
     }
 
     // Load background image
-    [self.imageTask cancel];
+    [[HAHTTPClient sharedClient] cancelTask:self.imageTask];
     self.bgImageView.image = nil;
     NSString *picturePath = configItem.customProperties[@"camera_image"]
                          ?: configItem.customProperties[@"image"];
@@ -165,7 +174,7 @@
                 NSString *token = [[HAAuthManager sharedManager] accessToken];
                 if (token) [req setValue:[NSString stringWithFormat:@"Bearer %@", token] forHTTPHeaderField:@"Authorization"];
                 __weak typeof(self) weakSelf = self;
-                self.imageTask = [[NSURLSession sharedSession] dataTaskWithRequest:req completionHandler:^(NSData *data, NSURLResponse *r, NSError *e) {
+                self.imageTask = [[HAHTTPClient sharedClient] dataTaskWithRequest:req completionHandler:^(NSData *data, NSURLResponse *r, NSError *e) {
                     if (!data) return;
                     UIImage *img = [UIImage imageWithData:data];
                     if (!img) return;
@@ -173,7 +182,6 @@
                         weakSelf.bgImageView.image = img;
                     });
                 }];
-                [self.imageTask resume];
             }
         }
     }
@@ -194,9 +202,50 @@
                                             entityId:eid];
 }
 
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    if (!HAAutoLayoutAvailable()) {
+        CGFloat w = self.contentView.bounds.size.width;
+        CGFloat h = self.contentView.bounds.size.height;
+        CGFloat pad = 12;
+
+        // bgImageView + overlay: fill contentView
+        for (UIView *sub in self.contentView.subviews) {
+            if ([sub isKindOfClass:[UIImageView class]] && sub == self.bgImageView) {
+                sub.frame = self.contentView.bounds;
+            }
+        }
+        self.bgImageView.frame = self.contentView.bounds;
+        // Overlay is the subview inserted above bgImageView
+        for (UIView *sub in self.contentView.subviews) {
+            if (sub != self.bgImageView && sub != self.areaNameLabel && sub != self.sensorSummaryLabel && sub != self.toggleStack && sub.tag == 0 && [sub.backgroundColor isEqual:[[UIColor blackColor] colorWithAlphaComponent:0.3]]) {
+                sub.frame = self.contentView.bounds;
+                break;
+            }
+        }
+
+        // areaNameLabel: top-left
+        CGSize nameSize = [self.areaNameLabel sizeThatFits:CGSizeMake(w - pad * 2, CGFLOAT_MAX)];
+        self.areaNameLabel.frame = CGRectMake(pad, pad, MIN(nameSize.width, w - pad * 2), nameSize.height);
+
+        // sensorSummaryLabel: below area name
+        CGSize sensorSize = [self.sensorSummaryLabel sizeThatFits:CGSizeMake(w - pad * 2, CGFLOAT_MAX)];
+        self.sensorSummaryLabel.frame = CGRectMake(pad, CGRectGetMaxY(self.areaNameLabel.frame) + 2, sensorSize.width, sensorSize.height);
+
+        // toggleStack: bottom-right
+        CGSize stackSize = [self.toggleStack sizeThatFits:CGSizeMake(w, 32)];
+        self.toggleStack.frame = CGRectMake(w - pad - stackSize.width, h - pad - 32, stackSize.width, 32);
+
+        // Toggle buttons inside stack need sizing
+        for (UIView *btn in self.toggleStack.arrangedSubviews) {
+            btn.frame = CGRectMake(0, 0, 32, 32);
+        }
+    }
+}
+
 - (void)prepareForReuse {
     [super prepareForReuse];
-    [self.imageTask cancel];
+    [[HAHTTPClient sharedClient] cancelTask:self.imageTask];
     self.imageTask = nil;
     self.bgImageView.image = nil;
     self.areaNameLabel.text = nil;
@@ -206,7 +255,6 @@
         [self.toggleStack removeArrangedSubview:v];
         [v removeFromSuperview];
     }
-    self.contentView.backgroundColor = [HATheme cellBackgroundColor];
 }
 
 @end

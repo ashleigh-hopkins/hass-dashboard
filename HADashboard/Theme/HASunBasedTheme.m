@@ -1,6 +1,7 @@
 #import "HASunBasedTheme.h"
 #import "HADateUtils.h"
 #import "HALog.h"
+#import "HAAutoLayout.h"
 #import "HATheme.h"
 #import "HAConnectionManager.h"
 #import "HAEntity.h"
@@ -31,7 +32,7 @@ static NSString *const kSunEntityId = @"sun.sun";
     // @available checks the SDK version on x86_64 simulators running
     // legacy runtimes under RosettaSim, causing it to return YES even
     // on iOS 9.3.
-    if ([NSProcessInfo processInfo].operatingSystemVersion.majorVersion >= 13
+    if (HASystemMajorVersion() >= 13
         && ![HATheme forceSunEntity]) {
         return;
     }

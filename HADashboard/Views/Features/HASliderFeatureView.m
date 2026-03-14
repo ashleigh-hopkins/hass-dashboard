@@ -1,8 +1,10 @@
+#import "HAAutoLayout.h"
 #import "HASliderFeatureView.h"
 #import "HAEntity.h"
 #import "HATheme.h"
 #import "HAHaptics.h"
 #import "HAEntityDisplayHelper.h"
+#import "UIFont+HACompat.h"
 
 @interface HASliderFeatureView ()
 @property (nonatomic, strong) UISlider *slider;
@@ -39,26 +41,37 @@
 
     self.valueLabel = [[UILabel alloc] init];
     self.valueLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.valueLabel.font = [UIFont systemFontOfSize:11 weight:UIFontWeightMedium];
+    self.valueLabel.font = [UIFont ha_systemFontOfSize:11 weight:HAFontWeightMedium];
     self.valueLabel.textColor = [HATheme secondaryTextColor];
     self.valueLabel.textAlignment = NSTextAlignmentRight;
-    [self.valueLabel setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-    [self.valueLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [self.valueLabel setContentHuggingPriority:UILayoutPriorityRequired forAxis:0];
+    [self.valueLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:0];
     [self addSubview:self.valueLabel];
 
     // Fix #5: use DefaultHigh instead of Required for height constraint
-    NSLayoutConstraint *heightConstraint = [self.heightAnchor constraintEqualToConstant:[HASliderFeatureView preferredHeight]];
+    NSLayoutConstraint *heightConstraint = HAMakeConstraint([self.heightAnchor constraintEqualToConstant:[HASliderFeatureView preferredHeight]]);
     heightConstraint.priority = UILayoutPriorityDefaultHigh;
+    HAActivateConstraints(@[
+        HACon([self.slider.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:12]),
+        HACon([self.slider.centerYAnchor constraintEqualToAnchor:self.centerYAnchor]),
+        HACon([self.slider.trailingAnchor constraintEqualToAnchor:self.valueLabel.leadingAnchor constant:-8]),
+        HACon([self.valueLabel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-12]),
+        HACon([self.valueLabel.centerYAnchor constraintEqualToAnchor:self.centerYAnchor]),
+        HACon([self.valueLabel.widthAnchor constraintGreaterThanOrEqualToConstant:36]),
+        HACon(heightConstraint),
+    ]);
+}
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.slider.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:12],
-        [self.slider.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
-        [self.slider.trailingAnchor constraintEqualToAnchor:self.valueLabel.leadingAnchor constant:-8],
-        [self.valueLabel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-12],
-        [self.valueLabel.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
-        [self.valueLabel.widthAnchor constraintGreaterThanOrEqualToConstant:36],
-        heightConstraint,
-    ]];
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    if (!HAAutoLayoutAvailable()) {
+        CGFloat h = [HASliderFeatureView preferredHeight];
+        CGFloat w = self.bounds.size.width;
+        CGSize valSize = [self.valueLabel sizeThatFits:CGSizeMake(w, h)];
+        CGFloat valW = MAX(36, valSize.width);
+        self.valueLabel.frame = CGRectMake(w - 12 - valW, (h - valSize.height) / 2, valW, valSize.height);
+        self.slider.frame = CGRectMake(12, (h - 31) / 2, w - 24 - 8 - valW, 31);
+    }
 }
 
 - (void)configureWithEntity:(HAEntity *)entity featureConfig:(NSDictionary *)config {

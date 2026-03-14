@@ -3,6 +3,7 @@
 #import "HALog.h"
 #import "HAAuthManager.h"
 #import "HADemoDataProvider.h"
+#import "HAHTTPClient.h"
 #import "NSMutableURLRequest+HAHelpers.h"
 
 @interface HAHistoryManager ()
@@ -62,6 +63,7 @@
                         endDate:(NSDate *)endDate
                       maxPoints:(NSUInteger)maxPoints
                      completion:(void (^)(NSArray *, NSError *))completion {
+    HALogD(@"history", @"fetchHistory: entityId=%@ start=%@ end=%@", entityId, startDate, endDate);
     if (!entityId || !completion) return;
 
     // In demo mode, return fake history data
@@ -91,20 +93,23 @@
     }
 
     NSUInteger capturedMax = effectiveMax;
-    NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+    [[HAHTTPClient sharedClient] dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
         if (error || !data) {
+            HALogD(@"history", @"fetchHistory FAILED: error=%@ dataLen=%lu", error, (unsigned long)data.length);
             ha_dispatchMainCompletion(completion, nil, error);
             return;
         }
 
+        HALogD(@"history", @"fetchHistory response: %lu bytes, HTTP %ld",
+               (unsigned long)data.length, (long)((NSHTTPURLResponse *)response).statusCode);
         NSArray *points = [HAHistoryManager parseHistoryData:data maxPoints:capturedMax];
+        HALogD(@"history", @"fetchHistory parsed: %lu points", (unsigned long)points.count);
         if (points.count > 0) {
             [self.cache setObject:points forKey:cacheKey];
         }
 
         ha_dispatchMainCompletion(completion, points, nil);
     }];
-    [task resume];
 }
 
 - (void)fetchTimelineForEntityId:(NSString *)entityId
@@ -138,7 +143,7 @@
         return;
     }
 
-    NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+    [[HAHTTPClient sharedClient] dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
         if (error || !data) {
             ha_dispatchMainCompletion(completion, nil, error);
             return;
@@ -151,7 +156,6 @@
 
         ha_dispatchMainCompletion(completion, segments, nil);
     }];
-    [task resume];
 }
 
 - (void)clearCache {

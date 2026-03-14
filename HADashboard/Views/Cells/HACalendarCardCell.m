@@ -1,9 +1,12 @@
+#import "HAAutoLayout.h"
 #import "HACalendarCardCell.h"
 #import "HADashboardConfig.h"
 #import "HAAuthManager.h"
+#import "HAHTTPClient.h"
 #import "HADateUtils.h"
 #import "HATheme.h"
 #import "HAIconMapper.h"
+#import "UIFont+HACompat.h"
 
 static const CGFloat kListHeight  = 280.0;
 static const CGFloat kMonthHeight = 380.0;
@@ -34,7 +37,7 @@ static UIColor *sDefaultEventColor;
 @property (nonatomic, assign) HACalendarViewMode viewMode;
 @property (nonatomic, copy) NSArray<NSString *> *entityIds;
 @property (nonatomic, strong) NSArray<HACalendarEvent *> *events;
-@property (nonatomic, strong) NSURLSessionDataTask *fetchTask;
+@property (nonatomic, strong) id fetchTask;
 @property (nonatomic, assign) BOOL needsEventsLoad;
 
 // Navigation state
@@ -98,9 +101,9 @@ static UIColor *sDefaultEventColor;
     [self.contentView addSubview:navBar];
 
     // Today button
-    self.todayButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.todayButton = HASystemButton();
     [self.todayButton setTitle:@"Today" forState:UIControlStateNormal];
-    self.todayButton.titleLabel.font = [UIFont systemFontOfSize:12 weight:UIFontWeightMedium];
+    self.todayButton.titleLabel.font = [UIFont ha_systemFontOfSize:12 weight:HAFontWeightMedium];
     self.todayButton.layer.cornerRadius = 4;
     self.todayButton.layer.borderWidth = 0.5;
     self.todayButton.layer.borderColor = [[HATheme tertiaryTextColor] colorWithAlphaComponent:0.4].CGColor;
@@ -119,7 +122,7 @@ static UIColor *sDefaultEventColor;
                       withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:12 weight:UIImageSymbolWeightMedium]];
     }
 
-    self.prevButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.prevButton = HASystemButton();
     if (chevLeft) {
         [self.prevButton setImage:chevLeft forState:UIControlStateNormal];
     } else {
@@ -129,7 +132,7 @@ static UIColor *sDefaultEventColor;
     self.prevButton.translatesAutoresizingMaskIntoConstraints = NO;
     [navBar addSubview:self.prevButton];
 
-    self.nextButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.nextButton = HASystemButton();
     if (chevRight) {
         [self.nextButton setImage:chevRight forState:UIControlStateNormal];
     } else {
@@ -141,7 +144,7 @@ static UIColor *sDefaultEventColor;
 
     // Date range label
     self.dateRangeLabel = [[UILabel alloc] init];
-    self.dateRangeLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightSemibold];
+    self.dateRangeLabel.font = [UIFont ha_systemFontOfSize:13 weight:HAFontWeightSemibold];
     self.dateRangeLabel.textColor = [HATheme primaryTextColor];
     self.dateRangeLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [navBar addSubview:self.dateRangeLabel];
@@ -156,7 +159,7 @@ static UIColor *sDefaultEventColor;
                      withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:14 weight:UIImageSymbolWeightRegular]];
     }
 
-    self.monthViewBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.monthViewBtn = HASystemButton();
     if (calIcon) {
         [self.monthViewBtn setImage:calIcon forState:UIControlStateNormal];
     } else {
@@ -166,7 +169,7 @@ static UIColor *sDefaultEventColor;
     self.monthViewBtn.translatesAutoresizingMaskIntoConstraints = NO;
     [navBar addSubview:self.monthViewBtn];
 
-    self.listViewBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.listViewBtn = HASystemButton();
     if (listIcon) {
         [self.listViewBtn setImage:listIcon forState:UIControlStateNormal];
     } else {
@@ -176,46 +179,46 @@ static UIColor *sDefaultEventColor;
     self.listViewBtn.translatesAutoresizingMaskIntoConstraints = NO;
     [navBar addSubview:self.listViewBtn];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [navBar.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:8],
-        [navBar.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kPadding],
-        [navBar.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kPadding],
-        [navBar.heightAnchor constraintEqualToConstant:kNavBarHeight],
+    HAActivateConstraints(@[
+        HACon([navBar.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:8]),
+        HACon([navBar.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kPadding]),
+        HACon([navBar.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kPadding]),
+        HACon([navBar.heightAnchor constraintEqualToConstant:kNavBarHeight]),
 
-        [self.todayButton.leadingAnchor constraintEqualToAnchor:navBar.leadingAnchor],
-        [self.todayButton.centerYAnchor constraintEqualToAnchor:navBar.centerYAnchor],
+        HACon([self.todayButton.leadingAnchor constraintEqualToAnchor:navBar.leadingAnchor]),
+        HACon([self.todayButton.centerYAnchor constraintEqualToAnchor:navBar.centerYAnchor]),
 
-        [self.prevButton.leadingAnchor constraintEqualToAnchor:self.todayButton.trailingAnchor constant:6],
-        [self.prevButton.centerYAnchor constraintEqualToAnchor:navBar.centerYAnchor],
-        [self.prevButton.widthAnchor constraintEqualToConstant:24],
+        HACon([self.prevButton.leadingAnchor constraintEqualToAnchor:self.todayButton.trailingAnchor constant:6]),
+        HACon([self.prevButton.centerYAnchor constraintEqualToAnchor:navBar.centerYAnchor]),
+        HACon([self.prevButton.widthAnchor constraintEqualToConstant:24]),
 
-        [self.nextButton.leadingAnchor constraintEqualToAnchor:self.prevButton.trailingAnchor constant:2],
-        [self.nextButton.centerYAnchor constraintEqualToAnchor:navBar.centerYAnchor],
-        [self.nextButton.widthAnchor constraintEqualToConstant:24],
+        HACon([self.nextButton.leadingAnchor constraintEqualToAnchor:self.prevButton.trailingAnchor constant:2]),
+        HACon([self.nextButton.centerYAnchor constraintEqualToAnchor:navBar.centerYAnchor]),
+        HACon([self.nextButton.widthAnchor constraintEqualToConstant:24]),
 
-        [self.dateRangeLabel.leadingAnchor constraintEqualToAnchor:self.nextButton.trailingAnchor constant:6],
-        [self.dateRangeLabel.centerYAnchor constraintEqualToAnchor:navBar.centerYAnchor],
+        HACon([self.dateRangeLabel.leadingAnchor constraintEqualToAnchor:self.nextButton.trailingAnchor constant:6]),
+        HACon([self.dateRangeLabel.centerYAnchor constraintEqualToAnchor:navBar.centerYAnchor]),
 
-        [self.listViewBtn.trailingAnchor constraintEqualToAnchor:navBar.trailingAnchor],
-        [self.listViewBtn.centerYAnchor constraintEqualToAnchor:navBar.centerYAnchor],
-        [self.listViewBtn.widthAnchor constraintEqualToConstant:28],
+        HACon([self.listViewBtn.trailingAnchor constraintEqualToAnchor:navBar.trailingAnchor]),
+        HACon([self.listViewBtn.centerYAnchor constraintEqualToAnchor:navBar.centerYAnchor]),
+        HACon([self.listViewBtn.widthAnchor constraintEqualToConstant:28]),
 
-        [self.monthViewBtn.trailingAnchor constraintEqualToAnchor:self.listViewBtn.leadingAnchor constant:-4],
-        [self.monthViewBtn.centerYAnchor constraintEqualToAnchor:navBar.centerYAnchor],
-        [self.monthViewBtn.widthAnchor constraintEqualToConstant:28],
-    ]];
+        HACon([self.monthViewBtn.trailingAnchor constraintEqualToAnchor:self.listViewBtn.leadingAnchor constant:-4]),
+        HACon([self.monthViewBtn.centerYAnchor constraintEqualToAnchor:navBar.centerYAnchor]),
+        HACon([self.monthViewBtn.widthAnchor constraintEqualToConstant:28]),
+    ]);
 
     // --- Content container ---
     self.contentContainer = [[UIView alloc] init];
     self.contentContainer.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:self.contentContainer];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.contentContainer.topAnchor constraintEqualToAnchor:navBar.bottomAnchor constant:4],
-        [self.contentContainer.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
-        [self.contentContainer.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
-        [self.contentContainer.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
-    ]];
+    HAActivateConstraints(@[
+        HACon([self.contentContainer.topAnchor constraintEqualToAnchor:navBar.bottomAnchor constant:4]),
+        HACon([self.contentContainer.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor]),
+        HACon([self.contentContainer.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor]),
+        HACon([self.contentContainer.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor]),
+    ]);
 
     self.listScrollView = [[UIScrollView alloc] init];
     self.listScrollView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -345,7 +348,7 @@ static UIColor *sDefaultEventColor;
 }
 
 - (void)cancelLoading {
-    [self.fetchTask cancel];
+    [[HAHTTPClient sharedClient] cancelTask:self.fetchTask];
     self.fetchTask = nil;
 }
 
@@ -400,7 +403,7 @@ static UIColor *sDefaultEventColor;
     request.timeoutInterval = 15.0;
 
     __weak typeof(self) weakSelf = self;
-    self.fetchTask = [[NSURLSession sharedSession] dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+    self.fetchTask = [[HAHTTPClient sharedClient] dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
         if (error) {
             if ([error.domain isEqualToString:NSURLErrorDomain] && error.code == NSURLErrorCancelled) return;
             dispatch_async(dispatch_get_main_queue(), ^{
@@ -427,7 +430,6 @@ static UIColor *sDefaultEventColor;
             }
         });
     }];
-    [self.fetchTask resume];
 }
 
 #pragma mark - Event Parsing
@@ -555,12 +557,12 @@ static UIColor *sDefaultEventColor;
     }
 
     [self.contentContainer addSubview:self.listScrollView];
-    [NSLayoutConstraint activateConstraints:@[
-        [self.listScrollView.topAnchor constraintEqualToAnchor:self.contentContainer.topAnchor],
-        [self.listScrollView.leadingAnchor constraintEqualToAnchor:self.contentContainer.leadingAnchor],
-        [self.listScrollView.trailingAnchor constraintEqualToAnchor:self.contentContainer.trailingAnchor],
-        [self.listScrollView.bottomAnchor constraintEqualToAnchor:self.contentContainer.bottomAnchor],
-    ]];
+    HAActivateConstraints(@[
+        HACon([self.listScrollView.topAnchor constraintEqualToAnchor:self.contentContainer.topAnchor]),
+        HACon([self.listScrollView.leadingAnchor constraintEqualToAnchor:self.contentContainer.leadingAnchor]),
+        HACon([self.listScrollView.trailingAnchor constraintEqualToAnchor:self.contentContainer.trailingAnchor]),
+        HACon([self.listScrollView.bottomAnchor constraintEqualToAnchor:self.contentContainer.bottomAnchor]),
+    ]);
     // Remove old scroll content
     for (UIView *v in self.listScrollView.subviews) [v removeFromSuperview];
 
@@ -614,7 +616,7 @@ static UIColor *sDefaultEventColor;
 
     // Day name on left (e.g. "Monday" or "Today")
     UILabel *dayName = [[UILabel alloc] init];
-    dayName.font = [UIFont systemFontOfSize:13 weight:UIFontWeightSemibold];
+    dayName.font = [UIFont ha_systemFontOfSize:13 weight:HAFontWeightSemibold];
     dayName.textColor = [HATheme primaryTextColor];
     dayName.text = [self dayNameForDate:date];
     dayName.frame = CGRectMake(kPadding, 4, 120, kDayHeaderHeight - 4);
@@ -645,7 +647,7 @@ static UIColor *sDefaultEventColor;
 
     // Time label — show range "17:30 - 18:00" or "All day"
     UILabel *timeLabel = [[UILabel alloc] init];
-    timeLabel.font = [UIFont monospacedDigitSystemFontOfSize:11 weight:UIFontWeightRegular];
+    timeLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:11 weight:HAFontWeightRegular];
     timeLabel.textColor = [HATheme secondaryTextColor];
 
     if (event.allDay) {
@@ -694,7 +696,7 @@ static UIColor *sDefaultEventColor;
     for (NSInteger i = 0; i < 7; i++) {
         NSInteger symbolIndex = ((firstWeekday - 1) + i) % 7;
         UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(kPadding + i * dayWidth, 0, dayWidth, 20)];
-        label.font = [UIFont systemFontOfSize:10 weight:UIFontWeightMedium];
+        label.font = [UIFont ha_systemFontOfSize:10 weight:HAFontWeightMedium];
         label.textColor = [HATheme secondaryTextColor];
         label.textAlignment = NSTextAlignmentCenter;
         label.text = weekdaySymbols[symbolIndex];
@@ -804,6 +806,44 @@ static UIColor *sDefaultEventColor;
 
 #pragma mark - Placeholder
 
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    if (!HAAutoLayoutAvailable()) {
+        CGFloat w = self.contentView.bounds.size.width;
+        CGFloat h = self.contentView.bounds.size.height;
+
+        // NavBar: top area
+        CGFloat navX = kPadding;
+        CGFloat navY = 8;
+        CGFloat navW = w - kPadding * 2;
+
+        // Today button
+        CGSize todaySize = [self.todayButton sizeThatFits:CGSizeMake(100, kNavBarHeight)];
+        self.todayButton.frame = CGRectMake(navX, navY + (kNavBarHeight - todaySize.height) / 2.0, todaySize.width, todaySize.height);
+
+        // Prev button
+        self.prevButton.frame = CGRectMake(CGRectGetMaxX(self.todayButton.frame) + 6, navY + (kNavBarHeight - 24) / 2.0, 24, 24);
+        // Next button
+        self.nextButton.frame = CGRectMake(CGRectGetMaxX(self.prevButton.frame) + 2, navY + (kNavBarHeight - 24) / 2.0, 24, 24);
+
+        // Date range label
+        CGSize dateSize = [self.dateRangeLabel sizeThatFits:CGSizeMake(200, kNavBarHeight)];
+        self.dateRangeLabel.frame = CGRectMake(CGRectGetMaxX(self.nextButton.frame) + 6, navY + (kNavBarHeight - dateSize.height) / 2.0, dateSize.width, dateSize.height);
+
+        // List view button: right edge
+        self.listViewBtn.frame = CGRectMake(navX + navW - 28, navY + (kNavBarHeight - 28) / 2.0, 28, 28);
+        // Month view button
+        self.monthViewBtn.frame = CGRectMake(CGRectGetMinX(self.listViewBtn.frame) - 32, navY + (kNavBarHeight - 28) / 2.0, 28, 28);
+
+        // Content container: below nav bar, fill remaining space
+        CGFloat contentTop = navY + kNavBarHeight + 4;
+        self.contentContainer.frame = CGRectMake(0, contentTop, w, h - contentTop);
+
+        // List scroll view
+        self.listScrollView.frame = self.contentContainer.bounds;
+    }
+}
+
 - (void)showPlaceholder:(NSString *)text {
     for (UIView *v in self.contentContainer.subviews) [v removeFromSuperview];
 
@@ -815,10 +855,10 @@ static UIColor *sDefaultEventColor;
     label.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentContainer addSubview:label];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [label.centerXAnchor constraintEqualToAnchor:self.contentContainer.centerXAnchor],
-        [label.centerYAnchor constraintEqualToAnchor:self.contentContainer.centerYAnchor],
-    ]];
+    HAActivateConstraints(@[
+        HACon([label.centerXAnchor constraintEqualToAnchor:self.contentContainer.centerXAnchor]),
+        HACon([label.centerYAnchor constraintEqualToAnchor:self.contentContainer.centerYAnchor]),
+    ]);
 }
 
 #pragma mark - Reuse

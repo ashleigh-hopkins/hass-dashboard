@@ -1,6 +1,9 @@
+#import "HAAutoLayout.h"
 #import "HAGraphView.h"
 #import "HATheme.h"
 #import <sys/utsname.h>
+#import "UIFont+HACompat.h"
+#import "NSString+HACompat.h"
 
 // Cached date formatters used by axis labels, tooltip, and gesture handlers.
 // Format is set per-use since it depends on the visible time range.
@@ -118,15 +121,15 @@ static NSDateFormatter *sCachedTimeFmt(void) {
     self.legendContainer.hidden = YES;
     [self addSubview:self.legendContainer];
 
-    self.legendHeightConstraint = [self.legendContainer.heightAnchor constraintEqualToConstant:0];
+    self.legendHeightConstraint = HAMakeConstraint([self.legendContainer.heightAnchor constraintEqualToConstant:0]);
     // Position legend above the time axis labels (18pt bottom padding when axis shown)
-    self.legendBottomConstraint = [self.legendContainer.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-2];
-    [NSLayoutConstraint activateConstraints:@[
-        [self.legendContainer.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:8],
-        [self.legendContainer.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-8],
-        self.legendBottomConstraint,
-        self.legendHeightConstraint,
-    ]];
+    self.legendBottomConstraint = HAMakeConstraint([self.legendContainer.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-2]);
+    HAActivateConstraints(@[
+        HACon([self.legendContainer.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:8]),
+        HACon([self.legendContainer.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-8]),
+        HACon(self.legendBottomConstraint),
+        HACon(self.legendHeightConstraint),
+    ]);
 
     // Crosshair line (vertical, 1px, hidden until inspection)
     _crosshairLine = [CALayer layer];
@@ -143,7 +146,7 @@ static NSDateFormatter *sCachedTimeFmt(void) {
     _tooltipView.userInteractionEnabled = NO;
 
     _tooltipValueLabel = [[UILabel alloc] init];
-    _tooltipValueLabel.font = [UIFont monospacedDigitSystemFontOfSize:12 weight:UIFontWeightBold];
+    _tooltipValueLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:12 weight:HAFontWeightBold];
     _tooltipValueLabel.textColor = [UIColor whiteColor];
     _tooltipValueLabel.textAlignment = NSTextAlignmentCenter;
     _tooltipValueLabel.numberOfLines = 0; // Support multi-line
@@ -157,14 +160,14 @@ static NSDateFormatter *sCachedTimeFmt(void) {
     _tooltipTimeLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [_tooltipView addSubview:_tooltipTimeLabel];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [_tooltipValueLabel.topAnchor constraintEqualToAnchor:_tooltipView.topAnchor constant:3],
-        [_tooltipValueLabel.leadingAnchor constraintEqualToAnchor:_tooltipView.leadingAnchor constant:6],
-        [_tooltipValueLabel.trailingAnchor constraintEqualToAnchor:_tooltipView.trailingAnchor constant:-6],
-        [_tooltipTimeLabel.topAnchor constraintEqualToAnchor:_tooltipValueLabel.bottomAnchor constant:1],
-        [_tooltipTimeLabel.leadingAnchor constraintEqualToAnchor:_tooltipView.leadingAnchor constant:6],
-        [_tooltipTimeLabel.trailingAnchor constraintEqualToAnchor:_tooltipView.trailingAnchor constant:-6],
-    ]];
+    HAActivateConstraints(@[
+        HACon([_tooltipValueLabel.topAnchor constraintEqualToAnchor:_tooltipView.topAnchor constant:3]),
+        HACon([_tooltipValueLabel.leadingAnchor constraintEqualToAnchor:_tooltipView.leadingAnchor constant:6]),
+        HACon([_tooltipValueLabel.trailingAnchor constraintEqualToAnchor:_tooltipView.trailingAnchor constant:-6]),
+        HACon([_tooltipTimeLabel.topAnchor constraintEqualToAnchor:_tooltipValueLabel.bottomAnchor constant:1]),
+        HACon([_tooltipTimeLabel.leadingAnchor constraintEqualToAnchor:_tooltipView.leadingAnchor constant:6]),
+        HACon([_tooltipTimeLabel.trailingAnchor constraintEqualToAnchor:_tooltipView.trailingAnchor constant:-6]),
+    ]);
 
     [self addSubview:_tooltipView];
 }
@@ -431,10 +434,10 @@ static NSDateFormatter *sCachedTimeFmt(void) {
     CGFloat labelPad = 6.0; // Gap between label and bar
 
     // Compute label width from longest entity name
-    UIFont *labelFont = [UIFont systemFontOfSize:11 weight:UIFontWeightMedium];
+    UIFont *labelFont = [UIFont ha_systemFontOfSize:11 weight:HAFontWeightMedium];
     for (NSDictionary *entity in self.timelineData) {
         NSString *label = entity[@"label"] ?: @"";
-        CGSize sz = [label sizeWithAttributes:@{NSFontAttributeName: labelFont}];
+        CGSize sz = [label ha_sizeWithAttributes:@{HAFontAttributeName: labelFont}];
         if (sz.width > labelWidth) labelWidth = sz.width;
     }
     // Clamp label width
@@ -603,7 +606,7 @@ static NSDateFormatter *sCachedTimeFmt(void) {
         // Measure label width
         UILabel *measureLabel = [[UILabel alloc] init];
         measureLabel.text = label;
-        measureLabel.font = [UIFont systemFontOfSize:10 weight:UIFontWeightMedium];
+        measureLabel.font = [UIFont ha_systemFontOfSize:10 weight:HAFontWeightMedium];
         [measureLabel sizeToFit];
         CGFloat entryWidth = 12 + measureLabel.frame.size.width + 10; // dot(8) + gap(4) + label + spacing
 
@@ -626,7 +629,7 @@ static NSDateFormatter *sCachedTimeFmt(void) {
         // Label
         UILabel *lbl = [[UILabel alloc] init];
         lbl.text = label;
-        lbl.font = [UIFont systemFontOfSize:10 weight:UIFontWeightMedium];
+        lbl.font = [UIFont ha_systemFontOfSize:10 weight:HAFontWeightMedium];
         lbl.textColor = [UIColor colorWithWhite:0.7 alpha:1.0];
         lbl.alpha = alpha;
         [lbl sizeToFit];
@@ -702,6 +705,23 @@ static NSDateFormatter *sCachedTimeFmt(void) {
 - (void)layoutSubviews {
     [super layoutSubviews];
     self.gradientLayer.frame = self.bounds;
+
+    if (!HAAutoLayoutAvailable()) {
+        CGFloat w = self.bounds.size.width;
+        CGFloat h = self.bounds.size.height;
+        // Legend container at bottom
+        CGFloat legendH = self.legendHeightConstraint ? self.legendHeightConstraint.constant : 0;
+        if (!self.legendContainer.hidden && legendH > 0) {
+            self.legendContainer.frame = CGRectMake(8, h - legendH - 2, w - 16, legendH);
+        }
+        // Tooltip internal layout
+        if (!self.tooltipView.hidden) {
+            CGFloat tw = self.tooltipView.bounds.size.width;
+            self.tooltipValueLabel.frame = CGRectMake(6, 3, tw - 12, 16);
+            self.tooltipTimeLabel.frame = CGRectMake(6, 20, tw - 12, 12);
+        }
+    }
+
     CGSize newSize = self.bounds.size;
     if (CGSizeEqualToSize(newSize, self.lastLayoutSize)) return;
     self.lastLayoutSize = newSize;
@@ -1062,7 +1082,7 @@ static NSDateFormatter *sCachedTimeFmt(void) {
                 if (unit.length > 0) {
                     UILabel *unitLabel = [[UILabel alloc] init];
                     unitLabel.text = unit;
-                    unitLabel.font = [UIFont systemFontOfSize:8 weight:UIFontWeightMedium];
+                    unitLabel.font = [UIFont ha_systemFontOfSize:8 weight:HAFontWeightMedium];
                     unitLabel.textColor = [axisColor colorWithAlphaComponent:0.7];
                     unitLabel.textAlignment = alignment;
                     unitLabel.frame = CGRectMake(axisX, insetY - 2, axisWidth, 10);
@@ -1128,10 +1148,10 @@ static NSDateFormatter *sCachedTimeFmt(void) {
     if (isTimeline) {
         // Recompute barAreaX/W for timeline to align time labels with bars
         CGFloat labelWidth = 0;
-        UIFont *labelFont = [UIFont systemFontOfSize:11 weight:UIFontWeightMedium];
+        UIFont *labelFont = [UIFont ha_systemFontOfSize:11 weight:HAFontWeightMedium];
         for (NSDictionary *entity in self.timelineData) {
             NSString *label = entity[@"label"] ?: @"";
-            CGSize sz = [label sizeWithAttributes:@{NSFontAttributeName: labelFont}];
+            CGSize sz = [label ha_sizeWithAttributes:@{HAFontAttributeName: labelFont}];
             if (sz.width > labelWidth) labelWidth = sz.width;
         }
         CGFloat w = self.bounds.size.width;
@@ -1280,15 +1300,15 @@ static NSDateFormatter *sCachedTimeFmt(void) {
                 NSMutableAttributedString *lineAttr = [[NSMutableAttributedString alloc] initWithString:line];
                 NSRange dotRange = [line rangeOfString:@"●"];
                 if (dotRange.location != NSNotFound) {
-                    [lineAttr addAttribute:NSForegroundColorAttributeName value:color range:dotRange];
+                    [lineAttr addAttribute:HAForegroundColorAttributeName value:color range:dotRange];
                 }
-                [lineAttr addAttribute:NSFontAttributeName value:[UIFont monospacedDigitSystemFontOfSize:12 weight:UIFontWeightBold] range:NSMakeRange(0, lineAttr.length)];
-                [lineAttr addAttribute:NSForegroundColorAttributeName value:[UIColor whiteColor] range:NSMakeRange(0, lineAttr.length)];
+                [lineAttr addAttribute:HAFontAttributeName value:[UIFont ha_monospacedDigitSystemFontOfSize:12 weight:HAFontWeightBold] range:NSMakeRange(0, lineAttr.length)];
+                [lineAttr addAttribute:HAForegroundColorAttributeName value:[UIColor whiteColor] range:NSMakeRange(0, lineAttr.length)];
 
                 [attrStr appendAttributedString:lineAttr];
 
                 // Track width for sizing
-                CGSize lineSize = [line sizeWithAttributes:@{NSFontAttributeName: [UIFont monospacedDigitSystemFontOfSize:12 weight:UIFontWeightBold]}];
+                CGSize lineSize = [line ha_sizeWithAttributes:@{HAFontAttributeName: [UIFont ha_monospacedDigitSystemFontOfSize:12 weight:HAFontWeightBold]}];
                 if (lineSize.width > maxWidth) maxWidth = lineSize.width;
 
                 visibleCount++;
@@ -1341,7 +1361,7 @@ static NSDateFormatter *sCachedTimeFmt(void) {
             self.tooltipValueLabel.text = valueText;
 
             // Size tooltip to fit content
-            CGFloat tooltipW = MAX(100, MIN(180, [valueText sizeWithAttributes:@{NSFontAttributeName: self.tooltipValueLabel.font}].width + 20));
+            CGFloat tooltipW = MAX(100, MIN(180, [valueText ha_sizeWithAttributes:@{HAFontAttributeName: self.tooltipValueLabel.font}].width + 20));
             CGFloat tooltipH = 36;
             CGFloat tooltipX = x - tooltipW / 2.0;
             tooltipX = MAX(2, MIN(w - tooltipW - 2, tooltipX));
@@ -1508,15 +1528,15 @@ static NSDateFormatter *sCachedTimeFmt(void) {
                     NSMutableAttributedString *lineAttr = [[NSMutableAttributedString alloc] initWithString:line];
                     NSRange dotRange = [line rangeOfString:@"●"];
                     if (dotRange.location != NSNotFound) {
-                        [lineAttr addAttribute:NSForegroundColorAttributeName value:color range:dotRange];
+                        [lineAttr addAttribute:HAForegroundColorAttributeName value:color range:dotRange];
                     }
-                    [lineAttr addAttribute:NSFontAttributeName value:[UIFont monospacedDigitSystemFontOfSize:12 weight:UIFontWeightBold] range:NSMakeRange(0, lineAttr.length)];
-                    [lineAttr addAttribute:NSForegroundColorAttributeName value:[UIColor whiteColor] range:NSMakeRange(0, lineAttr.length)];
+                    [lineAttr addAttribute:HAFontAttributeName value:[UIFont ha_monospacedDigitSystemFontOfSize:12 weight:HAFontWeightBold] range:NSMakeRange(0, lineAttr.length)];
+                    [lineAttr addAttribute:HAForegroundColorAttributeName value:[UIColor whiteColor] range:NSMakeRange(0, lineAttr.length)];
 
                     [attrStr appendAttributedString:lineAttr];
 
                     // Track width for sizing
-                    CGSize lineSize = [line sizeWithAttributes:@{NSFontAttributeName: [UIFont monospacedDigitSystemFontOfSize:12 weight:UIFontWeightBold]}];
+                    CGSize lineSize = [line ha_sizeWithAttributes:@{HAFontAttributeName: [UIFont ha_monospacedDigitSystemFontOfSize:12 weight:HAFontWeightBold]}];
                     if (lineSize.width > maxWidth) maxWidth = lineSize.width;
 
                     visibleCount++;

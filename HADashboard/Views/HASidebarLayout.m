@@ -1,4 +1,5 @@
 #import "HASidebarLayout.h"
+#import "HACellCompat.h"
 
 /// HA sidebar layout constants
 static const CGFloat kSidebarCollapseWidth = 760.0;
@@ -65,7 +66,7 @@ static const CGFloat kContentPadding = 4.0;  // top/side padding
         NSIndexPath *ip = [NSIndexPath indexPathForItem:i inSection:0];
         CGFloat h = [self heightForItem:ip width:columnWidth inCV:cv];
         UICollectionViewLayoutAttributes *attr =
-            [UICollectionViewLayoutAttributes layoutAttributesForCellWithIndexPath:ip];
+            [HACollectionViewLayoutAttributesBase layoutAttributesForCellWithIndexPath:ip];
         attr.frame = CGRectMake(kContentPadding, y, columnWidth, h);
         [self.itemAttributes addObject:attr];
         y += h + kCardSpacing;
@@ -76,7 +77,7 @@ static const CGFloat kContentPadding = 4.0;  // top/side padding
         NSIndexPath *ip = [NSIndexPath indexPathForItem:i inSection:1];
         CGFloat h = [self heightForItem:ip width:columnWidth inCV:cv];
         UICollectionViewLayoutAttributes *attr =
-            [UICollectionViewLayoutAttributes layoutAttributesForCellWithIndexPath:ip];
+            [HACollectionViewLayoutAttributesBase layoutAttributesForCellWithIndexPath:ip];
         attr.frame = CGRectMake(kContentPadding, y, columnWidth, h);
         [self.itemAttributes addObject:attr];
         y += h + kCardSpacing;
@@ -113,7 +114,7 @@ static const CGFloat kContentPadding = 4.0;  // top/side padding
         NSIndexPath *ip = [NSIndexPath indexPathForItem:i inSection:0];
         CGFloat h = [self heightForItem:ip width:mainWidth inCV:cv];
         UICollectionViewLayoutAttributes *attr =
-            [UICollectionViewLayoutAttributes layoutAttributesForCellWithIndexPath:ip];
+            [HACollectionViewLayoutAttributesBase layoutAttributesForCellWithIndexPath:ip];
         attr.frame = CGRectMake(mainX, mainY, mainWidth, h);
         [self.itemAttributes addObject:attr];
         mainY += h + kCardSpacing;
@@ -125,7 +126,7 @@ static const CGFloat kContentPadding = 4.0;  // top/side padding
         NSIndexPath *ip = [NSIndexPath indexPathForItem:i inSection:1];
         CGFloat h = [self heightForItem:ip width:sidebarWidth inCV:cv];
         UICollectionViewLayoutAttributes *attr =
-            [UICollectionViewLayoutAttributes layoutAttributesForCellWithIndexPath:ip];
+            [HACollectionViewLayoutAttributesBase layoutAttributesForCellWithIndexPath:ip];
         attr.frame = CGRectMake(sidebarX, sidebarY, sidebarWidth, h);
         [self.itemAttributes addObject:attr];
         sidebarY += h + kCardSpacing;

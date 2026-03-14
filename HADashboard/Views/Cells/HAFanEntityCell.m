@@ -1,3 +1,4 @@
+#import "HAAutoLayout.h"
 #import "HAFanEntityCell.h"
 #import "HAEntity.h"
 #import "HAConnectionManager.h"
@@ -5,6 +6,7 @@
 #import "HATheme.h"
 #import "HASwitch.h"
 #import "HAHaptics.h"
+#import "UIFont+HACompat.h"
 
 @interface HAFanEntityCell ()
 @property (nonatomic, strong) UISwitch *toggleSwitch;
@@ -32,12 +34,12 @@
     [self.contentView addSubview:self.toggleSwitch];
 
     // Speed percentage label
-    self.speedLabel = [self labelWithFont:[UIFont monospacedDigitSystemFontOfSize:12 weight:UIFontWeightRegular] color:[HATheme secondaryTextColor] lines:1];
+    self.speedLabel = [self labelWithFont:[UIFont ha_monospacedDigitSystemFontOfSize:12 weight:HAFontWeightRegular] color:[HATheme secondaryTextColor] lines:1];
     self.speedLabel.textAlignment = NSTextAlignmentRight;
 
     // Preset mode button (below name, tappable for action sheet)
-    self.presetButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.presetButton.titleLabel.font = [UIFont systemFontOfSize:11 weight:UIFontWeightMedium];
+    self.presetButton = HASystemButton();
+    self.presetButton.titleLabel.font = [UIFont ha_systemFontOfSize:11 weight:HAFontWeightMedium];
     [self.presetButton setTitleColor:[HATheme secondaryTextColor] forState:UIControlStateNormal];
     self.presetButton.translatesAutoresizingMaskIntoConstraints = NO;
     self.presetButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
@@ -46,16 +48,16 @@
     [self.contentView addSubview:self.presetButton];
 
     // Oscillate button (small icon toggle)
-    self.oscillateButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.oscillateButton.titleLabel.font = [UIFont systemFontOfSize:11 weight:UIFontWeightMedium];
+    self.oscillateButton = HASystemButton();
+    self.oscillateButton.titleLabel.font = [UIFont ha_systemFontOfSize:11 weight:HAFontWeightMedium];
     self.oscillateButton.translatesAutoresizingMaskIntoConstraints = NO;
     self.oscillateButton.hidden = YES;
     [self.oscillateButton addTarget:self action:@selector(oscillateTapped) forControlEvents:UIControlEventTouchUpInside];
     [self.contentView addSubview:self.oscillateButton];
 
     // Direction button
-    self.directionButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.directionButton.titleLabel.font = [UIFont systemFontOfSize:11 weight:UIFontWeightMedium];
+    self.directionButton = HASystemButton();
+    self.directionButton.titleLabel.font = [UIFont ha_systemFontOfSize:11 weight:HAFontWeightMedium];
     self.directionButton.translatesAutoresizingMaskIntoConstraints = NO;
     self.directionButton.hidden = YES;
     [self.directionButton addTarget:self action:@selector(directionTapped) forControlEvents:UIControlEventTouchUpInside];
@@ -73,41 +75,47 @@
     [self.contentView addSubview:self.speedSlider];
 
     // Switch: top-right
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.toggleSwitch attribute:NSLayoutAttributeTrailing
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTrailing multiplier:1 constant:-padding]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.toggleSwitch attribute:NSLayoutAttributeTop
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTop multiplier:1 constant:padding]];
+    HAActivateConstraints(@[
+        HACon([NSLayoutConstraint constraintWithItem:self.toggleSwitch attribute:NSLayoutAttributeTrailing
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTrailing multiplier:1 constant:-padding]),
+        HACon([NSLayoutConstraint constraintWithItem:self.toggleSwitch attribute:NSLayoutAttributeTop
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTop multiplier:1 constant:padding]),
+    ]);
 
     // Preset button: below name
-    [NSLayoutConstraint activateConstraints:@[
-        [self.presetButton.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding],
-        [self.presetButton.topAnchor constraintEqualToAnchor:self.nameLabel.bottomAnchor constant:2],
+    HAActivateConstraints(@[
+        HACon([self.presetButton.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding]),
+        HACon([self.presetButton.topAnchor constraintEqualToAnchor:self.nameLabel.bottomAnchor constant:2]),
         // Oscillate + direction: right of preset, same Y
-        [self.oscillateButton.leadingAnchor constraintEqualToAnchor:self.presetButton.trailingAnchor constant:8],
-        [self.oscillateButton.centerYAnchor constraintEqualToAnchor:self.presetButton.centerYAnchor],
-        [self.directionButton.leadingAnchor constraintEqualToAnchor:self.oscillateButton.trailingAnchor constant:4],
-        [self.directionButton.centerYAnchor constraintEqualToAnchor:self.presetButton.centerYAnchor],
-    ]];
+        HACon([self.oscillateButton.leadingAnchor constraintEqualToAnchor:self.presetButton.trailingAnchor constant:8]),
+        HACon([self.oscillateButton.centerYAnchor constraintEqualToAnchor:self.presetButton.centerYAnchor]),
+        HACon([self.directionButton.leadingAnchor constraintEqualToAnchor:self.oscillateButton.trailingAnchor constant:4]),
+        HACon([self.directionButton.centerYAnchor constraintEqualToAnchor:self.presetButton.centerYAnchor]),
+    ]);
 
     // Speed slider: bottom
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.speedSlider attribute:NSLayoutAttributeLeading
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeLeading multiplier:1 constant:padding]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.speedSlider attribute:NSLayoutAttributeBottom
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeBottom multiplier:1 constant:-padding]];
+    HAActivateConstraints(@[
+        HACon([NSLayoutConstraint constraintWithItem:self.speedSlider attribute:NSLayoutAttributeLeading
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeLeading multiplier:1 constant:padding]),
+        HACon([NSLayoutConstraint constraintWithItem:self.speedSlider attribute:NSLayoutAttributeBottom
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeBottom multiplier:1 constant:-padding]),
+    ]);
 
     // Speed label: right of slider
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.speedLabel attribute:NSLayoutAttributeLeading
-        relatedBy:NSLayoutRelationEqual toItem:self.speedSlider attribute:NSLayoutAttributeTrailing multiplier:1 constant:8]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.speedLabel attribute:NSLayoutAttributeTrailing
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTrailing multiplier:1 constant:-padding]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.speedLabel attribute:NSLayoutAttributeCenterY
-        relatedBy:NSLayoutRelationEqual toItem:self.speedSlider attribute:NSLayoutAttributeCenterY multiplier:1 constant:0]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.speedLabel attribute:NSLayoutAttributeWidth
-        relatedBy:NSLayoutRelationEqual toItem:nil attribute:NSLayoutAttributeNotAnAttribute multiplier:1 constant:44]];
+    HAActivateConstraints(@[
+        HACon([NSLayoutConstraint constraintWithItem:self.speedLabel attribute:NSLayoutAttributeLeading
+            relatedBy:NSLayoutRelationEqual toItem:self.speedSlider attribute:NSLayoutAttributeTrailing multiplier:1 constant:8]),
+        HACon([NSLayoutConstraint constraintWithItem:self.speedLabel attribute:NSLayoutAttributeTrailing
+            relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTrailing multiplier:1 constant:-padding]),
+        HACon([NSLayoutConstraint constraintWithItem:self.speedLabel attribute:NSLayoutAttributeCenterY
+            relatedBy:NSLayoutRelationEqual toItem:self.speedSlider attribute:NSLayoutAttributeCenterY multiplier:1 constant:0]),
+        HACon([NSLayoutConstraint constraintWithItem:self.speedLabel attribute:NSLayoutAttributeWidth
+            relatedBy:NSLayoutRelationEqual toItem:nil attribute:NSLayoutAttributeNotAnAttribute multiplier:1 constant:44]),
+    ]);
 
     // Speed +/- buttons (right side, above/below speed label)
     CGFloat btnSize = 24.0;
-    self.speedUpButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.speedUpButton = HASystemButton();
     [self.speedUpButton setTitle:@"+" forState:UIControlStateNormal];
     self.speedUpButton.titleLabel.font = [UIFont boldSystemFontOfSize:16];
     self.speedUpButton.translatesAutoresizingMaskIntoConstraints = NO;
@@ -115,7 +123,7 @@
     [self.speedUpButton addTarget:self action:@selector(speedUpTapped) forControlEvents:UIControlEventTouchUpInside];
     [self.contentView addSubview:self.speedUpButton];
 
-    self.speedDownButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.speedDownButton = HASystemButton();
     [self.speedDownButton setTitle:@"\u2212" forState:UIControlStateNormal]; // minus sign
     self.speedDownButton.titleLabel.font = [UIFont boldSystemFontOfSize:16];
     self.speedDownButton.translatesAutoresizingMaskIntoConstraints = NO;
@@ -123,16 +131,16 @@
     [self.speedDownButton addTarget:self action:@selector(speedDownTapped) forControlEvents:UIControlEventTouchUpInside];
     [self.contentView addSubview:self.speedDownButton];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.speedUpButton.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-2],
-        [self.speedUpButton.bottomAnchor constraintEqualToAnchor:self.speedSlider.topAnchor constant:-2],
-        [self.speedUpButton.widthAnchor constraintEqualToConstant:btnSize],
-        [self.speedUpButton.heightAnchor constraintEqualToConstant:btnSize],
-        [self.speedDownButton.trailingAnchor constraintEqualToAnchor:self.speedUpButton.leadingAnchor constant:-2],
-        [self.speedDownButton.centerYAnchor constraintEqualToAnchor:self.speedUpButton.centerYAnchor],
-        [self.speedDownButton.widthAnchor constraintEqualToConstant:btnSize],
-        [self.speedDownButton.heightAnchor constraintEqualToConstant:btnSize],
-    ]];
+    HAActivateConstraints(@[
+        HACon([self.speedUpButton.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-2]),
+        HACon([self.speedUpButton.bottomAnchor constraintEqualToAnchor:self.speedSlider.topAnchor constant:-2]),
+        HACon([self.speedUpButton.widthAnchor constraintEqualToConstant:btnSize]),
+        HACon([self.speedUpButton.heightAnchor constraintEqualToConstant:btnSize]),
+        HACon([self.speedDownButton.trailingAnchor constraintEqualToAnchor:self.speedUpButton.leadingAnchor constant:-2]),
+        HACon([self.speedDownButton.centerYAnchor constraintEqualToAnchor:self.speedUpButton.centerYAnchor]),
+        HACon([self.speedDownButton.widthAnchor constraintEqualToConstant:btnSize]),
+        HACon([self.speedDownButton.heightAnchor constraintEqualToConstant:btnSize]),
+    ]);
 }
 
 - (void)configureWithEntity:(HAEntity *)entity configItem:(HADashboardConfigItem *)configItem {
@@ -193,12 +201,7 @@
         self.directionButton.hidden = YES;
     }
 
-    // Background tint when on
-    if (isOn) {
-        self.contentView.backgroundColor = [HATheme onTintColor];
-    } else {
-        self.contentView.backgroundColor = [HATheme cellBackgroundColor];
-    }
+    [self applyOnStateTint:isOn];
 }
 
 #pragma mark - Actions
@@ -258,6 +261,40 @@
     [self callService:@"decrease_speed" inDomain:@"fan"];
 }
 
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    if (!HAAutoLayoutAvailable()) {
+        CGFloat w = self.contentView.bounds.size.width;
+        CGFloat h = self.contentView.bounds.size.height;
+        CGFloat padding = 10.0;
+
+        // Toggle: top-right
+        CGSize switchSize = [self.toggleSwitch sizeThatFits:CGSizeMake(60, 31)];
+        self.toggleSwitch.frame = CGRectMake(w - padding - switchSize.width, padding, switchSize.width, switchSize.height);
+
+        // Preset button: below name
+        CGSize presetSize = [self.presetButton sizeThatFits:CGSizeMake(w / 2.0, CGFLOAT_MAX)];
+        self.presetButton.frame = CGRectMake(padding, CGRectGetMaxY(self.nameLabel.frame) + 2, presetSize.width, presetSize.height);
+
+        // Oscillate + direction: right of preset
+        CGSize oscSize = [self.oscillateButton sizeThatFits:CGSizeMake(60, CGFLOAT_MAX)];
+        self.oscillateButton.frame = CGRectMake(CGRectGetMaxX(self.presetButton.frame) + 8, self.presetButton.frame.origin.y, oscSize.width, oscSize.height);
+        CGSize dirSize = [self.directionButton sizeThatFits:CGSizeMake(30, CGFLOAT_MAX)];
+        self.directionButton.frame = CGRectMake(CGRectGetMaxX(self.oscillateButton.frame) + 4, self.presetButton.frame.origin.y, dirSize.width, dirSize.height);
+
+        // Speed slider: bottom
+        self.speedSlider.frame = CGRectMake(padding, h - padding - 31, w - padding * 2 - 52, 31);
+
+        // Speed label: right of slider
+        self.speedLabel.frame = CGRectMake(w - padding - 44, h - padding - 31, 44, 31);
+
+        // Speed +/- buttons: above slider, right
+        CGFloat btnSize = 24.0;
+        self.speedUpButton.frame = CGRectMake(w - 2 - btnSize, h - padding - 31 - 2 - btnSize, btnSize, btnSize);
+        self.speedDownButton.frame = CGRectMake(CGRectGetMinX(self.speedUpButton.frame) - 2 - btnSize, self.speedUpButton.frame.origin.y, btnSize, btnSize);
+    }
+}
+
 - (void)prepareForReuse {
     [super prepareForReuse];
     self.toggleSwitch.on = NO;
@@ -271,7 +308,10 @@
     self.speedUpButton.hidden = YES;
     self.speedDownButton.hidden = YES;
     self.sliderDragging = NO;
-    self.contentView.backgroundColor = [HATheme cellBackgroundColor];
+}
+
+- (void)resetThemeColors {
+    [super resetThemeColors];
     self.speedLabel.textColor = [HATheme secondaryTextColor];
 }
 

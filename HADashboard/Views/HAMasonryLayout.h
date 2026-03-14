@@ -1,4 +1,5 @@
 #import <UIKit/UIKit.h>
+#import "HACellCompat.h"
 
 @protocol HAMasonryLayoutDelegate <UICollectionViewDelegate>
 
@@ -24,7 +25,7 @@
 /// Uses HA breakpoints for column count, 500px max column width, and abstract card size
 /// units for column assignment. All items in a single section (section 0).
 /// Compatible with iOS 9+ (UICollectionViewLayout subclass).
-@interface HAMasonryLayout : UICollectionViewLayout
+@interface HAMasonryLayout : HACollectionViewLayoutBase
 
 @property (nonatomic, weak) id<HAMasonryLayoutDelegate> delegate;
 

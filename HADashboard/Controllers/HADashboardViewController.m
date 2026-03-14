@@ -1,3 +1,5 @@
+#import "HAAutoLayout.h"
+#import "NSString+HACompat.h"
 #import "HADashboardViewController.h"
 #import "HALog.h"
 #import "HAAuthManager.h"
@@ -44,6 +46,7 @@
 #import "HAHistoryManager.h"
 #import "HASunBasedTheme.h"
 #import <QuartzCore/QuartzCore.h>
+#import "UIViewController+HAAlert.h"
 
 static NSString * const kSectionHeaderReuseId = @"HASectionHeader";
 
@@ -85,9 +88,28 @@ static NSString * const kSectionHeaderReuseId = @"HASectionHeader";
 @property (nonatomic, strong) NSArray<NSDictionary *> *availableDashboards;
 @property (nonatomic, strong) NSDictionary<NSString *, NSArray<NSIndexPath *> *> *entityToIndexPaths;
 @property (nonatomic, assign) BOOL screenshotScheduled;
+@property (nonatomic, strong) NSTimer *screenshotTimer;
 @end
 
 @implementation HADashboardViewController
+
+#pragma mark - Rotation (iOS 5)
+
+- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation {
+    return YES;
+}
+
+- (void)willRotateToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation duration:(NSTimeInterval)duration {
+    [super willRotateToInterfaceOrientation:toInterfaceOrientation duration:duration];
+}
+
+- (void)didRotateFromInterfaceOrientation:(UIInterfaceOrientation)fromInterfaceOrientation {
+    [super didRotateFromInterfaceOrientation:fromInterfaceOrientation];
+    [self.collectionView.collectionViewLayout invalidateLayout];
+    [self.collectionView reloadData];
+}
+
+#pragma mark - Lifecycle
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -106,7 +128,7 @@ static NSString * const kSectionHeaderReuseId = @"HASectionHeader";
     }
 
     // Tappable title button — shows current dashboard name with chevron
-    self.titleButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.titleButton = HASystemButton();
     [self updateTitleButtonText:@"Dashboard"];
     self.titleButton.titleLabel.font = [UIFont boldSystemFontOfSize:17];
     self.titleButton.tintColor = [HATheme primaryTextColor];
@@ -143,9 +165,10 @@ static NSString * const kSectionHeaderReuseId = @"HASectionHeader";
     // Register cell classes
     [HAEntityCellFactory registerCellClassesWithCollectionView:self.collectionView];
 
-    // Register section header
+    // Register section header (UICollectionElementKindSectionHeader is nil on iOS 5;
+    // PSTCollectionView uses the same string value internally)
     [self.collectionView registerClass:[HASectionHeaderView class]
-            forSupplementaryViewOfKind:UICollectionElementKindSectionHeader
+            forSupplementaryViewOfKind:HACollectionElementKindSectionHeader()
                    withReuseIdentifier:kSectionHeaderReuseId];
 
     // Kiosk exit gesture: triple-tap anywhere to temporarily show nav bar
@@ -159,12 +182,25 @@ static NSString * const kSectionHeaderReuseId = @"HASectionHeader";
         tapArea.translatesAutoresizingMaskIntoConstraints = NO;
         tapArea.backgroundColor = [UIColor clearColor];
         [self.view insertSubview:tapArea belowSubview:self.viewPicker];
-        [self.view addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|[t]|" options:0 metrics:nil views:@{@"t": tapArea}]];
-        [self.view addConstraint:[NSLayoutConstraint constraintWithItem:tapArea attribute:NSLayoutAttributeTop
-            relatedBy:NSLayoutRelationEqual toItem:self.view attribute:NSLayoutAttributeTop multiplier:1 constant:0]];
-        [self.view addConstraint:[NSLayoutConstraint constraintWithItem:tapArea attribute:NSLayoutAttributeHeight
-            relatedBy:NSLayoutRelationEqual toItem:nil attribute:NSLayoutAttributeNotAnAttribute multiplier:1 constant:120]];
-        [tapArea addGestureRecognizer:self.kioskExitTap];
+        HAActivateConstraints(@[
+            HACon([NSLayoutConstraint constraintWithItem:tapArea attribute:NSLayoutAttributeLeading
+                relatedBy:NSLayoutRelationEqual toItem:self.view attribute:NSLayoutAttributeLeading multiplier:1 constant:0]),
+            HACon([NSLayoutConstraint constraintWithItem:tapArea attribute:NSLayoutAttributeTrailing
+                relatedBy:NSLayoutRelationEqual toItem:self.view attribute:NSLayoutAttributeTrailing multiplier:1 constant:0]),
+            HACon([NSLayoutConstraint constraintWithItem:tapArea attribute:NSLayoutAttributeTop
+                relatedBy:NSLayoutRelationEqual toItem:self.view attribute:NSLayoutAttributeTop multiplier:1 constant:0]),
+            HACon([NSLayoutConstraint constraintWithItem:tapArea attribute:NSLayoutAttributeHeight
+                relatedBy:NSLayoutRelationEqual toItem:nil attribute:NSLayoutAttributeNotAnAttribute multiplier:1 constant:120]),
+        ]);
+        if (!HAAutoLayoutAvailable()) {
+            // On iOS 5, the tap area sits behind the collection view (added later)
+            // and can't receive touches. Skip the tap area entirely and add the
+            // gesture to self.view — it will fire anywhere on screen.
+            [self.view addGestureRecognizer:self.kioskExitTap];
+        } else {
+            // Frame fallback not needed on iOS 6+ (constraints work)
+            [tapArea addGestureRecognizer:self.kioskExitTap];
+        }
     }
 
     // Bottom sheet delegate for entity detail modals (iOS 9-14)
@@ -255,6 +291,7 @@ static NSString * const kSectionHeaderReuseId = @"HASectionHeader";
             self.lovelaceLoaded = YES;
             self.lovelaceFetchDone = YES;
             self.lovelaceDashboard = conn.lovelaceDashboard;
+            [[HASunBasedTheme sharedInstance] start];
             [self rebuildDashboard];
             [self showLoading:NO message:nil];
             // Show subtle "Connecting..." in connection bar while we establish live connection
@@ -305,6 +342,57 @@ static NSString * const kSectionHeaderReuseId = @"HASectionHeader";
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     self.backgroundGradient.frame = self.view.bounds;
+
+    // Check screenshot trigger on every layout pass (timer may not fire on iOS 5)
+    [self checkScreenshotTrigger];
+
+    if (!HAAutoLayoutAvailable()) {
+        CGRect bounds = self.view.bounds;
+
+        // Connection bar: full width, at top of view.
+        // Pre-iOS 7: view starts below nav bar (no edgesForExtendedLayout).
+        // iOS 7+: view extends under nav bar, so offset by nav bar height.
+        CGFloat connY = 0;
+        if (HASystemMajorVersion() >= 7) {
+            connY = 20.0; // status bar
+            if (self.navigationController && !self.navigationController.navigationBarHidden) {
+                connY += self.navigationController.navigationBar.frame.size.height;
+            }
+        }
+        CGFloat connH = self.connectionBar.frame.size.height;
+        if (self.connectionBar.frame.size.width != bounds.size.width) {
+            self.connectionBar.frame = CGRectMake(0, connY, bounds.size.width, connH);
+        }
+        self.connectionLabel.frame = self.connectionBar.bounds;
+
+        // View picker: below safe area / nav bar
+        CGFloat pickerY = connY + connH + 16.0;
+        CGFloat pickerH = 32.0;
+        if (!self.viewPicker.hidden) {
+            self.viewPicker.frame = CGRectMake(12, pickerY, bounds.size.width - 24, pickerH);
+        }
+
+        // Collection view: fill remaining space
+        CGFloat cvTop;
+        if (!self.viewPicker.hidden) {
+            cvTop = CGRectGetMaxY(self.viewPicker.frame) + 12.0;
+        } else if (connH > 0) {
+            cvTop = connY + connH;
+        } else {
+            cvTop = connY; // right below nav bar / status bar
+        }
+        self.collectionView.frame = CGRectMake(0, cvTop, bounds.size.width, bounds.size.height - cvTop);
+
+        // Status label + spinner: centered in view
+        CGSize statusSize = [self.statusLabel sizeThatFits:CGSizeMake(bounds.size.width - 40, CGFLOAT_MAX)];
+        self.statusLabel.frame = CGRectMake((bounds.size.width - statusSize.width) / 2,
+                                            bounds.size.height / 2 - 20,
+                                            statusSize.width, statusSize.height);
+        CGSize spinSize = self.spinner.frame.size;
+        self.spinner.frame = CGRectMake((bounds.size.width - spinSize.width) / 2,
+                                        CGRectGetMaxY(self.statusLabel.frame) + 12,
+                                        spinSize.width, spinSize.height);
+    }
 }
 
 - (void)didReceiveMemoryWarning {
@@ -355,9 +443,11 @@ static NSString * const kSectionHeaderReuseId = @"HASectionHeader";
         UINavigationBar *navBar = self.navigationController.navigationBar;
         BOOL dark = [HATheme isDarkMode];
         navBar.barStyle = dark ? UIBarStyleBlack : UIBarStyleDefault;
-        navBar.barTintColor = dark
-            ? [UIColor colorWithRed:0.11 green:0.11 blue:0.13 alpha:1.0]
-            : nil;
+        if ([navBar respondsToSelector:@selector(setBarTintColor:)]) {
+            navBar.barTintColor = dark
+                ? [UIColor colorWithRed:0.11 green:0.11 blue:0.13 alpha:1.0]
+                : nil;
+        }
         navBar.tintColor = [HATheme primaryTextColor];
     }
 }
@@ -378,6 +468,9 @@ static NSString * const kSectionHeaderReuseId = @"HASectionHeader";
     self.connectionBar.backgroundColor = [HATheme connectionBarColor];
     self.connectionBar.translatesAutoresizingMaskIntoConstraints = NO;
     self.connectionBar.clipsToBounds = YES;
+    if (!HAAutoLayoutAvailable()) {
+        self.connectionBar.frame = CGRectMake(0, 64, 0, 0);  // hidden initially
+    }
     [self.view addSubview:self.connectionBar];
 
     self.connectionLabel = [[UILabel alloc] init];
@@ -388,26 +481,36 @@ static NSString * const kSectionHeaderReuseId = @"HASectionHeader";
     self.connectionLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.connectionBar addSubview:self.connectionLabel];
 
-    [self.view addConstraint:[NSLayoutConstraint constraintWithItem:self.connectionBar attribute:NSLayoutAttributeLeading
-        relatedBy:NSLayoutRelationEqual toItem:self.view attribute:NSLayoutAttributeLeading multiplier:1 constant:0]];
-    [self.view addConstraint:[NSLayoutConstraint constraintWithItem:self.connectionBar attribute:NSLayoutAttributeTrailing
-        relatedBy:NSLayoutRelationEqual toItem:self.view attribute:NSLayoutAttributeTrailing multiplier:1 constant:0]];
-    [self.view addConstraint:[NSLayoutConstraint constraintWithItem:self.connectionBar attribute:NSLayoutAttributeTop
-        relatedBy:NSLayoutRelationEqual toItem:self.view attribute:NSLayoutAttributeTop multiplier:1 constant:64]];
+    HAActivateConstraints(@[
+        HACon([NSLayoutConstraint constraintWithItem:self.connectionBar attribute:NSLayoutAttributeLeading
+            relatedBy:NSLayoutRelationEqual toItem:self.view attribute:NSLayoutAttributeLeading multiplier:1 constant:0]),
+        HACon([NSLayoutConstraint constraintWithItem:self.connectionBar attribute:NSLayoutAttributeTrailing
+            relatedBy:NSLayoutRelationEqual toItem:self.view attribute:NSLayoutAttributeTrailing multiplier:1 constant:0]),
+        HACon([NSLayoutConstraint constraintWithItem:self.connectionBar attribute:NSLayoutAttributeTop
+            relatedBy:NSLayoutRelationEqual toItem:self.view attribute:NSLayoutAttributeTop multiplier:1 constant:64]),
+    ]);
 
-    self.connectionBarHeight = [NSLayoutConstraint constraintWithItem:self.connectionBar attribute:NSLayoutAttributeHeight
-        relatedBy:NSLayoutRelationEqual toItem:nil attribute:NSLayoutAttributeNotAnAttribute multiplier:1 constant:0];
-    [self.connectionBar addConstraint:self.connectionBarHeight];
+    self.connectionBarHeight = HAMakeConstraint([NSLayoutConstraint constraintWithItem:self.connectionBar attribute:NSLayoutAttributeHeight
+        relatedBy:NSLayoutRelationEqual toItem:nil attribute:NSLayoutAttributeNotAnAttribute multiplier:1 constant:0]);
+    if (self.connectionBarHeight) [self.connectionBar addConstraint:self.connectionBarHeight];
 
-    [self.connectionBar addConstraint:[NSLayoutConstraint constraintWithItem:self.connectionLabel attribute:NSLayoutAttributeCenterX
-        relatedBy:NSLayoutRelationEqual toItem:self.connectionBar attribute:NSLayoutAttributeCenterX multiplier:1 constant:0]];
-    [self.connectionBar addConstraint:[NSLayoutConstraint constraintWithItem:self.connectionLabel attribute:NSLayoutAttributeCenterY
-        relatedBy:NSLayoutRelationEqual toItem:self.connectionBar attribute:NSLayoutAttributeCenterY multiplier:1 constant:0]];
+    HACenterIn(self.connectionLabel, self.connectionBar, YES, YES);
 }
 
 - (void)showConnectionBar:(BOOL)show message:(NSString *)message {
     self.connectionLabel.text = message;
     CGFloat targetHeight = show ? 24.0 : 0.0;
+
+    if (!HAAutoLayoutAvailable()) {
+        // Frame-based: directly set frame and trigger re-layout
+        [UIView animateWithDuration:0.3 animations:^{
+            self.connectionBar.frame = CGRectMake(0, 64.0, self.view.bounds.size.width, targetHeight);
+            self.connectionLabel.frame = self.connectionBar.bounds;
+            [self.view setNeedsLayout];
+            [self.view layoutIfNeeded];
+        }];
+        return;
+    }
 
     if (self.connectionBarHeight.constant == targetHeight) return;
 
@@ -426,27 +529,32 @@ static NSString * const kSectionHeaderReuseId = @"HASectionHeader";
 
     // Pin below safe area with 16pt padding (matches side padding in kiosk mode)
     if (@available(iOS 11.0, *)) {
-        self.viewPickerTopConstraint = [self.viewPicker.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:16];
+        self.viewPickerTopConstraint = HAMakeConstraint([self.viewPicker.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:16]);
     } else {
-        self.viewPickerTopConstraint = [self.viewPicker.topAnchor constraintEqualToAnchor:self.topLayoutGuide.bottomAnchor constant:16];
+        self.viewPickerTopConstraint = HAMakeConstraint([self.viewPicker.topAnchor constraintEqualToAnchor:self.topLayoutGuide.bottomAnchor constant:16]);
     }
-    [self.view addConstraint:self.viewPickerTopConstraint];
-    [self.view addConstraint:[NSLayoutConstraint constraintWithItem:self.viewPicker attribute:NSLayoutAttributeLeading
-        relatedBy:NSLayoutRelationEqual toItem:self.view attribute:NSLayoutAttributeLeading multiplier:1 constant:12]];
-    [self.view addConstraint:[NSLayoutConstraint constraintWithItem:self.viewPicker attribute:NSLayoutAttributeTrailing
-        relatedBy:NSLayoutRelationEqual toItem:self.view attribute:NSLayoutAttributeTrailing multiplier:1 constant:-12]];
-    [self.view addConstraint:[NSLayoutConstraint constraintWithItem:self.viewPicker attribute:NSLayoutAttributeHeight
-        relatedBy:NSLayoutRelationEqual toItem:nil attribute:NSLayoutAttributeNotAnAttribute multiplier:1 constant:32]];
+    HAActivateConstraints(@[
+        HACon(self.viewPickerTopConstraint),
+        HACon([NSLayoutConstraint constraintWithItem:self.viewPicker attribute:NSLayoutAttributeLeading
+            relatedBy:NSLayoutRelationEqual toItem:self.view attribute:NSLayoutAttributeLeading multiplier:1 constant:12]),
+        HACon([NSLayoutConstraint constraintWithItem:self.viewPicker attribute:NSLayoutAttributeTrailing
+            relatedBy:NSLayoutRelationEqual toItem:self.view attribute:NSLayoutAttributeTrailing multiplier:1 constant:-12]),
+        HACon([NSLayoutConstraint constraintWithItem:self.viewPicker attribute:NSLayoutAttributeHeight
+            relatedBy:NSLayoutRelationEqual toItem:nil attribute:NSLayoutAttributeNotAnAttribute multiplier:1 constant:32]),
+    ]);
 }
 
 - (void)setupCollectionView {
-    // Start with flow layout; will switch to columnar when sections view is detected
-    UICollectionViewFlowLayout *layout = [[UICollectionViewFlowLayout alloc] init];
+    // Start with flow layout; will switch to columnar when sections view is detected.
+    // Use NSClassFromString to get the runtime class — on iOS 5, PSTCollectionView
+    // creates UICollectionViewFlowLayout dynamically, so the compile-time class ref
+    // points to a different (empty) class than the runtime one.
+    UICollectionViewFlowLayout *layout = [[NSClassFromString(@"UICollectionViewFlowLayout") alloc] init];
     layout.minimumInteritemSpacing = 6;
     layout.minimumLineSpacing = 6;
-    layout.sectionInset = UIEdgeInsetsMake(4, 16, 16, 16);
+    layout.sectionInset = UIEdgeInsetsMake(4, 8, 8, 8);
 
-    self.collectionView = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
+    self.collectionView = [[NSClassFromString(@"UICollectionView") alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
     self.collectionView.backgroundColor = [UIColor clearColor];
     self.collectionView.dataSource = self;
     self.collectionView.delegate = self;
@@ -455,35 +563,39 @@ static NSString * const kSectionHeaderReuseId = @"HASectionHeader";
     [self.view addSubview:self.collectionView];
 
     // Pull-to-refresh (UIRefreshControl available since iOS 6)
-    self.refreshControl = [[UIRefreshControl alloc] init];
-    [self.refreshControl addTarget:self action:@selector(pullToRefresh:) forControlEvents:UIControlEventValueChanged];
-    [self.collectionView addSubview:self.refreshControl];
+    if (NSClassFromString(@"UIRefreshControl")) {
+        self.refreshControl = [[UIRefreshControl alloc] init];
+        [self.refreshControl addTarget:self action:@selector(pullToRefresh:) forControlEvents:UIControlEventValueChanged];
+        [self.collectionView addSubview:self.refreshControl];
+    }
     self.collectionView.alwaysBounceVertical = YES;
 
-    [self.view addConstraint:[NSLayoutConstraint constraintWithItem:self.collectionView attribute:NSLayoutAttributeLeading
-        relatedBy:NSLayoutRelationEqual toItem:self.view attribute:NSLayoutAttributeLeading multiplier:1 constant:0]];
-    [self.view addConstraint:[NSLayoutConstraint constraintWithItem:self.collectionView attribute:NSLayoutAttributeTrailing
-        relatedBy:NSLayoutRelationEqual toItem:self.view attribute:NSLayoutAttributeTrailing multiplier:1 constant:0]];
+    HAActivateConstraints(@[
+        HACon([NSLayoutConstraint constraintWithItem:self.collectionView attribute:NSLayoutAttributeLeading
+            relatedBy:NSLayoutRelationEqual toItem:self.view attribute:NSLayoutAttributeLeading multiplier:1 constant:0]),
+        HACon([NSLayoutConstraint constraintWithItem:self.collectionView attribute:NSLayoutAttributeTrailing
+            relatedBy:NSLayoutRelationEqual toItem:self.view attribute:NSLayoutAttributeTrailing multiplier:1 constant:0]),
+    ]);
 
     // Two competing top constraints: one below picker (normal), one at safe area top (kiosk)
-    self.collectionViewTopToPickerConstraint = [NSLayoutConstraint constraintWithItem:self.collectionView attribute:NSLayoutAttributeTop
-        relatedBy:NSLayoutRelationEqual toItem:self.viewPicker attribute:NSLayoutAttributeBottom multiplier:1 constant:12];
+    self.collectionViewTopToPickerConstraint = HAMakeConstraint([NSLayoutConstraint constraintWithItem:self.collectionView attribute:NSLayoutAttributeTop
+        relatedBy:NSLayoutRelationEqual toItem:self.viewPicker attribute:NSLayoutAttributeBottom multiplier:1 constant:12]);
     // Kiosk: pin to safe area top. Section inset adds 4pt internally,
     // so use 12pt here for a total of 16pt (matching side padding).
     if (@available(iOS 11.0, *)) {
-        self.collectionViewTopToViewConstraint = [self.collectionView.topAnchor
-            constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:12];
+        self.collectionViewTopToViewConstraint = HAMakeConstraint([self.collectionView.topAnchor
+            constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:12]);
     } else {
-        self.collectionViewTopToViewConstraint = [self.collectionView.topAnchor
-            constraintEqualToAnchor:self.topLayoutGuide.bottomAnchor constant:12];
+        self.collectionViewTopToViewConstraint = HAMakeConstraint([self.collectionView.topAnchor
+            constraintEqualToAnchor:self.topLayoutGuide.bottomAnchor constant:12]);
     }
     // No-picker constraint: pin directly to safe area (tight, no gap)
     if (@available(iOS 11.0, *)) {
-        self.collectionViewTopToSafeAreaConstraint = [self.collectionView.topAnchor
-            constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:0];
+        self.collectionViewTopToSafeAreaConstraint = HAMakeConstraint([self.collectionView.topAnchor
+            constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:0]);
     } else {
-        self.collectionViewTopToSafeAreaConstraint = [self.collectionView.topAnchor
-            constraintEqualToAnchor:self.topLayoutGuide.bottomAnchor constant:0];
+        self.collectionViewTopToSafeAreaConstraint = HAMakeConstraint([self.collectionView.topAnchor
+            constraintEqualToAnchor:self.topLayoutGuide.bottomAnchor constant:0]);
     }
 
     // Only activate the picker constraint initially; the kiosk constraint
@@ -491,29 +603,31 @@ static NSString * const kSectionHeaderReuseId = @"HASectionHeader";
     // iOS 9 bug where addConstraint: activates the constraint regardless
     // of the .active property, causing a "Unable to simultaneously satisfy
     // constraints" warning at launch.
-    self.collectionViewTopToPickerConstraint.active = NO;
-    self.collectionViewTopToViewConstraint.active = NO;
-    self.collectionViewTopToSafeAreaConstraint.active = YES;
+    HASetConstraintActive(self.collectionViewTopToPickerConstraint, NO);
+    HASetConstraintActive(self.collectionViewTopToViewConstraint, NO);
+    HASetConstraintActive(self.collectionViewTopToSafeAreaConstraint, YES);
 
-    [self.view addConstraint:[NSLayoutConstraint constraintWithItem:self.collectionView attribute:NSLayoutAttributeBottom
-        relatedBy:NSLayoutRelationEqual toItem:self.view attribute:NSLayoutAttributeBottom multiplier:1 constant:0]];
+    HAActivateConstraints(@[
+        HACon([NSLayoutConstraint constraintWithItem:self.collectionView attribute:NSLayoutAttributeBottom
+            relatedBy:NSLayoutRelationEqual toItem:self.view attribute:NSLayoutAttributeBottom multiplier:1 constant:0]),
+    ]);
 }
 
 - (void)updateCollectionViewTopConstraintForPicker:(BOOL)pickerVisible {
     BOOL kiosk = [[HAAuthManager sharedManager] isKioskMode];
-    self.collectionViewTopToPickerConstraint.active = NO;
-    self.collectionViewTopToViewConstraint.active = NO;
-    self.collectionViewTopToSafeAreaConstraint.active = NO;
+    HASetConstraintActive(self.collectionViewTopToPickerConstraint, NO);
+    HASetConstraintActive(self.collectionViewTopToViewConstraint, NO);
+    HASetConstraintActive(self.collectionViewTopToSafeAreaConstraint, NO);
 
     if (pickerVisible) {
         // Always position below picker when it's visible (including kiosk mode)
-        self.collectionViewTopToPickerConstraint.active = YES;
+        HASetConstraintActive(self.collectionViewTopToPickerConstraint, YES);
     } else if (kiosk) {
         // Kiosk mode without picker: use view constraint (has 12pt padding)
-        self.collectionViewTopToViewConstraint.active = YES;
+        HASetConstraintActive(self.collectionViewTopToViewConstraint, YES);
     } else {
         // Normal mode without picker: pin to safe area
-        self.collectionViewTopToSafeAreaConstraint.active = YES;
+        HASetConstraintActive(self.collectionViewTopToSafeAreaConstraint, YES);
     }
 }
 
@@ -533,13 +647,13 @@ static NSString * const kSectionHeaderReuseId = @"HASectionHeader";
         columnar.delegate = self;
         columnar.interColumnSpacing = 6.0;
         columnar.interItemSpacing = 6.0;
-        columnar.contentInsets = UIEdgeInsetsMake(4, 16, 16, 16);
+        columnar.contentInsets = UIEdgeInsetsMake(4, 8, 8, 8);
         [self.collectionView setCollectionViewLayout:columnar animated:NO];
     } else {
         HATopAlignedFlowLayout *flow = [[HATopAlignedFlowLayout alloc] init];
         flow.minimumInteritemSpacing = 6;
         flow.minimumLineSpacing = 6;
-        flow.sectionInset = UIEdgeInsetsMake(4, 16, 16, 16);
+        flow.sectionInset = UIEdgeInsetsMake(4, 8, 8, 8);
         [self.collectionView setCollectionViewLayout:flow animated:NO];
     }
 }
@@ -656,14 +770,16 @@ static NSString * const kSectionHeaderReuseId = @"HASectionHeader";
     self.spinner.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:self.spinner];
 
-    [self.view addConstraint:[NSLayoutConstraint constraintWithItem:self.statusLabel attribute:NSLayoutAttributeCenterX
-        relatedBy:NSLayoutRelationEqual toItem:self.view attribute:NSLayoutAttributeCenterX multiplier:1 constant:0]];
-    [self.view addConstraint:[NSLayoutConstraint constraintWithItem:self.statusLabel attribute:NSLayoutAttributeCenterY
-        relatedBy:NSLayoutRelationEqual toItem:self.view attribute:NSLayoutAttributeCenterY multiplier:1 constant:-20]];
-    [self.view addConstraint:[NSLayoutConstraint constraintWithItem:self.spinner attribute:NSLayoutAttributeCenterX
-        relatedBy:NSLayoutRelationEqual toItem:self.view attribute:NSLayoutAttributeCenterX multiplier:1 constant:0]];
-    [self.view addConstraint:[NSLayoutConstraint constraintWithItem:self.spinner attribute:NSLayoutAttributeTop
-        relatedBy:NSLayoutRelationEqual toItem:self.statusLabel attribute:NSLayoutAttributeBottom multiplier:1 constant:12]];
+    HAActivateConstraints(@[
+        HACon([NSLayoutConstraint constraintWithItem:self.statusLabel attribute:NSLayoutAttributeCenterX
+            relatedBy:NSLayoutRelationEqual toItem:self.view attribute:NSLayoutAttributeCenterX multiplier:1 constant:0]),
+        HACon([NSLayoutConstraint constraintWithItem:self.statusLabel attribute:NSLayoutAttributeCenterY
+            relatedBy:NSLayoutRelationEqual toItem:self.view attribute:NSLayoutAttributeCenterY multiplier:1 constant:-20]),
+        HACon([NSLayoutConstraint constraintWithItem:self.spinner attribute:NSLayoutAttributeCenterX
+            relatedBy:NSLayoutRelationEqual toItem:self.view attribute:NSLayoutAttributeCenterX multiplier:1 constant:0]),
+        HACon([NSLayoutConstraint constraintWithItem:self.spinner attribute:NSLayoutAttributeTop
+            relatedBy:NSLayoutRelationEqual toItem:self.statusLabel attribute:NSLayoutAttributeBottom multiplier:1 constant:12]),
+    ]);
 }
 
 - (void)showLoading:(BOOL)loading message:(NSString *)message {
@@ -683,13 +799,12 @@ static NSString * const kSectionHeaderReuseId = @"HASectionHeader";
         if (!self.skeletonView) {
             self.skeletonView = [[HASkeletonView alloc] init];
             self.skeletonView.translatesAutoresizingMaskIntoConstraints = NO;
-            [self.view insertSubview:self.skeletonView belowSubview:self.connectionBar ?: self.view];
-            [NSLayoutConstraint activateConstraints:@[
-                [self.skeletonView.leadingAnchor constraintEqualToAnchor:self.collectionView.leadingAnchor],
-                [self.skeletonView.trailingAnchor constraintEqualToAnchor:self.collectionView.trailingAnchor],
-                [self.skeletonView.topAnchor constraintEqualToAnchor:self.collectionView.topAnchor],
-                [self.skeletonView.bottomAnchor constraintEqualToAnchor:self.collectionView.bottomAnchor],
-            ]];
+            if (self.connectionBar && self.connectionBar.superview == self.view) {
+                [self.view insertSubview:self.skeletonView belowSubview:self.connectionBar];
+            } else {
+                [self.view addSubview:self.skeletonView];
+            }
+            HAPinEdgesFlush(self.skeletonView, self.collectionView);
         }
         self.skeletonView.hidden = NO;
         self.skeletonView.alpha = 1.0;
@@ -781,7 +896,7 @@ static const CGFloat kRowUnitHeight = 56.0;
         NSString *initialView = item.customProperties[@"initial_view"];
         HACalendarViewMode mode = ([initialView hasPrefix:@"list"]) ? HACalendarViewModeList : HACalendarViewModeMonth;
         height = [HACalendarCardCell preferredHeightForMode:mode] + headingExtra;
-    } else if ([item.cardType containsString:@"clock-weather"]) {
+    } else if (([item.cardType rangeOfString:@"clock-weather"].location != NSNotFound)) {
         NSNumber *rows = item.customProperties[@"forecast_rows"];
         NSInteger forecastRows = rows ? [rows integerValue] : 5;
         height = [HAClockWeatherCell preferredHeightForForecastRows:forecastRows] + headingExtra;
@@ -939,21 +1054,17 @@ static const CGFloat kRowUnitHeight = 56.0;
     [self showLoading:NO message:nil];
     [self showConnectionBar:NO message:nil];
     [self.refreshControl endRefreshing];
+
     [self.collectionView reloadData];
     [[HAPerfMonitor sharedMonitor] markRebuildEnd];
 
     // Screenshot trigger: when /tmp/take_screenshot exists, capture after layout settles
-    if (!self.screenshotScheduled) {
-        NSString *triggerFile = @"/tmp/take_screenshot";
-        NSString *outputFile = @"/tmp/screenshot.png";
-        if ([[NSFileManager defaultManager] fileExistsAtPath:triggerFile]) {
-            self.screenshotScheduled = YES;
-            [[NSFileManager defaultManager] removeItemAtPath:triggerFile error:nil];
-            HALogD(@"dash", @"Screenshot trigger found, will capture in 3s");
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                [self captureScreenshotToPath:outputFile];
-            });
-        }
+    [self checkScreenshotTrigger];
+    // Start polling timer so screenshots can be taken at any time (not just on reloadData)
+    if (!self.screenshotTimer) {
+        self.screenshotTimer = [NSTimer timerWithTimeInterval:2.0
+            target:self selector:@selector(checkScreenshotTrigger) userInfo:nil repeats:YES];
+        [[NSRunLoop mainRunLoop] addTimer:self.screenshotTimer forMode:NSRunLoopCommonModes];
     }
 }
 
@@ -1249,7 +1360,9 @@ static const CGFloat kRowUnitHeight = 56.0;
     [UIApplication sharedApplication].idleTimerDisabled = kiosk;
 #endif
     [self.navigationController setNavigationBarHidden:kiosk animated:YES];
-    [self setNeedsStatusBarAppearanceUpdate];
+    if ([self respondsToSelector:@selector(setNeedsStatusBarAppearanceUpdate)]) {
+        [self setNeedsStatusBarAppearanceUpdate];
+    }
     // Also use UIApplication method for iOS 9 compatibility where
     // childViewControllerForStatusBarHidden may not be respected.
 #pragma clang diagnostic push
@@ -1282,8 +1395,8 @@ static const CGFloat kRowUnitHeight = 56.0;
 - (void)kioskHideTimerFired {
     if ([[HAAuthManager sharedManager] isKioskMode]) {
         [self.navigationController setNavigationBarHidden:YES animated:YES];
-        self.collectionViewTopToPickerConstraint.active = NO;
-        self.collectionViewTopToViewConstraint.active = YES;
+        HASetConstraintActive(self.collectionViewTopToPickerConstraint, NO);
+        HASetConstraintActive(self.collectionViewTopToViewConstraint, YES);
         [UIView animateWithDuration:0.3 animations:^{
             [self.view layoutIfNeeded];
         }];
@@ -1296,17 +1409,41 @@ static const CGFloat kRowUnitHeight = 56.0;
 
 /// Renders an MDI glyph as a template UIImage suitable for UIBarButtonItem.
 - (UIImage *)renderMDIIcon:(NSString *)name size:(CGFloat)size {
+    // On iOS 5, UILabel/NSString text rendering can't handle Supplementary
+    // Private Use Area codepoints. Use CoreText-based rendering instead.
+    UIImage *image = [HAIconMapper imageForIconName:name size:size color:[UIColor blackColor]];
+    if (image) {
+        if ([image respondsToSelector:@selector(imageWithRenderingMode:)]) {
+            return [image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+        }
+        return image;
+    }
+
+    // Fallback: try text-based rendering (works for BMP codepoints on any iOS)
     NSString *glyph = [HAIconMapper glyphForIconName:name];
     if (!glyph) return nil;
     UIFont *font = [HAIconMapper mdiFontOfSize:size];
-    NSDictionary *attrs = @{NSFontAttributeName: font,
-                            NSForegroundColorAttributeName: [UIColor blackColor]};
-    CGSize textSize = [glyph sizeWithAttributes:attrs];
-    UIGraphicsBeginImageContextWithOptions(textSize, NO, 0);
-    [glyph drawAtPoint:CGPointZero withAttributes:attrs];
-    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
+    CGSize textSize;
+    if ([glyph respondsToSelector:@selector(sizeWithAttributes:)]) {
+        NSDictionary *attrs = @{HAFontAttributeName: font,
+                                HAForegroundColorAttributeName: [UIColor blackColor]};
+        textSize = [glyph sizeWithAttributes:attrs];
+        UIGraphicsBeginImageContextWithOptions(textSize, NO, 0);
+        [glyph drawAtPoint:CGPointZero withAttributes:attrs];
+    } else {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        textSize = [glyph sizeWithFont:font];
+        UIGraphicsBeginImageContextWithOptions(textSize, NO, 0);
+        [glyph drawAtPoint:CGPointZero withFont:font];
+#pragma clang diagnostic pop
+    }
+    image = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
-    return [image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    if ([image respondsToSelector:@selector(imageWithRenderingMode:)]) {
+        return [image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    }
+    return image;
 }
 
 #pragma mark - Actions
@@ -1337,35 +1474,25 @@ static const CGFloat kRowUnitHeight = 56.0;
 - (void)titleTapped:(UIButton *)sender {
     if (!self.availableDashboards || self.availableDashboards.count <= 1) return;
 
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:nil
-                                                                   message:nil
-                                                            preferredStyle:UIAlertControllerStyleActionSheet];
-
     NSString *currentPath = [[HAAuthManager sharedManager] selectedDashboardPath];
-
+    NSMutableArray *titles = [NSMutableArray arrayWithCapacity:self.availableDashboards.count];
     for (NSDictionary *dashboard in self.availableDashboards) {
         NSString *title = dashboard[@"title"] ?: @"Untitled";
         NSString *urlPath = dashboard[@"url_path"];
-
         BOOL isSelected = [urlPath isEqualToString:currentPath] ||
                           (urlPath == nil && currentPath == nil);
-        NSString *displayTitle = isSelected ? [NSString stringWithFormat:@"\u2713 %@", title] : title;
-
-        UIAlertAction *action = [UIAlertAction actionWithTitle:displayTitle
-                                                         style:UIAlertActionStyleDefault
-                                                       handler:^(UIAlertAction *a) {
-            [self switchToDashboard:urlPath title:title];
-        }];
-        [alert addAction:action];
+        [titles addObject:isSelected ? [NSString stringWithFormat:@"\u2713 %@", title] : title];
     }
 
-    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
-
-    // iPad: present as popover from title button
-    alert.popoverPresentationController.sourceView = self.titleButton;
-    alert.popoverPresentationController.sourceRect = self.titleButton.bounds;
-
-    [self presentViewController:alert animated:YES completion:nil];
+    [self ha_showActionSheetWithTitle:nil
+                          cancelTitle:@"Cancel"
+                         actionTitles:titles
+                           sourceView:self.titleButton
+                              handler:^(NSInteger index) {
+        if (index < 0 || (NSUInteger)index >= self.availableDashboards.count) return;
+        NSDictionary *dashboard = self.availableDashboards[(NSUInteger)index];
+        [self switchToDashboard:dashboard[@"url_path"] title:dashboard[@"title"] ?: @"Untitled"];
+    }];
 }
 
 - (void)switchToDashboard:(NSString *)urlPath title:(NSString *)title {
@@ -1483,6 +1610,20 @@ static const CGFloat kRowUnitHeight = 56.0;
     // On iOS 9, willDisplayCell may not fire for initially visible cells.
     [self applyBlurBackgroundToCell:cell];
 
+    // PSTCollectionView (iOS 5) doesn't call willDisplayCell:, so trigger
+    // deferred network fetches here for camera/graph/calendar/logbook cells.
+    if (!HAAutoLayoutAvailable()) {
+        if ([cell isKindOfClass:[HACameraEntityCell class]]) {
+            [(HACameraEntityCell *)cell beginLoading];
+        } else if ([cell isKindOfClass:[HAGraphCardCell class]]) {
+            [(HAGraphCardCell *)cell beginLoading];
+        } else if ([cell isKindOfClass:[HACalendarCardCell class]]) {
+            [(HACalendarCardCell *)cell beginLoading];
+        } else if ([cell isKindOfClass:[HALogbookCardCell class]]) {
+            [(HALogbookCardCell *)cell beginLoading];
+        }
+    }
+
     [[HAPerfMonitor sharedMonitor] markCellEnd];
     return cell;
 }
@@ -1491,7 +1632,7 @@ static const CGFloat kRowUnitHeight = 56.0;
            viewForSupplementaryElementOfKind:(NSString *)kind
                                  atIndexPath:(NSIndexPath *)indexPath {
 
-    if ([kind isEqualToString:UICollectionElementKindSectionHeader]) {
+    if ([kind isEqualToString:HACollectionElementKindSectionHeader()]) {
         HASectionHeaderView *header = (HASectionHeaderView *)[collectionView
             dequeueReusableSupplementaryViewOfKind:kind
                               withReuseIdentifier:kSectionHeaderReuseId
@@ -2077,12 +2218,9 @@ heightForHeaderInSection:(NSInteger)section {
     // Coalesce: batch rapid-fire entity updates into a single reload pass.
     // 300ms batches more updates together (reduces flush frequency on A5 devices)
     // while still feeling responsive for user-triggered changes.
-    [self.reloadCoalesceTimer invalidate];
-    self.reloadCoalesceTimer = [NSTimer scheduledTimerWithTimeInterval:0.3
-                                                               target:self
-                                                             selector:@selector(flushPendingReloads)
-                                                             userInfo:nil
-                                                              repeats:NO];
+    // Use performSelector instead of NSTimer — NSTimer doesn't fire reliably on iOS 5.
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(flushPendingReloads) object:nil];
+    [self performSelector:@selector(flushPendingReloads) withObject:nil afterDelay:0.3];
 }
 
 - (void)flushPendingReloads {
@@ -2192,7 +2330,7 @@ heightForHeaderInSection:(NSInteger)section {
     HALogI(@"dash", @"Received Lovelace config: %lu views", (unsigned long)dashboard.views.count);
     for (NSUInteger i = 0; i < dashboard.views.count; i++) {
         HALovelaceView *view = dashboard.views[i];
-        HALogD(@"dash", @"  View %lu: %@ (%lu cards)", (unsigned long)i, view.title, (unsigned long)view.rawCards.count);
+        HALogI(@"dash", @"  View %lu: %@ (%lu cards)", (unsigned long)i, view.title, (unsigned long)view.rawCards.count);
     }
 
     [self populateViewPicker];
@@ -2211,6 +2349,24 @@ heightForHeaderInSection:(NSInteger)section {
 
 #pragma mark - Screenshot Capture
 
+- (void)checkScreenshotTrigger {
+    if (self.screenshotScheduled) return;
+    NSString *triggerFile = @"/tmp/take_screenshot";
+    NSString *outputFile = @"/tmp/screenshot.png";
+    if ([[NSFileManager defaultManager] fileExistsAtPath:triggerFile]) {
+        self.screenshotScheduled = YES;
+        [[NSFileManager defaultManager] removeItemAtPath:triggerFile error:nil];
+        HALogI(@"dash", @"Screenshot trigger found, will capture in 1s");
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [self captureScreenshotToPath:outputFile];
+            self.screenshotScheduled = NO;
+        });
+    }
+    // Re-schedule via performSelector for iOS 5 where NSTimer may not fire reliably
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(checkScreenshotTrigger) object:nil];
+    [self performSelector:@selector(checkScreenshotTrigger) withObject:nil afterDelay:2.0];
+}
+
 - (void)captureScreenshotToPath:(NSString *)path {
     UIWindow *window = [UIApplication sharedApplication].keyWindow;
     if (!window) {
@@ -2218,10 +2374,18 @@ heightForHeaderInSection:(NSInteger)section {
         return;
     }
 
-    UIGraphicsBeginImageContextWithOptions(window.bounds.size, YES, window.screen.scale);
-    [window drawViewHierarchyInRect:window.bounds afterScreenUpdates:YES];
-    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
+    UIImage *image = nil;
+
+    {
+        UIGraphicsBeginImageContextWithOptions(window.bounds.size, YES, window.screen.scale);
+        if ([window respondsToSelector:@selector(drawViewHierarchyInRect:afterScreenUpdates:)]) {
+            [window drawViewHierarchyInRect:window.bounds afterScreenUpdates:YES];
+        } else {
+            [window.layer renderInContext:UIGraphicsGetCurrentContext()];
+        }
+        image = UIGraphicsGetImageFromCurrentImageContext();
+        UIGraphicsEndImageContext();
+    }
 
     if (!image) {
         HALogE(@"dash", @"Screenshot capture failed");

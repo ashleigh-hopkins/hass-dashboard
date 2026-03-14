@@ -1,18 +1,22 @@
+#import "HAAutoLayout.h"
+#import "HAStackView.h"
 #import "HAPictureGlanceCardCell.h"
 #import "HAEntity.h"
 #import "HAConnectionManager.h"
 #import "HAAuthManager.h"
+#import "HAHTTPClient.h"
 #import "HADashboardConfig.h"
 #import "HATheme.h"
 #import "HAHaptics.h"
 #import "HAIconMapper.h"
 #import "HAEntityDisplayHelper.h"
+#import "UIFont+HACompat.h"
 
 @interface HAPictureGlanceCardCell ()
 @property (nonatomic, strong) UIImageView *bgImageView;
 @property (nonatomic, strong) UILabel *titleLabel;
-@property (nonatomic, strong) UIStackView *entityIconStack;
-@property (nonatomic, strong) NSURLSessionDataTask *imageTask;
+@property (nonatomic, strong) HAStackView *entityIconStack;
+@property (nonatomic, strong) id imageTask;
 @property (nonatomic, strong) NSArray<NSString *> *entityIds;
 @end
 
@@ -32,29 +36,26 @@
     [self.contentView insertSubview:self.bgImageView atIndex:0];
 
     self.titleLabel = [[UILabel alloc] init];
-    self.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightBold];
+    self.titleLabel.font = [UIFont ha_systemFontOfSize:16 weight:HAFontWeightBold];
     self.titleLabel.textColor = [UIColor whiteColor];
     self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:self.titleLabel];
 
-    self.entityIconStack = [[UIStackView alloc] init];
-    self.entityIconStack.axis = UILayoutConstraintAxisHorizontal;
+    self.entityIconStack = [[HAStackView alloc] init];
+    self.entityIconStack.axis = 0;
     self.entityIconStack.spacing = 12;
     self.entityIconStack.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:self.entityIconStack];
 
     CGFloat pad = 10;
-    [NSLayoutConstraint activateConstraints:@[
-        [self.bgImageView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
-        [self.bgImageView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
-        [self.bgImageView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
-        [self.bgImageView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
-        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:pad],
-        [self.titleLabel.bottomAnchor constraintEqualToAnchor:self.entityIconStack.topAnchor constant:-4],
-        [self.entityIconStack.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:pad],
-        [self.entityIconStack.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-pad],
-        [self.entityIconStack.heightAnchor constraintEqualToConstant:24],
-    ]];
+    HAPinEdgesFlush(self.bgImageView, self.contentView);
+    HAActivateConstraints(@[
+        HACon([self.titleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:pad]),
+        HACon([self.titleLabel.bottomAnchor constraintEqualToAnchor:self.entityIconStack.topAnchor constant:-4]),
+        HACon([self.entityIconStack.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:pad]),
+        HACon([self.entityIconStack.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-pad]),
+        HACon([self.entityIconStack.heightAnchor constraintEqualToConstant:24]),
+    ]);
 }
 
 - (void)configureWithSection:(HADashboardConfigSection *)section
@@ -89,7 +90,7 @@
     }
 
     // Load background image
-    [self.imageTask cancel];
+    [[HAHTTPClient sharedClient] cancelTask:self.imageTask];
     self.bgImageView.image = nil;
     NSDictionary *props = section.customProperties;
     NSString *picturePath = props[@"camera_image"] ?: props[@"image"];
@@ -104,13 +105,12 @@
                 NSString *token = [[HAAuthManager sharedManager] accessToken];
                 if (token) [req setValue:[NSString stringWithFormat:@"Bearer %@", token] forHTTPHeaderField:@"Authorization"];
                 __weak typeof(self) weakSelf = self;
-                self.imageTask = [[NSURLSession sharedSession] dataTaskWithRequest:req completionHandler:^(NSData *data, NSURLResponse *r, NSError *e) {
+                self.imageTask = [[HAHTTPClient sharedClient] dataTaskWithRequest:req completionHandler:^(NSData *data, NSURLResponse *r, NSError *e) {
                     if (!data) return;
                     UIImage *img = [UIImage imageWithData:data];
                     if (!img) return;
                     dispatch_async(dispatch_get_main_queue(), ^{ weakSelf.bgImageView.image = img; });
                 }];
-                [self.imageTask resume];
             }
         }
     }
@@ -118,9 +118,25 @@
     self.contentView.backgroundColor = [HATheme cellBackgroundColor];
 }
 
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    if (!HAAutoLayoutAvailable()) {
+        CGFloat pad = 10;
+        CGFloat w = self.contentView.bounds.size.width;
+        CGFloat h = self.contentView.bounds.size.height;
+        self.bgImageView.frame = self.contentView.bounds;
+        CGFloat stackH = 24;
+        CGSize stackSize = [self.entityIconStack sizeThatFits:CGSizeMake(w - pad * 2, stackH)];
+        self.entityIconStack.frame = CGRectMake(pad, h - pad - stackH, stackSize.width, stackH);
+        CGSize titleSize = [self.titleLabel sizeThatFits:CGSizeMake(w - pad * 2, CGFLOAT_MAX)];
+        self.titleLabel.frame = CGRectMake(pad, CGRectGetMinY(self.entityIconStack.frame) - 4 - titleSize.height,
+                                           w - pad * 2, titleSize.height);
+    }
+}
+
 - (void)prepareForReuse {
     [super prepareForReuse];
-    [self.imageTask cancel];
+    [[HAHTTPClient sharedClient] cancelTask:self.imageTask];
     self.imageTask = nil;
     self.bgImageView.image = nil;
     self.titleLabel.text = nil;
@@ -128,7 +144,6 @@
         [self.entityIconStack removeArrangedSubview:v];
         [v removeFromSuperview];
     }
-    self.contentView.backgroundColor = [HATheme cellBackgroundColor];
 }
 
 @end

@@ -1,3 +1,7 @@
+#import "HAAutoLayout.h"
+#import "NSString+HACompat.h"
+#import "HAStackView.h"
+#import "NSString+HACompat.h"
 #import "HAThermostatGaugeCell.h"
 #import "HAEntity.h"
 #import "HAConnectionManager.h"
@@ -7,6 +11,8 @@
 #import "HAIconMapper.h"
 #import "HAEntityDisplayHelper.h"
 #import "UIView+HAUtilities.h"
+#import "UIViewController+HAAlert.h"
+#import "UIFont+HACompat.h"
 
 // Gauge geometry -- proportions matched to HA web's ha-control-circular-slider:
 // SVG viewBox 320x320, center (160,160), RADIUS=145, stroke=24
@@ -53,7 +59,9 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
     HAGaugeFillNone,         // off
 };
 
-@interface HAThermostatGaugeCell () <UIGestureRecognizerDelegate>
+@interface HAThermostatGaugeCell () <UIGestureRecognizerDelegate> {
+    UILabel *_targetIconLabel;
+}
 @property (nonatomic, strong) CAShapeLayer *bgArcLayer;
 @property (nonatomic, strong) CAShapeLayer *coloredArcLayer;  // directional range at 0.5 opacity
 @property (nonatomic, strong) CAShapeLayer *fgArcLayer;        // active portion at 1.0 opacity
@@ -64,7 +72,7 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
 @property (nonatomic, strong) UILabel *modeLabel;
 @property (nonatomic, strong) UIButton *plusButton;
 @property (nonatomic, strong) UIButton *minusButton;
-@property (nonatomic, strong) UIStackView *modeStack;
+@property (nonatomic, strong) HAStackView *modeStack;
 @property (nonatomic, strong) NSArray<NSString *> *availableModes;
 @property (nonatomic, copy) NSString *currentMode;
 
@@ -94,7 +102,7 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
 @property (nonatomic, copy) NSArray<NSString *> *lastBuiltModes; // modes the buttons were built for
 @property (nonatomic, copy) NSString *lastBuiltCurrentMode;      // active mode when buttons were built
 // Extra mode selectors (preset, fan, swing) — tappable labels below mode bar
-@property (nonatomic, strong) UIStackView *extraModesStack;
+@property (nonatomic, strong) HAStackView *extraModesStack;
 @end
 
 @implementation HAThermostatGaugeCell
@@ -315,7 +323,7 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
     // Mode/action label -- centered inside the arc, above the temperature
     // HA web: 16px, weight 500 (medium)
     self.modeLabel = [[UILabel alloc] init];
-    self.modeLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightMedium];
+    self.modeLabel.font = [UIFont ha_systemFontOfSize:16 weight:HAFontWeightMedium];
     self.modeLabel.textColor = [HATheme secondaryTextColor];
     self.modeLabel.textAlignment = NSTextAlignmentCenter;
     self.modeLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -324,7 +332,7 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
     // Temperature label (centered in gauge arc)
     // HA web: 57px (lg), 44px (md), 36px (sm), weight 400 (regular)
     self.tempLabel = [[UILabel alloc] init];
-    self.tempLabel.font = [UIFont monospacedDigitSystemFontOfSize:57 weight:UIFontWeightRegular];
+    self.tempLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:57 weight:HAFontWeightRegular];
     self.tempLabel.textColor = [HATheme primaryTextColor];
     self.tempLabel.textAlignment = NSTextAlignmentCenter;
     self.tempLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -332,8 +340,15 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
 
     // Target/current label below temp (with icon)
     // HA web: 16px, weight 500 (medium)
+    _targetIconLabel = [[UILabel alloc] init];
+    _targetIconLabel.font = [HAIconMapper mdiFontOfSize:16];
+    _targetIconLabel.textColor = [HATheme secondaryTextColor];
+    _targetIconLabel.textAlignment = NSTextAlignmentCenter;
+    _targetIconLabel.hidden = YES;
+    [self.contentView addSubview:_targetIconLabel];
+
     self.targetLabel = [[UILabel alloc] init];
-    self.targetLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightMedium];
+    self.targetLabel.font = [UIFont ha_systemFontOfSize:16 weight:HAFontWeightMedium];
     self.targetLabel.textColor = [HATheme secondaryTextColor];
     self.targetLabel.textAlignment = NSTextAlignmentCenter;
     self.targetLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -378,43 +393,43 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
     self.modeBar.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:self.modeBar];
 
-    self.modeStack = [[UIStackView alloc] init];
-    self.modeStack.axis = UILayoutConstraintAxisHorizontal;
-    self.modeStack.distribution = UIStackViewDistributionFillEqually;
+    self.modeStack = [[HAStackView alloc] init];
+    self.modeStack.axis = 0;
+    self.modeStack.distribution = 1;
     self.modeStack.spacing = 4;
     self.modeStack.translatesAutoresizingMaskIntoConstraints = NO;
     [self.modeBar addSubview:self.modeStack];
 
     // Extra modes stack (preset, fan, swing) — compact tappable labels below mode bar
-    self.extraModesStack = [[UIStackView alloc] init];
-    self.extraModesStack.axis = UILayoutConstraintAxisHorizontal;
-    self.extraModesStack.distribution = UIStackViewDistributionFillEqually;
+    self.extraModesStack = [[HAStackView alloc] init];
+    self.extraModesStack.axis = 0;
+    self.extraModesStack.distribution = 1;
     self.extraModesStack.spacing = 8;
     self.extraModesStack.translatesAutoresizingMaskIntoConstraints = NO;
     self.extraModesStack.hidden = YES;
     [self.contentView addSubview:self.extraModesStack];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.modeBar.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kModeBarSidePad],
-        [self.modeBar.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kModeBarSidePad],
-        [self.modeBar.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-kModeBarBottomPad],
-        [self.modeBar.heightAnchor constraintEqualToConstant:kModeBarHeight],
-        [self.modeStack.leadingAnchor constraintEqualToAnchor:self.modeBar.leadingAnchor constant:8],
-        [self.modeStack.trailingAnchor constraintEqualToAnchor:self.modeBar.trailingAnchor constant:-8],
-        [self.modeStack.topAnchor constraintEqualToAnchor:self.modeBar.topAnchor constant:4],
-        [self.modeStack.bottomAnchor constraintEqualToAnchor:self.modeBar.bottomAnchor constant:-4],
+    HAActivateConstraints(@[
+        HACon([self.modeBar.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kModeBarSidePad]),
+        HACon([self.modeBar.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kModeBarSidePad]),
+        HACon([self.modeBar.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-kModeBarBottomPad]),
+        HACon([self.modeBar.heightAnchor constraintEqualToConstant:kModeBarHeight]),
+        HACon([self.modeStack.leadingAnchor constraintEqualToAnchor:self.modeBar.leadingAnchor constant:8]),
+        HACon([self.modeStack.trailingAnchor constraintEqualToAnchor:self.modeBar.trailingAnchor constant:-8]),
+        HACon([self.modeStack.topAnchor constraintEqualToAnchor:self.modeBar.topAnchor constant:4]),
+        HACon([self.modeStack.bottomAnchor constraintEqualToAnchor:self.modeBar.bottomAnchor constant:-4]),
         // Extra modes: overlaid inside the arc area above mode bar (small text)
-        [self.extraModesStack.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kModeBarSidePad],
-        [self.extraModesStack.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kModeBarSidePad],
-        [self.extraModesStack.bottomAnchor constraintEqualToAnchor:self.modeBar.topAnchor constant:-4],
-        [self.extraModesStack.heightAnchor constraintEqualToConstant:24],
-    ]];
+        HACon([self.extraModesStack.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kModeBarSidePad]),
+        HACon([self.extraModesStack.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kModeBarSidePad]),
+        HACon([self.extraModesStack.bottomAnchor constraintEqualToAnchor:self.modeBar.topAnchor constant:-4]),
+        HACon([self.extraModesStack.heightAnchor constraintEqualToConstant:24]),
+    ]);
 }
 
 - (UIButton *)makeOutlinedButtonWithTitle:(NSString *)title action:(SEL)action {
-    UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
+    UIButton *btn = HASystemButton();
     [btn setTitle:title forState:UIControlStateNormal];
-    btn.titleLabel.font = [UIFont systemFontOfSize:24 weight:UIFontWeightLight];
+    btn.titleLabel.font = [UIFont ha_systemFontOfSize:24 weight:HAFontWeightLight];
     btn.backgroundColor = [UIColor clearColor];
     btn.layer.borderWidth = 1.5;
     btn.layer.borderColor = [HATheme tertiaryTextColor].CGColor;
@@ -430,6 +445,19 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
 
 - (void)layoutSubviews {
     [super layoutSubviews];
+    if (!HAAutoLayoutAvailable()) {
+        CGFloat w = self.contentView.bounds.size.width;
+        CGFloat h = self.contentView.bounds.size.height;
+
+        // Mode bar: bottom
+        self.modeBar.frame = CGRectMake(kModeBarSidePad, h - kModeBarBottomPad - kModeBarHeight, w - kModeBarSidePad * 2, kModeBarHeight);
+        self.modeStack.frame = CGRectMake(8, 4, self.modeBar.bounds.size.width - 16, kModeBarHeight - 8);
+
+        // Extra modes stack: above mode bar
+        if (!self.extraModesStack.hidden) {
+            self.extraModesStack.frame = CGRectMake(kModeBarSidePad, CGRectGetMinY(self.modeBar.frame) - 4 - 24, w - kModeBarSidePad * 2, 24);
+        }
+    }
     [self updateGaugeArcs];
 }
 
@@ -513,7 +541,7 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
         primaryFontSize = 36.0;
         secondaryFontSize = 14.0;
     }
-    self.tempLabel.font = [UIFont monospacedDigitSystemFontOfSize:primaryFontSize weight:UIFontWeightRegular];
+    self.tempLabel.font = [UIFont ha_monospacedDigitSystemFontOfSize:primaryFontSize weight:HAFontWeightRegular];
 
     // Hide +/- buttons for md/sm/xs size classes (HA web: .container.md .buttons { display: none })
     BOOL sizeAllowsButtons = isLg;
@@ -526,7 +554,7 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
     self.modeLabel.hidden = (slider < 130.0);
     self.targetLabel.hidden = self.targetLabel.hidden || (slider < 130.0);
 
-    self.modeLabel.font = [UIFont systemFontOfSize:secondaryFontSize weight:UIFontWeightMedium];
+    self.modeLabel.font = [UIFont ha_systemFontOfSize:secondaryFontSize weight:HAFontWeightMedium];
 
     // Measure label sizes for manual centering
     CGFloat labelAreaWidth = slider * 0.6; // HA web .label { width: 60% }
@@ -568,8 +596,13 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
     currentY += tempLabelSize.height + infoGap;
 
     if (showTarget) {
+        CGFloat targetX = sliderLeft + (slider - targetLabelSize.width) / 2.0;
+        if (!_targetIconLabel.hidden) {
+            // Position icon label to the left of the text
+            _targetIconLabel.frame = CGRectMake(targetX - 20, currentY, 18, targetLabelSize.height);
+        }
         self.targetLabel.frame = CGRectMake(
-            sliderLeft + (slider - targetLabelSize.width) / 2.0,
+            targetX,
             currentY,
             targetLabelSize.width,
             targetLabelSize.height
@@ -969,14 +1002,12 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
                 self.tempLabel.text = @"--";
             }
             if (targetTemp && ![mode isEqualToString:@"off"]) {
-                NSMutableAttributedString *targetAttr = [[NSMutableAttributedString alloc] initWithString:tempIcon
-                    attributes:@{NSFontAttributeName: [HAIconMapper mdiFontOfSize:secondarySize],
-                                 NSForegroundColorAttributeName: [HATheme secondaryTextColor]}];
-                [targetAttr appendAttributedString:[[NSAttributedString alloc]
-                    initWithString:[NSString stringWithFormat:@" %.1f %@", targetTemp.doubleValue, self.tempUnitString]
-                    attributes:@{NSFontAttributeName: [UIFont systemFontOfSize:secondarySize weight:UIFontWeightMedium],
-                                 NSForegroundColorAttributeName: [HATheme secondaryTextColor]}]];
-                self.targetLabel.attributedText = targetAttr;
+                [HAIconMapper setIconGlyph:tempIcon iconSize:secondarySize iconColor:[HATheme secondaryTextColor]
+                    onIconLabel:_targetIconLabel
+                    text:[NSString stringWithFormat:@"%.1f %@", targetTemp.doubleValue, self.tempUnitString]
+                    textFont:[UIFont ha_systemFontOfSize:secondarySize weight:HAFontWeightMedium]
+                    textColor:[HATheme secondaryTextColor]
+                    onTextLabel:self.targetLabel];
                 self.targetLabel.hidden = NO;
             } else {
                 self.targetLabel.hidden = YES;
@@ -993,14 +1024,12 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
                 self.tempLabel.text = @"--";
             }
             if (currentTemp) {
-                NSMutableAttributedString *currentAttr = [[NSMutableAttributedString alloc] initWithString:tempIcon
-                    attributes:@{NSFontAttributeName: [HAIconMapper mdiFontOfSize:secondarySize],
-                                 NSForegroundColorAttributeName: [HATheme secondaryTextColor]}];
-                [currentAttr appendAttributedString:[[NSAttributedString alloc]
-                    initWithString:[NSString stringWithFormat:@" %.1f %@", currentTemp.doubleValue, self.tempUnitString]
-                    attributes:@{NSFontAttributeName: [UIFont systemFontOfSize:secondarySize weight:UIFontWeightMedium],
-                                 NSForegroundColorAttributeName: [HATheme secondaryTextColor]}]];
-                self.targetLabel.attributedText = currentAttr;
+                [HAIconMapper setIconGlyph:tempIcon iconSize:secondarySize iconColor:[HATheme secondaryTextColor]
+                    onIconLabel:_targetIconLabel
+                    text:[NSString stringWithFormat:@"%.1f %@", currentTemp.doubleValue, self.tempUnitString]
+                    textFont:[UIFont ha_systemFontOfSize:secondarySize weight:HAFontWeightMedium]
+                    textColor:[HATheme secondaryTextColor]
+                    onTextLabel:self.targetLabel];
                 self.targetLabel.hidden = NO;
             } else {
                 self.targetLabel.hidden = YES;
@@ -1109,18 +1138,20 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
     for (NSString *mode in modes) {
         if (![mode isKindOfClass:[NSString class]]) continue;
 
-        UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
+        UIButton *btn = HASystemButton();
         NSString *iconName = _modeIconNames[mode];
-        NSString *icon = iconName ? [HAIconMapper glyphForIconName:iconName] : @"?";
-        [btn setTitle:icon forState:UIControlStateNormal];
-        btn.titleLabel.font = [HAIconMapper mdiFontOfSize:modeIconSize];
+        if (iconName) {
+            [HAIconMapper setIconName:iconName onButton:btn size:modeIconSize color:[HATheme primaryTextColor]];
+        } else {
+            [btn setTitle:@"?" forState:UIControlStateNormal];
+        }
         btn.layer.cornerRadius = modeBtnCornerRadius;
         btn.clipsToBounds = YES;
         btn.tag = [modes indexOfObject:mode];
         [btn addTarget:self action:@selector(modeTapped:) forControlEvents:UIControlEventTouchUpInside];
 
         // Height only — width is managed by FillEqually stack distribution
-        [btn.heightAnchor constraintEqualToConstant:modeBtnHeight].active = YES;
+        HASetConstraintActive(HAMakeConstraint([btn.heightAnchor constraintEqualToConstant:modeBtnHeight]), YES);
 
         BOOL isActive = [mode isEqualToString:currentMode];
         if (isActive) {
@@ -1193,9 +1224,9 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
 }
 
 - (UIButton *)makeExtraModeButton:(NSString *)title tag:(NSInteger)tag {
-    UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
+    UIButton *btn = HASystemButton();
     [btn setTitle:title forState:UIControlStateNormal];
-    btn.titleLabel.font = [UIFont systemFontOfSize:11 weight:UIFontWeightMedium];
+    btn.titleLabel.font = [UIFont ha_systemFontOfSize:11 weight:HAFontWeightMedium];
     [btn setTitleColor:[HATheme secondaryTextColor] forState:UIControlStateNormal];
     btn.tag = tag;
     [btn addTarget:self action:@selector(extraModeTapped:) forControlEvents:UIControlEventTouchUpInside];
@@ -1226,27 +1257,24 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
     if (!vc) return;
 
     NSString *entityId = self.entity.entityId; // capture before block
-    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:nil message:nil
-                                                           preferredStyle:UIAlertControllerStyleActionSheet];
+    NSMutableArray *titles = [NSMutableArray arrayWithCapacity:options.count];
     for (NSString *option in options) {
         BOOL isActive = [option isEqualToString:current];
-        NSString *title = isActive
+        [titles addObject:isActive
             ? [NSString stringWithFormat:@"\u2713 %@", [option capitalizedString]]
-            : [option capitalizedString];
-        UIAlertAction *action = [UIAlertAction actionWithTitle:title
-                                                         style:UIAlertActionStyleDefault
-                                                       handler:^(UIAlertAction *a) {
-            [HAHaptics lightImpact];
-            [[HAConnectionManager sharedManager] callService:service inDomain:@"climate"
-                                                    withData:@{serviceKey: option}
-                                                    entityId:entityId];
-        }];
-        [sheet addAction:action];
+            : [option capitalizedString]];
     }
-    [sheet addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
-    sheet.popoverPresentationController.sourceView = sender;
-    sheet.popoverPresentationController.sourceRect = sender.bounds;
-    [vc presentViewController:sheet animated:YES completion:nil];
+
+    [vc ha_showActionSheetWithTitle:nil
+                        cancelTitle:@"Cancel"
+                       actionTitles:titles
+                         sourceView:sender
+                            handler:^(NSInteger index) {
+        [HAHaptics lightImpact];
+        [[HAConnectionManager sharedManager] callService:service inDomain:@"climate"
+                                                withData:@{serviceKey: options[(NSUInteger)index]}
+                                                entityId:entityId];
+    }];
 }
 
 #pragma mark - Actions
@@ -1308,6 +1336,8 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
 
 - (void)prepareForReuse {
     [super prepareForReuse];
+    self.plusButton.hidden = YES;
+    self.minusButton.hidden = YES;
     self.nameLabel.attributedText = nil;
     self.tempLabel.text = nil;
     self.targetLabel.attributedText = nil;
@@ -1316,7 +1346,6 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
     self.coloredArcLayer.strokeEnd = 0.0;
     self.fgArcLayer.strokeStart = 0.0;
     self.fgArcLayer.strokeEnd = 0.0;
-    self.contentView.backgroundColor = [HATheme cellBackgroundColor];
     self.availableModes = nil;
     self.currentMode = nil;
     self.currentAction = nil;
@@ -1347,8 +1376,10 @@ typedef NS_ENUM(NSInteger, HAGaugeFillDirection) {
     // Keep cachedGlowImage/cachedGlowColor/cachedGlowSize — bitmap is color-keyed, safe to reuse
     self.lastBuiltModes = nil;
     self.lastBuiltCurrentMode = nil;
+}
 
-    // Refresh theme colors (static on iOS 9-12)
+- (void)resetThemeColors {
+    [super resetThemeColors];
     self.tempLabel.textColor = [HATheme primaryTextColor];
     self.targetLabel.textColor = [HATheme secondaryTextColor];
     self.modeLabel.textColor = [HATheme secondaryTextColor];

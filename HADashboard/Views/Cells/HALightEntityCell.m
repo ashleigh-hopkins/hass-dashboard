@@ -1,3 +1,4 @@
+#import "HAAutoLayout.h"
 #import "HALightEntityCell.h"
 #import "HAEntity.h"
 #import "HAConnectionManager.h"
@@ -5,6 +6,7 @@
 #import "HATheme.h"
 #import "HASwitch.h"
 #import "HAHaptics.h"
+#import "UIFont+HACompat.h"
 
 @interface HALightEntityCell ()
 @property (nonatomic, strong) UISwitch *toggleSwitch;
@@ -48,7 +50,7 @@
     [self.contentView addSubview:self.brightnessSlider];
 
     // Brightness percentage label
-    self.brightnessLabel = [self labelWithFont:[UIFont monospacedDigitSystemFontOfSize:12 weight:UIFontWeightRegular] color:[HATheme secondaryTextColor] lines:1];
+    self.brightnessLabel = [self labelWithFont:[UIFont ha_monospacedDigitSystemFontOfSize:12 weight:HAFontWeightRegular] color:[HATheme secondaryTextColor] lines:1];
     self.brightnessLabel.textAlignment = NSTextAlignmentRight;
 
     // Color mode label (secondary text below name, e.g. "Color Temp · 3000K")
@@ -56,8 +58,8 @@
     self.colorModeLabel.hidden = YES;
 
     // Effect button (shown when entity has effect_list)
-    self.effectButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.effectButton.titleLabel.font = [UIFont systemFontOfSize:11 weight:UIFontWeightMedium];
+    self.effectButton = HASystemButton();
+    self.effectButton.titleLabel.font = [UIFont ha_systemFontOfSize:11 weight:HAFontWeightMedium];
     [self.effectButton setTitleColor:[HATheme accentColor] forState:UIControlStateNormal];
     self.effectButton.translatesAutoresizingMaskIntoConstraints = NO;
     self.effectButton.hidden = YES;
@@ -65,24 +67,25 @@
     [self.contentView addSubview:self.effectButton];
 
     CGFloat padding = 10.0;
+    UIView *cv = self.contentView;
 
     // Color mode label: below name label
-    [NSLayoutConstraint activateConstraints:@[
-        [self.colorModeLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding],
-        [self.colorModeLabel.topAnchor constraintEqualToAnchor:self.nameLabel.bottomAnchor constant:2],
-    ]];
+    HAActivateConstraints(@[
+        HACon([self.colorModeLabel.leadingAnchor constraintEqualToAnchor:cv.leadingAnchor constant:padding]),
+        HACon([self.colorModeLabel.topAnchor constraintEqualToAnchor:self.nameLabel.bottomAnchor constant:2]),
+    ]);
 
     // Effect button: right of color mode label or top-right below switch
-    [NSLayoutConstraint activateConstraints:@[
-        [self.effectButton.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-padding],
-        [self.effectButton.centerYAnchor constraintEqualToAnchor:self.colorModeLabel.centerYAnchor],
-    ]];
+    HAActivateConstraints(@[
+        HACon([self.effectButton.trailingAnchor constraintEqualToAnchor:cv.trailingAnchor constant:-padding]),
+        HACon([self.effectButton.centerYAnchor constraintEqualToAnchor:self.colorModeLabel.centerYAnchor]),
+    ]);
 
     // Switch: top-right
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.toggleSwitch attribute:NSLayoutAttributeTrailing
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTrailing multiplier:1 constant:-padding]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.toggleSwitch attribute:NSLayoutAttributeTop
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTop multiplier:1 constant:padding]];
+    HAActivateConstraints(@[
+        HACon([self.toggleSwitch.trailingAnchor constraintEqualToAnchor:cv.trailingAnchor constant:-padding]),
+        HACon([self.toggleSwitch.topAnchor constraintEqualToAnchor:cv.topAnchor constant:padding]),
+    ]);
 
     // Color temperature slider (warm ↔ cool)
     self.colorTempSlider = [[UISlider alloc] init];
@@ -98,41 +101,40 @@
     [self.contentView addSubview:self.colorTempSlider];
 
     // Color temp label (e.g. "3000K")
-    self.colorTempLabel = [self labelWithFont:[UIFont monospacedDigitSystemFontOfSize:12 weight:UIFontWeightRegular] color:[HATheme secondaryTextColor] lines:1];
+    self.colorTempLabel = [self labelWithFont:[UIFont ha_monospacedDigitSystemFontOfSize:12 weight:HAFontWeightRegular] color:[HATheme secondaryTextColor] lines:1];
     self.colorTempLabel.textAlignment = NSTextAlignmentRight;
     self.colorTempLabel.hidden = YES;
 
-    // Brightness slider: leading edge
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.brightnessSlider attribute:NSLayoutAttributeLeading
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeLeading multiplier:1 constant:padding]];
-
-    // Brightness slider bottom: pinned to contentView bottom (default) or above color temp slider
-    self.brightnessBottomConstraint = [NSLayoutConstraint constraintWithItem:self.brightnessSlider attribute:NSLayoutAttributeBottom
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeBottom multiplier:1 constant:-padding];
-    self.brightnessBottomConstraint.active = YES;
+    // Brightness slider: leading edge + bottom (default, swapped when color temp visible)
+    HAActivateConstraints(@[
+        HACon([self.brightnessSlider.leadingAnchor constraintEqualToAnchor:cv.leadingAnchor constant:padding]),
+    ]);
+    self.brightnessBottomConstraint = HAMakeConstraint(
+        [self.brightnessSlider.bottomAnchor constraintEqualToAnchor:cv.bottomAnchor constant:-padding]);
+    HASetConstraintActive(self.brightnessBottomConstraint, YES);
 
     // Color temp slider: below brightness slider, pinned to bottom
-    [NSLayoutConstraint activateConstraints:@[
-        [self.colorTempSlider.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding],
-        [self.colorTempLabel.leadingAnchor constraintEqualToAnchor:self.colorTempSlider.trailingAnchor constant:8],
-        [self.colorTempLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-padding],
-        [self.colorTempLabel.centerYAnchor constraintEqualToAnchor:self.colorTempSlider.centerYAnchor],
-        [self.colorTempLabel.widthAnchor constraintEqualToConstant:44],
-    ]];
-    self.colorTempBottomConstraint = [self.colorTempSlider.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-padding];
-    self.colorTempBottomConstraint.active = NO; // activated when visible
-    self.brightnessAboveColorTempConstraint = [self.brightnessSlider.bottomAnchor constraintEqualToAnchor:self.colorTempSlider.topAnchor constant:-6];
-    self.brightnessAboveColorTempConstraint.active = NO;
+    HAActivateConstraints(@[
+        HACon([self.colorTempSlider.leadingAnchor constraintEqualToAnchor:cv.leadingAnchor constant:padding]),
+        HACon([self.colorTempLabel.leadingAnchor constraintEqualToAnchor:self.colorTempSlider.trailingAnchor constant:8]),
+        HACon([self.colorTempLabel.trailingAnchor constraintEqualToAnchor:cv.trailingAnchor constant:-padding]),
+        HACon([self.colorTempLabel.centerYAnchor constraintEqualToAnchor:self.colorTempSlider.centerYAnchor]),
+        HACon([self.colorTempLabel.widthAnchor constraintEqualToConstant:44]),
+    ]);
+    self.colorTempBottomConstraint = HAMakeConstraint(
+        [self.colorTempSlider.bottomAnchor constraintEqualToAnchor:cv.bottomAnchor constant:-padding]);
+    HASetConstraintActive(self.colorTempBottomConstraint, NO); // activated when visible
+    self.brightnessAboveColorTempConstraint = HAMakeConstraint(
+        [self.brightnessSlider.bottomAnchor constraintEqualToAnchor:self.colorTempSlider.topAnchor constant:-6]);
+    HASetConstraintActive(self.brightnessAboveColorTempConstraint, NO);
 
     // Brightness label: right of slider
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.brightnessLabel attribute:NSLayoutAttributeLeading
-        relatedBy:NSLayoutRelationEqual toItem:self.brightnessSlider attribute:NSLayoutAttributeTrailing multiplier:1 constant:8]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.brightnessLabel attribute:NSLayoutAttributeTrailing
-        relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTrailing multiplier:1 constant:-padding]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.brightnessLabel attribute:NSLayoutAttributeCenterY
-        relatedBy:NSLayoutRelationEqual toItem:self.brightnessSlider attribute:NSLayoutAttributeCenterY multiplier:1 constant:0]];
-    [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.brightnessLabel attribute:NSLayoutAttributeWidth
-        relatedBy:NSLayoutRelationEqual toItem:nil attribute:NSLayoutAttributeNotAnAttribute multiplier:1 constant:44]];
+    HAActivateConstraints(@[
+        HACon([self.brightnessLabel.leadingAnchor constraintEqualToAnchor:self.brightnessSlider.trailingAnchor constant:8]),
+        HACon([self.brightnessLabel.trailingAnchor constraintEqualToAnchor:cv.trailingAnchor constant:-padding]),
+        HACon([self.brightnessLabel.centerYAnchor constraintEqualToAnchor:self.brightnessSlider.centerYAnchor]),
+        HACon([self.brightnessLabel.widthAnchor constraintEqualToConstant:44]),
+    ]);
 }
 
 - (void)configureWithEntity:(HAEntity *)entity configItem:(HADashboardConfigItem *)configItem {
@@ -172,14 +174,14 @@
         self.colorTempLabel.text = [NSString stringWithFormat:@"%ldK", (long)self.colorTempSlider.value];
 
         // Swap constraints: brightness above color temp, color temp at bottom
-        self.brightnessBottomConstraint.active = NO;
-        self.brightnessAboveColorTempConstraint.active = YES;
-        self.colorTempBottomConstraint.active = YES;
+        HASetConstraintActive(self.brightnessBottomConstraint, NO);
+        HASetConstraintActive(self.brightnessAboveColorTempConstraint, YES);
+        HASetConstraintActive(self.colorTempBottomConstraint, YES);
     } else {
         // Brightness at bottom (default)
-        self.brightnessAboveColorTempConstraint.active = NO;
-        self.colorTempBottomConstraint.active = NO;
-        self.brightnessBottomConstraint.active = YES;
+        HASetConstraintActive(self.brightnessAboveColorTempConstraint, NO);
+        HASetConstraintActive(self.colorTempBottomConstraint, NO);
+        HASetConstraintActive(self.brightnessBottomConstraint, YES);
     }
 
     // Color mode display (Task 2.4)
@@ -205,12 +207,7 @@
         self.effectButton.hidden = YES;
     }
 
-    // Background tint when on
-    if (isOn) {
-        self.contentView.backgroundColor = [HATheme onTintColor];
-    } else {
-        self.contentView.backgroundColor = [HATheme cellBackgroundColor];
-    }
+    [self applyOnStateTint:isOn];
 }
 
 #pragma mark - Helpers
@@ -277,6 +274,42 @@
     [self callService:@"turn_on" inDomain:[self.entity domain] withData:data];
 }
 
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    if (!HAAutoLayoutAvailable()) {
+        CGFloat w = self.contentView.bounds.size.width;
+        CGFloat h = self.contentView.bounds.size.height;
+        CGFloat padding = 10.0;
+        CGFloat lblW = 44.0;
+
+        // Toggle: top-right
+        CGSize switchSize = [self.toggleSwitch sizeThatFits:CGSizeMake(60, 31)];
+        self.toggleSwitch.frame = CGRectMake(w - padding - switchSize.width, padding, switchSize.width, switchSize.height);
+
+        // Color mode label: below name
+        CGSize cmSize = [self.colorModeLabel sizeThatFits:CGSizeMake(w / 2.0, CGFLOAT_MAX)];
+        self.colorModeLabel.frame = CGRectMake(padding, CGRectGetMaxY(self.nameLabel.frame) + 2, cmSize.width, cmSize.height);
+
+        // Effect button: right, same Y as color mode
+        CGSize effSize = [self.effectButton sizeThatFits:CGSizeMake(120, CGFLOAT_MAX)];
+        self.effectButton.frame = CGRectMake(w - padding - effSize.width, self.colorModeLabel.frame.origin.y, effSize.width, effSize.height);
+
+        // Color temp slider + label: bottom (when visible)
+        if (!self.colorTempSlider.hidden) {
+            self.colorTempSlider.frame = CGRectMake(padding, h - padding - 31, w - padding * 2 - lblW - 8, 31);
+            self.colorTempLabel.frame = CGRectMake(w - padding - lblW, h - padding - 31, lblW, 31);
+
+            // Brightness slider: above color temp
+            self.brightnessSlider.frame = CGRectMake(padding, h - padding - 31 - 6 - 31, w - padding * 2 - lblW - 8, 31);
+            self.brightnessLabel.frame = CGRectMake(w - padding - lblW, self.brightnessSlider.frame.origin.y, lblW, 31);
+        } else {
+            // Brightness slider: bottom
+            self.brightnessSlider.frame = CGRectMake(padding, h - padding - 31, w - padding * 2 - lblW - 8, 31);
+            self.brightnessLabel.frame = CGRectMake(w - padding - lblW, h - padding - 31, lblW, 31);
+        }
+    }
+}
+
 - (void)prepareForReuse {
     [super prepareForReuse];
     self.toggleSwitch.on = NO;
@@ -289,15 +322,18 @@
     self.colorTempSlider.value = 4000;
     self.colorTempLabel.hidden = YES;
     // Reset constraints to default (brightness at bottom)
-    self.brightnessAboveColorTempConstraint.active = NO;
-    self.colorTempBottomConstraint.active = NO;
-    self.brightnessBottomConstraint.active = YES;
-    self.contentView.backgroundColor = [HATheme cellBackgroundColor];
-    self.brightnessLabel.textColor = [HATheme secondaryTextColor];
-    self.colorTempLabel.textColor = [HATheme secondaryTextColor];
+    HASetConstraintActive(self.brightnessAboveColorTempConstraint, NO);
+    HASetConstraintActive(self.colorTempBottomConstraint, NO);
+    HASetConstraintActive(self.brightnessBottomConstraint, YES);
     self.colorModeLabel.hidden = YES;
     self.colorModeLabel.text = nil;
     self.effectButton.hidden = YES;
+}
+
+- (void)resetThemeColors {
+    [super resetThemeColors];
+    self.brightnessLabel.textColor = [HATheme secondaryTextColor];
+    self.colorTempLabel.textColor = [HATheme secondaryTextColor];
 }
 
 @end

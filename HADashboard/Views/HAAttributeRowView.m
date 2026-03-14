@@ -1,5 +1,7 @@
+#import "HAAutoLayout.h"
 #import "HAAttributeRowView.h"
 #import "HATheme.h"
+#import "UIFont+HACompat.h"
 
 @interface HAAttributeRowView ()
 @property (nonatomic, strong) UILabel *keyLabel;
@@ -25,7 +27,7 @@
     [self addSubview:self.keyLabel];
 
     self.valueLabel = [[UILabel alloc] init];
-    self.valueLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
+    self.valueLabel.font = [UIFont ha_systemFontOfSize:13 weight:HAFontWeightMedium];
     self.valueLabel.textColor = [HATheme primaryTextColor];
     self.valueLabel.textAlignment = NSTextAlignmentRight;
     self.valueLabel.numberOfLines = 2;
@@ -33,17 +35,42 @@
     self.valueLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self addSubview:self.valueLabel];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.keyLabel.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
-        [self.keyLabel.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
-        [self.keyLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.valueLabel.leadingAnchor constant:-8],
+    HAActivateConstraints(@[
+        HACon([self.keyLabel.leadingAnchor constraintEqualToAnchor:self.leadingAnchor]),
+        HACon([self.keyLabel.centerYAnchor constraintEqualToAnchor:self.centerYAnchor]),
+        HACon([self.keyLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.valueLabel.leadingAnchor constant:-8]),
 
-        [self.valueLabel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
-        [self.valueLabel.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
-        [self.valueLabel.widthAnchor constraintLessThanOrEqualToAnchor:self.widthAnchor multiplier:0.6],
+        HACon([self.valueLabel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor]),
+        HACon([self.valueLabel.centerYAnchor constraintEqualToAnchor:self.centerYAnchor]),
+        HACon([self.valueLabel.widthAnchor constraintLessThanOrEqualToAnchor:self.widthAnchor multiplier:0.6]),
 
-        [self.heightAnchor constraintGreaterThanOrEqualToConstant:28],
-    ]];
+        HACon([self.heightAnchor constraintGreaterThanOrEqualToConstant:28]),
+    ]);
+}
+
+- (CGSize)sizeThatFits:(CGSize)size {
+    if (!HAAutoLayoutAvailable()) {
+        CGFloat w = size.width > 0 ? size.width : self.bounds.size.width;
+        CGFloat valW = w * 0.6;
+        CGSize keySize = [self.keyLabel sizeThatFits:CGSizeMake(w - valW - 8, CGFLOAT_MAX)];
+        CGSize valSize = [self.valueLabel sizeThatFits:CGSizeMake(valW, CGFLOAT_MAX)];
+        CGFloat h = MAX(28, MAX(keySize.height, valSize.height) + 8);
+        return CGSizeMake(w, h);
+    }
+    return [super sizeThatFits:size];
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    if (!HAAutoLayoutAvailable()) {
+        CGFloat w = self.bounds.size.width;
+        CGFloat h = MAX(28, self.bounds.size.height);
+        CGFloat valW = w * 0.6;
+        CGSize keySize = [self.keyLabel sizeThatFits:CGSizeMake(w - valW - 8, CGFLOAT_MAX)];
+        self.keyLabel.frame = CGRectMake(0, (h - keySize.height) / 2, w - valW - 8, keySize.height);
+        CGSize valSize = [self.valueLabel sizeThatFits:CGSizeMake(valW, CGFLOAT_MAX)];
+        self.valueLabel.frame = CGRectMake(w - valW, (h - valSize.height) / 2, valW, valSize.height);
+    }
 }
 
 - (void)configureWithKey:(NSString *)key value:(NSString *)value {
