@@ -248,7 +248,7 @@ static const CGFloat kSceneChipRowHeight = 44.0; // chip height + padding
         NSString *iconName = headingIcon;
         if ([iconName hasPrefix:@"mdi:"]) iconName = [iconName substringFromIndex:4];
         NSString *glyph = [HAIconMapper glyphForIconName:iconName];
-        if (glyph) {
+        if (glyph && HASystemMajorVersion() >= 6) {
             NSMutableAttributedString *heading = [[NSMutableAttributedString alloc]
                 initWithAttributedString:[HAIconMapper attributedGlyph:glyph fontSize:16 color:[HATheme secondaryTextColor]]];
             [heading appendAttributedString:[[NSAttributedString alloc] initWithString:

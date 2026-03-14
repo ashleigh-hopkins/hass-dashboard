@@ -117,9 +117,10 @@ static const CGFloat kHeadingGap = 2.0;
         NSString *iconName = headingIcon;
         if ([iconName hasPrefix:@"mdi:"]) iconName = [iconName substringFromIndex:4];
         NSString *glyph = [HAIconMapper glyphForIconName:iconName];
-        if (glyph) {
-            // attributedGlyph: returns proper glyph on iOS 6+, empty string on iOS 5
-            // (graceful degradation — heading text still shows, just without icon prefix)
+        if (glyph && HASystemMajorVersion() >= 6) {
+            // Mixed icon+text attributed string — only works on iOS 6+ where UILabel
+            // supports attributedText natively. On iOS 5, a single label can't render
+            // two fonts (MDI for icon + system for text), so we skip the icon.
             NSMutableAttributedString *heading = [[NSMutableAttributedString alloc]
                 initWithAttributedString:[HAIconMapper attributedGlyph:glyph fontSize:16 color:[HATheme secondaryTextColor]]];
             [heading appendAttributedString:[[NSAttributedString alloc] initWithString:
