@@ -1,6 +1,8 @@
 #import "HALog.h"
 #import <UIKit/UIKit.h>
 #include <mach/mach_time.h>
+#include <signal.h>
+#include <execinfo.h>
 
 static NSString *const kHALogMinLevelKey = @"HALogMinLevel";
 static NSString *const kHALogFileName = @"ha-log.txt";
@@ -253,6 +255,93 @@ static NSDate *_initDate = nil;
     } @catch (NSException *e) {
         _fileHandle = nil; // Disk full or gone — disable file logging
     }
+}
+
+#pragma mark - Crash Handling
+
+static NSUncaughtExceptionHandler *_previousExceptionHandler = nil;
+
+/// Signals we trap. All are synchronous (caused by the crashing thread itself),
+/// so our handler runs on the same thread — no cross-thread issues.
+static const int kCrashSignals[] = { SIGABRT, SIGSEGV, SIGBUS, SIGFPE, SIGILL };
+static const int kCrashSignalCount = sizeof(kCrashSignals) / sizeof(kCrashSignals[0]);
+static struct sigaction _previousSignalActions[5]; // indexed same as kCrashSignals
+
+static void _HACrashExceptionHandler(NSException *exception) {
+    NSString *message = [NSString stringWithFormat:
+        @"\n\n=== CRASH: Uncaught Exception ===\n"
+        @"Name: %@\n"
+        @"Reason: %@\n"
+        @"Stack:\n%@\n"
+        @"=================================\n",
+        exception.name,
+        exception.reason,
+        [exception.callStackSymbols componentsJoinedByString:@"\n"]];
+    [HALog logCrashMessage:message];
+
+    // Forward to previous handler if any
+    if (_previousExceptionHandler) {
+        _previousExceptionHandler(exception);
+    }
+}
+
+static void _HACrashSignalHandler(int sig) {
+    // backtrace() is async-signal-safe on Darwin.
+    void *frames[128];
+    int count = backtrace(frames, 128);
+    char **symbols = backtrace_symbols(frames, count);
+
+    NSMutableString *message = [NSMutableString stringWithFormat:
+        @"\n\n=== CRASH: Signal %d (%s) ===\nStack:\n",
+        sig, strsignal(sig)];
+    if (symbols) {
+        for (int i = 0; i < count; i++) {
+            [message appendFormat:@"%s\n", symbols[i]];
+        }
+        free(symbols);
+    }
+    [message appendString:@"=================================\n"];
+    [HALog logCrashMessage:message];
+
+    // Restore default handler and re-raise so the OS gets the crash
+    signal(sig, SIG_DFL);
+    raise(sig);
+}
+
++ (void)installCrashHandler {
+    // Ensure log file is open
+    if (!_initialized) [self initialize];
+
+    // Uncaught Obj-C exceptions
+    _previousExceptionHandler = NSGetUncaughtExceptionHandler();
+    NSSetUncaughtExceptionHandler(&_HACrashExceptionHandler);
+
+    // POSIX signals
+    for (int i = 0; i < kCrashSignalCount; i++) {
+        struct sigaction action = {0};
+        action.sa_handler = &_HACrashSignalHandler;
+        sigemptyset(&action.sa_mask);
+        sigaction(kCrashSignals[i], &action, &_previousSignalActions[i]);
+    }
+
+    HALogI(@"log", @"Crash handler installed");
+}
+
++ (void)logCrashMessage:(NSString *)message {
+    // Best-effort write directly to the file handle.
+    // We're in a crash context so keep it minimal.
+    @synchronized(self) {
+        @try {
+            if (_fileHandle) {
+                [_fileHandle writeData:[message dataUsingEncoding:NSUTF8StringEncoding]];
+                [_fileHandle synchronizeFile];
+            }
+        } @catch (NSException *e) {
+            // Nothing we can do
+        }
+    }
+    // Also try NSLog in case the file is gone
+    NSLog(@"[HALog CRASH] %@", message);
 }
 
 + (void)_rotateLogFile {

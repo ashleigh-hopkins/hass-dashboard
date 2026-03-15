@@ -1011,6 +1011,40 @@ static const NSTimeInterval kReconnectMaxInterval  = 60.0;
         } else if (msgId == self.lovelaceMessageId && success) {
             NSDictionary *result = message[@"result"];
             if ([result isKindOfClass:[NSDictionary class]]) {
+                // Log dashboard JSON structure summary
+                NSArray *views = result[@"views"];
+                NSUInteger viewCount = [views isKindOfClass:[NSArray class]] ? views.count : 0;
+                NSUInteger totalCards = 0;
+                for (NSDictionary *v in views) {
+                    if (![v isKindOfClass:[NSDictionary class]]) continue;
+                    NSArray *cards = v[@"cards"];
+                    if ([cards isKindOfClass:[NSArray class]]) totalCards += cards.count;
+                    NSArray *sections = v[@"sections"];
+                    if ([sections isKindOfClass:[NSArray class]]) {
+                        for (NSDictionary *s in sections) {
+                            if (![s isKindOfClass:[NSDictionary class]]) continue;
+                            NSArray *sc = s[@"cards"];
+                            if ([sc isKindOfClass:[NSArray class]]) totalCards += sc.count;
+                        }
+                    }
+                }
+                BOOL hasStrategy = [result[@"strategy"] isKindOfClass:[NSDictionary class]];
+                HALogI(@"conn", @"Lovelace config received: %lu views, %lu cards, strategy=%@",
+                       (unsigned long)viewCount, (unsigned long)totalCards,
+                       hasStrategy ? result[@"strategy"][@"type"] : @"none");
+
+                // At DEBUG level, log the full pretty-printed JSON
+                if ([HALog minLevel] <= HALogLevelDebug) {
+                    NSData *prettyData = [NSJSONSerialization dataWithJSONObject:result
+                                                                        options:NSJSONWritingPrettyPrinted
+                                                                          error:nil];
+                    if (prettyData) {
+                        NSString *prettyJSON = [[NSString alloc] initWithData:prettyData encoding:NSUTF8StringEncoding];
+                        HALogD(@"conn", @"Lovelace config JSON (%lu bytes):\n%@",
+                               (unsigned long)prettyData.length, prettyJSON);
+                    }
+                }
+
                 // Cache the raw Lovelace config to disk
                 NSString *dashPath = [[HAAuthManager sharedManager] selectedDashboardPath];
                 [[HADashboardConfigCache sharedCache] cacheConfig:result forDashboard:dashPath];

@@ -35,6 +35,16 @@ typedef NS_ENUM(NSInteger, HALogLevel) {
 /// Uses mach_absolute_time offsets for the first 30 seconds, then wall clock.
 + (void)logStartup:(NSString *)message;
 
+/// Install crash handlers (uncaught exceptions + POSIX signals).
+/// Call once from main(), before UIApplicationMain.
+/// Writes crash info + stack trace to the log file and flushes.
++ (void)installCrashHandler;
+
+/// Write a raw line to the log file bypassing level checks.
+/// Used internally by the crash handler; safe to call from signal context
+/// only for the synchronous-signal-safe subset (the Obj-C path is best-effort).
++ (void)logCrashMessage:(NSString *)message;
+
 @end
 
 // Convenience macros — runtime filtered, not compile-time stripped,
