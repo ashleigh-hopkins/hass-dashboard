@@ -191,6 +191,7 @@
 		227012481CC7C677A67FED89 /* testGaugeSeverity__light@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C28C16E302A4439899013C1E /* testGaugeSeverity__light@2x.png */; };
 		22D12E429523F54D75C9801C /* HARemoteCommandHandler.m in Sources */ = {isa = PBXBuildFile; fileRef = A14802F8505A2382BDB01198 /* HARemoteCommandHandler.m */; };
 		22D51F990B68D9B8DDF629FE /* testCoverScDoor__light@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 93C302EF73B6205CBCCE1134 /* testCoverScDoor__light@2x.png */; };
+				545935F90766727ACB36A51E /* HADateUtils.m in Sources */ = {isa = PBXBuildFile; fileRef = 60A13711D3782DDA17156489 /* HADateUtils.m */; };
 		22DB1747614BCB6083F69E4E /* HAHistoryManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 9CD3CEE209D08615B35F52CB /* HAHistoryManager.m */; };
 		22F8E436FF96F1ADB7A59146 /* testLightTile_brightness__light@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 5EB409AD56E8C8FFCB5F3382 /* testLightTile_brightness__light@2x.png */; };
 		23546D9E9F0006F8E41478E1 /* testSceneSectionActivated_sceneSectionActivated_gradient@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 3BE78FC8FB4D9DBA1F295687 /* testSceneSectionActivated_sceneSectionActivated_gradient@2x.png */; };
@@ -2270,6 +2271,8 @@
 		9BB581EA0744F168650242C9 /* testMediaPlayerSectionPlaying_mediaPlayerSectionPlaying_light@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "testMediaPlayerSectionPlaying_mediaPlayerSectionPlaying_light@2x.png"; sourceTree = "<group>"; };
 		9BB60A23CAF412606C814506 /* testToggleSectionOn_toggleSectionOn_light@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "testToggleSectionOn_toggleSectionOn_light@2x.png"; sourceTree = "<group>"; };
 		9C011E8CE2ED039570658616 /* testUnavailableClimate__gradient@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "testUnavailableClimate__gradient@2x.png"; sourceTree = "<group>"; };
+		5E6320E65651350595715D5C /* HADateUtils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HADateUtils.h; sourceTree = "<group>"; };
+		60A13711D3782DDA17156489 /* HADateUtils.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HADateUtils.m; sourceTree = "<group>"; };
 		9CD3CEE209D08615B35F52CB /* HAHistoryManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HAHistoryManager.m; sourceTree = "<group>"; };
 		9D10A1A9A3CDCE0F4EB3037F /* testHeadingNoIcon__gradient@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "testHeadingNoIcon__gradient@2x.png"; sourceTree = "<group>"; };
 		9D471ACAE25D2D4E9E0147A4 /* testMediaPlayerScFull__dark_gradient@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "testMediaPlayerScFull__dark_gradient@2x.png"; sourceTree = "<group>"; };
@@ -4168,6 +4171,8 @@
 				0D90FC832BB51A26ABCF00CF /* HADiscoveryService.h */,
 				D199436AF0F65C8509089B7C /* HADiscoveryService.m */,
 				86821EF1EA2830D58D9D7495 /* HAHistoryManager.h */,
+				5E6320E65651350595715D5C /* HADateUtils.h */,
+				60A13711D3782DDA17156489 /* HADateUtils.m */,
 				9CD3CEE209D08615B35F52CB /* HAHistoryManager.m */,
 				93A462BF1943FA1498424F65 /* HALogbookManager.h */,
 				B9FB1828282C6F9D290DE809 /* HALogbookManager.m */,
@@ -6000,6 +6005,7 @@
 				064D97C56C40D6FC920BB805 /* HAGraphView.m in Sources */,
 				577BE362309C38A4CC333DF5 /* HAHaptics.m in Sources */,
 				18CC68C2AE529079237629E3 /* HAHeadingCell.m in Sources */,
+								545935F90766727ACB36A51E /* HADateUtils.m in Sources */,
 				22DB1747614BCB6083F69E4E /* HAHistoryManager.m in Sources */,
 				2029BCEF07FC433C512FC8B6 /* HAHumidifierEntityCell.m in Sources */,
 				E541E6E43710645D9D3EF4B4 /* HAIconMapper.m in Sources */,
